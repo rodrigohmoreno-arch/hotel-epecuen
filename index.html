@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Epecuén — Restaurante</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --card:     #22263a;
+      --border:   rgba(255,255,255,0.08);
+      --gold:     #f5b731;
+      --red:      #e8453c;
+      --green:    #2ecc71;
+      --blue:     #4a90d9;
+      --purple:   #8b5cf6;
+      --text:     #e8e8f0;
+      --muted:    #7a7a9a;
+      --radius:   14px;
+      --shadow:   0 8px 32px rgba(0,0,0,0.4);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── LAYOUT ── */
+    .hidden { display:none !important; }
+    .screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .app    { max-width:1400px; margin:0 auto; padding:16px; }
+
+    /* ── LOGIN ── */
+    .login-card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:48px 40px;
+      width:100%; max-width:400px;
+      box-shadow:var(--shadow);
+    }
+    .login-logo { text-align:center; margin-bottom:32px; }
+    .login-logo h1 { font-size:1.8rem; font-weight:700; color:var(--gold); letter-spacing:-0.5px; }
+    .login-logo p  { color:var(--muted); font-size:0.9rem; margin-top:4px; }
+    .field { margin-bottom:18px; }
+    .field label { display:block; font-size:0.82rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
+    .field input {
+      width:100%; padding:13px 16px;
+      background:var(--card); border:1px solid var(--border);
+      border-radius:10px; color:var(--text); font-size:1rem;
+      transition:border-color .2s;
+    }
+    .field input:focus { outline:none; border-color:var(--gold); }
+    .btn {
+      width:100%; padding:14px; border:none; border-radius:10px;
+      font-size:1rem; font-weight:600; cursor:pointer; transition:all .2s;
+    }
+    .btn-gold   { background:var(--gold); color:#000; }
+    .btn-gold:hover { filter:brightness(1.1); }
+    .btn-green  { background:var(--green); color:#fff; }
+    .btn-red    { background:var(--red); color:#fff; }
+    .btn-blue   { background:var(--blue); color:#fff; }
+    .btn-ghost  { background:rgba(255,255,255,0.07); color:var(--text); }
+    .btn-ghost:hover { background:rgba(255,255,255,0.12); }
+    .btn-sm     { width:auto; padding:8px 16px; font-size:0.85rem; }
+    .btn-xs     { width:auto; padding:5px 12px; font-size:0.78rem; }
+    #loginMsg { text-align:center; margin-top:14px; font-size:0.88rem; color:var(--red); min-height:20px; }
+
+    /* ── HEADER ── */
+    .header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 20px; background:var(--surface);
+      border-bottom:1px solid var(--border); border-radius:var(--radius);
+      margin-bottom:20px;
+    }
+    .header-title h2 { font-size:1.1rem; font-weight:600; color:var(--gold); }
+    .header-title p  { font-size:0.8rem; color:var(--muted); }
+    .header-right { display:flex; align-items:center; gap:12px; }
+    .rol-badge {
+      padding:4px 12px; border-radius:20px; font-size:0.75rem;
+      font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+    }
+    .rol-mozo   { background:rgba(74,144,217,0.2); color:var(--blue); }
+    .rol-caja   { background:rgba(46,204,113,0.2); color:var(--green); }
+    .rol-stock  { background:rgba(245,183,49,0.2); color:var(--gold); }
+    .rol-chef   { background:rgba(232,69,60,0.2); color:var(--red); }
+    .rol-admin  { background:rgba(139,92,246,0.2); color:var(--purple); }
+    .rol-carhue { background:rgba(46,204,113,0.2); color:var(--green); }
+
+    /* ── TABS ── */
+    .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+    .tab {
+      padding:9px 18px; border-radius:8px; border:1px solid var(--border);
+      background:var(--card); color:var(--muted); font-size:0.85rem;
+      font-weight:500; cursor:pointer; transition:all .2s;
+    }
+    .tab:hover { border-color:var(--gold); color:var(--text); }
+    .tab.active { background:var(--gold); color:#000; border-color:var(--gold); font-weight:700; }
+
+    /* ── CARDS ── */
+    .card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:24px; margin-bottom:16px;
+    }
+    .card-title { font-size:1rem; font-weight:600; color:var(--gold); margin-bottom:16px; }
+
+    /* ── MESAS GRID ── */
+    .mesas-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+      gap:14px;
+    }
+    .mesa-card {
+      background:var(--card); border:2px solid var(--border);
+      border-radius:12px; padding:18px 14px; text-align:center;
+      cursor:pointer; transition:all .2s; position:relative;
+    }
+    .mesa-card:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+    .mesa-card.libre  { border-color:rgba(46,204,113,0.4); }
+    .mesa-card.libre:hover { border-color:var(--green); }
+    .mesa-card.ocupada { border-color:rgba(232,69,60,0.5); cursor:default; }
+    .mesa-card.facturacion { border-color:rgba(245,183,49,0.5); }
+    .mesa-nombre { font-weight:700; font-size:1rem; margin-bottom:6px; }
+    .mesa-ubicacion { font-size:0.72rem; color:var(--muted); margin-bottom:8px; }
+    .mesa-estado {
+      font-size:0.72rem; font-weight:700; text-transform:uppercase;
+      padding:3px 10px; border-radius:20px; display:inline-block;
+    }
+    .estado-libre  { background:rgba(46,204,113,0.15); color:var(--green); }
+    .estado-ocupada { background:rgba(232,69,60,0.15); color:var(--red); }
+    .estado-facturacion { background:rgba(245,183,49,0.15); color:var(--gold); }
+    .mesa-cliente { font-size:0.75rem; color:var(--muted); margin-top:6px; }
+
+    /* ── TABLA ── */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+    th { padding:10px 14px; text-align:left; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); border-bottom:1px solid var(--border); }
+    td { padding:11px 14px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+
+    /* ── FORM ── */
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+    .form-group { display:flex; flex-direction:column; gap:6px; }
+    .form-group label { font-size:0.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding:11px 14px; background:var(--card); border:1px solid var(--border);
+      border-radius:10px; color:var(--text); font-size:0.92rem; transition:border-color .2s;
+    }
+    .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--gold); }
+    .form-group select option { background:var(--card); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.75);
+      display:flex; align-items:center; justify-content:center;
+      z-index:1000; padding:20px;
+    }
+    .modal {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:20px; width:100%; max-width:700px;
+      max-height:90vh; overflow-y:auto; box-shadow:var(--shadow);
+    }
+    .modal-header {
+      padding:22px 24px; border-bottom:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .modal-header h3 { font-size:1.05rem; font-weight:600; }
+    .modal-close { background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; }
+    .modal-close:hover { color:var(--text); }
+    .modal-body { padding:24px; }
+    .modal-footer { padding:18px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+
+    /* ── CONFIRM MODAL ── */
+    #modalConfirm .modal { max-width:420px; }
+    .confirm-body { padding:24px; }
+    .confirm-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+
+    /* ── TOAST ── */
+    .toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast {
+      padding:13px 20px; border-radius:10px; font-size:0.88rem; font-weight:500;
+      box-shadow:var(--shadow); animation:slideIn .3s ease; max-width:320px;
+    }
+    .toast-success { background:#1a3a2a; border:1px solid var(--green); color:var(--green); }
+    .toast-error   { background:#3a1a1a; border:1px solid var(--red); color:var(--red); }
+    .toast-warning { background:#3a2e1a; border:1px solid var(--gold); color:var(--gold); }
+    .toast-info    { background:#1a2a3a; border:1px solid var(--blue); color:var(--blue); }
+    @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+    /* ── STATS ROW ── */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+    .stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+    .stat-val  { font-size:1.6rem; font-weight:700; }
+    .stat-lbl  { font-size:0.72rem; color:var(--muted); text-transform:uppercase; margin-top:4px; }
+
+    /* ── BADGE ── */
+    .badge { padding:3px 10px; border-radius:20px; font-size:0.72rem; font-weight:700; }
+
+    /* ── LOADING ── */
+    .spinner { display:inline-block; width:18px; height:18px; border:2px solid rgba(255,255,255,0.2); border-top-color:var(--gold); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── FILTROS ── */
+    .filtros { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:20px; padding:16px; background:var(--card); border-radius:10px; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:640px) {
+      .form-row { grid-template-columns:1fr; }
+      .header { flex-direction:column; gap:10px; text-align:center; }
+      .mesas-grid { grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     LOGIN
+══════════════════════════════════════ -->
+<div id="loginScreen" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>Hotel Epecuén</h1>
+      <p>Sistema de Restaurante</p>
+    </div>
+    <div class="field">
+      <label>Usuario</label>
+      <input type="text" id="loginUser" placeholder="usuario" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-gold" onclick="doLogin()">Ingresar</button>
+    <div id="loginMsg"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════ -->
+<div id="mainApp" class="app hidden">
+  <div class="header">
+    <div class="header-title">
+      <h2>Hotel Epecuén — Restaurante</h2>
+      <p id="headerSub">Sistema de Gestión</p>
+    </div>
+    <div class="header-right">
+      <span id="userName" style="font-size:0.9rem;color:var(--muted);"></span>
+      <span id="userRol" class="rol-badge"></span>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- PANEL MOZO -->
+  <div id="panelMozo" class="hidden">
+    <div class="tabs">
+      <button class="tab active" onclick="tabMozo('mesas',this)">Mesas</button>
+      <button class="tab" onclick="tabMozo('filtro',this)">Filtrar</button>
+    </div>
+    <div class="filtros" id="filtroMozos" style="display:none;">
+      <div class="form-group">
+        <label>Ubicación</label>
+        <select id="filtroUbicacion" onchange="renderMesas()">
+          <option value="">Todas</option>
+          <option value="Salon Primer Piso">Salón Primer Piso</option>
+          <option value="Salon Segundo Piso">Salón Segundo Piso</option>
+          <option value="Consumos Externos">Consumos Externos</option>
+        </select>
+      </div>
+    </div>
+    <div id="mesasGrid" class="mesas-grid"></div>
+  </div>
+
+  <!-- PANEL CAJA -->
+  <div id="panelCaja" class="hidden">
+    <div class="card">
+      <div class="card-title">Mesas para Cobrar</div>
+      <div id="mesasCobroGrid" class="mesas-grid"></div>
+    </div>
+  </div>
+
+  <!-- PANEL STOCK -->
+  <div id="panelStock" class="hidden">
+    <div class="tabs">
+      <button class="tab active" onclick="tabStock('lista',this)">Stock Actual</button>
+      <button class="tab" onclick="tabStock('ingreso',this)">Ingreso</button>
+      <button class="tab" onclick="tabStock('nuevo',this)">Nuevo Producto</button>
+      <button class="tab" onclick="tabStock('historial',this)">Historial</button>
+    </div>
+    <div id="tabStockLista">
+      <div class="card">
+        <div class="card-title">Productos en Stock</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Producto</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyStock"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabStockIngreso" class="hidden">
+      <div class="card">
+        <div class="card-title">Registrar Movimiento</div>
+        <div class="form-row">
+          <div class="form-group"><label>Producto</label>
+            <select id="stockProdSelect"></select></div>
+          <div class="form-group"><label>Tipo</label>
+            <select id="stockTipo">
+              <option value="COMPRA">Compra</option>
+              <option value="AJUSTE_POSITIVO">Ajuste +</option>
+              <option value="AJUSTE_NEGATIVO">Ajuste -</option>
+              <option value="MERMA">Merma</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Cantidad</label><input type="number" id="stockCantidad" min="1" value="1"></div>
+          <div class="form-group"><label>Nuevo Precio Costo (opcional)</label><input type="number" id="stockPrecio" step="0.01" placeholder="Sin cambio"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="registrarMovimientoStock()">Registrar</button>
+      </div>
+    </div>
+    <div id="tabStockNuevo" class="hidden">
+      <div class="card">
+        <div class="card-title">Agregar Producto</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="npNombre"></div>
+          <div class="form-group"><label>Categoría *</label>
+            <select id="npCategoria">
+              <option value="Bebidas">Bebidas</option>
+              <option value="Platos Principales">Platos Principales</option>
+              <option value="Entradas">Entradas</option>
+              <option value="Postres">Postres</option>
+              <option value="Cafetería">Cafetería</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Precio Costo</label><input type="number" id="npPrecioCosto" step="0.01" value="0"></div>
+          <div class="form-group"><label>Precio Venta</label><input type="number" id="npPrecioVenta" step="0.01" value="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stock Inicial</label><input type="number" id="npStockInicial" value="0"></div>
+          <div class="form-group"><label>Sector</label>
+            <select id="npSector"><option value="COCINA">Cocina</option><option value="MOSTRADOR">Mostrador</option></select></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarProducto()">Agregar</button>
+      </div>
+    </div>
+    <div id="tabStockHistorial" class="hidden">
+      <div class="card">
+        <div class="card-title">Historial de Movimientos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Stock Nuevo</th><th>Usuario</th></tr></thead>
+          <tbody id="tbodyHistorialStock"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL CHEF -->
+  <div id="panelChef" class="hidden">
+    <div class="tabs">
+      <button class="tab active" onclick="tabChef('platos',this)">Platos</button>
+      <button class="tab" onclick="tabChef('nuevo',this)">Nuevo Plato</button>
+      <button class="tab" onclick="tabChef('receta',this)">Editar Receta</button>
+    </div>
+    <div id="tabChefPlatos">
+      <div class="card">
+        <div class="card-title">Listado de Platos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Plato</th><th>Categoría</th><th>Precio Venta</th><th>Costo</th><th>Margen</th><th></th></tr></thead>
+          <tbody id="tbodyPlatos"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabChefNuevo" class="hidden">
+      <div class="card">
+        <div class="card-title">Agregar Plato</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="chefNombre"></div>
+          <div class="form-group"><label>Categoría</label>
+            <select id="chefCategoria">
+              <option>Platos Principales</option><option>Entradas</option><option>Postres</option><option>Cafetería</option>
+            </select></div>
+        </div>
+        <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:8px;border-left:3px solid var(--gold);font-size:0.83rem;color:var(--muted);margin-bottom:16px;">
+          El precio de venta lo define el administrador en Productos. El costo se calcula desde la receta.
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarPlato()">Agregar Plato</button>
+      </div>
+    </div>
+    <div id="tabChefReceta" class="hidden">
+      <div class="card">
+        <div class="card-title">Editar Receta</div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Plato</label>
+          <select id="chefPlatoSel" onchange="cargarReceta()"></select>
+        </div>
+        <div id="recetaEditor" class="hidden">
+          <div id="recetaItems"></div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button class="btn btn-ghost btn-sm" onclick="addIngredienteReceta()">+ Ingrediente</button>
+            <button class="btn btn-gold btn-sm" onclick="guardarReceta()">Guardar Receta</button>
+          </div>
+          <div id="costoReceta" style="margin-top:14px;padding:14px;background:var(--card);border-radius:10px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL ADMIN -->
+  <div id="panelAdmin" class="hidden">
+    <div class="tabs">
+      <button class="tab active" onclick="tabAdmin('mesas',this)">Mesas</button>
+      <button class="tab" onclick="tabAdmin('productos',this)">Productos</button>
+      <button class="tab" onclick="tabAdmin('usuarios',this)">Usuarios</button>
+      <button class="tab" onclick="tabAdmin('cierres',this)">Cierres del Día</button>
+      <button class="tab" onclick="tabAdmin('auditoria',this)">Auditoría</button>
+    </div>
+    <!-- Admin Mesas -->
+    <div id="tabAdminMesas">
+      <div class="card">
+        <div class="card-title">Gestión de Mesas</div>
+        <div style="padding:16px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nueva Mesa</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Nombre</label><input type="text" id="adminMesaNombre" placeholder="Mesa 1"></div>
+            <div class="form-group"><label>Ubicación</label>
+              <select id="adminMesaUbicacion">
+                <option>Salon Primer Piso</option><option>Salon Segundo Piso</option><option>Consumos Externos</option>
+              </select></div>
+          </div>
+          <button class="btn btn-blue btn-sm" onclick="agregarMesa()">Agregar Mesa</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Nombre</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyAdminMesas"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Productos -->
+    <div id="tabAdminProductos" class="hidden">
+      <div class="card">
+        <div class="card-title">Gestión de Productos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Nombre</th><th>Categoría</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyAdminProductos"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Usuarios -->
+    <div id="tabAdminUsuarios" class="hidden">
+      <div class="card">
+        <div class="card-title">Usuarios del Sistema</div>
+        <div style="padding:16px;background:rgba(139,92,246,0.08);border-radius:10px;border-left:3px solid var(--purple);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nuevo Usuario</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Usuario</label><input type="text" id="nuUsuario"></div>
+            <div class="form-group"><label>Contraseña</label><input type="password" id="nuPass"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Nombre Completo</label><input type="text" id="nuNombre"></div>
+            <div class="form-group"><label>Rol</label>
+              <select id="nuRol">
+                <option value="MOZO">Mozo</option><option value="CAJA">Caja</option>
+                <option value="STOCK">Stock</option><option value="CHEF">Chef</option>
+                <option value="CARHUE_RECEPCION">Carhue Recepción</option><option value="ADMIN">Admin</option>
+              </select></div>
+          </div>
+          <button class="btn btn-purple btn-sm" onclick="agregarUsuario()">Crear Usuario</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyUsuarios"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Cierres -->
+    <div id="tabAdminCierres" class="hidden">
+      <div class="filtros">
+        <div class="form-group"><label>Fecha</label><input type="date" id="filtroCierresFecha" onchange="cargarCierresDia()"></div>
+        <button class="btn btn-gold btn-sm" onclick="cargarCierresDia()">Buscar</button>
+      </div>
+      <div id="resumenCierres" class="stats-row"></div>
+      <div class="card">
+        <div class="card-title">Cierres del Día</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Hora</th><th>Mesa</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Cobro</th></tr></thead>
+          <tbody id="tbodyCierres"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Auditoría -->
+    <div id="tabAdminAuditoria" class="hidden">
+      <div class="filtros">
+        <div class="form-group"><label>Fecha</label><input type="date" id="filtroAuditFecha" onchange="cargarAuditoria()"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Eliminaciones</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Mesa</th><th>Producto</th><th>Cantidad</th><th>Usuario</th></tr></thead>
+          <tbody id="tbodyAuditoria"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL CARHUE -->
+  <div id="panelCarhue" class="hidden">
+    <div class="tabs">
+      <button class="tab active" onclick="tabCarhue('vouchers',this)">Crear Voucher</button>
+      <button class="tab" onclick="tabCarhue('listado',this)">Vouchers del Día</button>
+    </div>
+    <div id="tabCarhueVouchers">
+      <div class="card">
+        <div class="card-title">Nuevo Voucher</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="vNombre"></div>
+          <div class="form-group"><label>Apellido *</label><input type="text" id="vApellido"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>N° Habitación Carhue *</label><input type="text" id="vHabitacion"></div>
+          <div class="form-group"><label>Tipo Pensión</label>
+            <select id="vPension"><option value="MAP">Media Pensión (MAP)</option><option value="SIN_MAP">Sin MAP</option></select></div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;"><label>Comensales</label><input type="number" id="vComensales" min="1" value="1"></div>
+        <button class="btn btn-green btn-sm" onclick="crearVoucher()">Crear Voucher</button>
+      </div>
+    </div>
+    <div id="tabCarhueListado" class="hidden">
+      <div class="card">
+        <div class="card-title">Vouchers de Hoy</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Hora</th><th>Nombre</th><th>Hab.</th><th>Pensión</th><th>Comensales</th></tr></thead>
+          <tbody id="tbodyVouchers"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL COMANDA
+══════════════════════════════════════ -->
+<div id="modalComanda" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="comandaMesaTitulo">Comanda</h3>
+        <small id="comandaClienteInfo" style="color:var(--muted);"></small>
+      </div>
+      <button class="modal-close" onclick="cerrarModal('modalComanda')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row" style="margin-bottom:16px;">
+        <div class="form-group" style="flex:2;">
+          <label>Producto</label>
+          <select id="prodSelect"></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" id="prodCantidad" value="1" min="1">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn btn-green btn-sm" onclick="agregarItem()">Agregar</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tablaComanda">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody id="tbodyComanda"></tbody>
+      </table></div>
+      <div style="text-align:right;margin-top:16px;font-size:1.2rem;font-weight:700;">
+        Total: $<span id="totalComanda">0.00</span>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalComanda')">Volver</button>
+      <button class="btn btn-blue btn-sm" onclick="imprimirComanda('COCINA')">🍳 Cocina</button>
+      <button class="btn btn-gold btn-sm" onclick="imprimirComanda('MOSTRADOR')">🥤 Bebidas</button>
+      <button class="btn btn-red btn-sm" onclick="cerrarMesa()">Cerrar Mesa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ABRIR MESA -->
+<div id="modalAbrirMesa" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>Abrir Mesa — <span id="abrirMesaNombre"></span></h3>
+      <button class="modal-close" onclick="cerrarModal('modalAbrirMesa')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Tipo de Cliente *</label>
+        <select id="abrirTipoCliente" onchange="onTipoClienteChange()">
+          <option value="EPECUEN_MAP">Epecuén Con MAP</option>
+          <option value="EPECUEN_SIN_MAP">Epecuén Sin MAP</option>
+          <option value="CARHUE">Hotel Carhue</option>
+          <option value="EXTERNO">Consumidor Final</option>
+        </select>
+      </div>
+      <div id="abrirCamposHuesped">
+        <div class="form-row">
+          <div class="form-group"><label>N° Habitación</label><input type="text" id="abrirHabitacion"></div>
+          <div class="form-group"><label>Nombre Cliente</label><input type="text" id="abrirNombreCliente"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cantidad Comensales</label>
+        <input type="number" id="abrirComensales" min="1" value="1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalAbrirMesa')">Cancelar</button>
+      <button class="btn btn-gold btn-sm" onclick="confirmarAbrirMesa()">Abrir Mesa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FACTURACIÓN -->
+<div id="modalFacturacion" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Facturar — <span id="facturarMesaNombre"></span></h3>
+      <button class="modal-close" onclick="cerrarModal('modalFacturacion')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:1.4rem;font-weight:700;text-align:center;margin-bottom:20px;">
+        Total: $<span id="facturarTotal">0.00</span>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Medio de Pago *</label>
+        <select id="facturarMedioPago">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+          <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descuento %</label>
+        <input type="number" id="facturarDescuento" min="0" max="100" value="0" step="1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalFacturacion')">Cancelar</button>
+      <button class="btn btn-green btn-sm" onclick="confirmarFacturacion()">Confirmar Cobro</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MESA -->
+<div id="modalEditarMesa" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Editar Mesa</h3>
+      <button class="modal-close" onclick="cerrarModal('modalEditarMesa')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editMesaId">
+      <div class="form-row">
+        <div class="form-group"><label>Nombre</label><input type="text" id="editMesaNombre"></div>
+        <div class="form-group"><label>Ubicación</label>
+          <select id="editMesaUbicacion">
+            <option>Salon Primer Piso</option><option>Salon Segundo Piso</option><option>Consumos Externos</option>
+          </select></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalEditarMesa')">Cancelar</button>
+      <button class="btn btn-gold btn-sm" onclick="guardarEditarMesa()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRM -->
+<div id="modalConfirm" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 id="confirmTitulo"></h3>
+      <button class="modal-close" onclick="resolverConfirm(false)">&times;</button>
+    </div>
+    <div class="confirm-body" id="confirmCuerpo"></div>
+    <div class="confirm-footer">
+      <button class="btn btn-ghost btn-sm" onclick="resolverConfirm(false)">Cancelar</button>
+      <button class="btn btn-gold btn-sm" id="confirmBtn" onclick="resolverConfirm(true)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══════════════════════════════════════
+     FIREBASE + APP JS
+══════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── CONFIG ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBj8gt8Rhp78Qap23u_ARE04FV71Tb0F_Y",
+  authDomain: "hotel-epecuen.firebaseapp.com",
+  projectId: "hotel-epecuen",
+  storageBucket: "hotel-epecuen.firebasestorage.app",
+  messagingSenderId: "1039188691225",
+  appId: "1:1039188691225:web:79293a93242ec2c5529d88"
+};
+
+const firebase = initializeApp(firebaseConfig);
+const db = getFirestore(firebase);
+
+// ── STATE ──
+let currentUser = null;
+let mesasCache = [];
+let productosCache = [];
+let recetaActual = [];
+let mesaAbierta = null;
+let comandaActual = [];
+let comandaActivaId = null;
+let mesaParaFacturar = null;
+let ticketImpreso = false;
+let _confirmCb = null;
+
+// ══════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════
+function $(id) { return document.getElementById(id); }
+function esc(t) {
+  var d = document.createElement('div');
+  d.textContent = String(t||'');
+  return d.innerHTML;
+}
+function showToast(msg, tipo='info') {
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + tipo;
+  t.textContent = msg;
+  $('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+function mostrarModal(id) { $(id).classList.remove('hidden'); }
+function cerrarModal(id)  { $(id).classList.add('hidden'); }
+window.cerrarModal = cerrarModal;
+
+function confirmarAccion(titulo, cuerpoHtml, textoOk, cb) {
+  $('confirmTitulo').textContent = titulo;
+  $('confirmCuerpo').innerHTML = cuerpoHtml;
+  $('confirmBtn').textContent = textoOk || 'Confirmar';
+  _confirmCb = cb;
+  mostrarModal('modalConfirm');
+}
+function resolverConfirm(val) {
+  cerrarModal('modalConfirm');
+  if (_confirmCb) { var f = _confirmCb; _confirmCb = null; f(val); }
+}
+window.resolverConfirm = resolverConfirm;
+
+function fmtFecha(ts) {
+  if (!ts) return '-';
+  var d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString('es-AR');
+}
+function fmtHora(ts) {
+  if (!ts) return '-';
+  var d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+}
+function hoy() {
+  var d = new Date(); d.setHours(0,0,0,0); return d;
+}
+function manana() {
+  var d = hoy(); d.setDate(d.getDate()+1); return d;
+}
+
+function imprimirHTML(html) {
+  var iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:200mm;border:none;';
+  document.body.appendChild(iframe);
+  var doc = iframe.contentDocument;
+  doc.open(); doc.write(html); doc.close();
+  setTimeout(() => {
+    try { iframe.contentWindow.print(); } catch(e) {}
+    setTimeout(() => document.body.removeChild(iframe), 1500);
+  }, 500);
+}
+
+// ══════════════════════════════════════
+// LOGIN / AUTH (sin Firebase Auth — usuarios en Firestore)
+// ══════════════════════════════════════
+async function doLogin() {
+  var u = $('loginUser').value.trim();
+  var p = $('loginPass').value.trim();
+  var msg = $('loginMsg');
+  if (!u || !p) { msg.textContent = 'Completá usuario y contraseña'; return; }
+  msg.innerHTML = '<span class="spinner"></span> Verificando...';
+  try {
+    var snap = await getDocs(query(collection(db,'usuarios'), where('usuario','==',u)));
+    if (snap.empty) { msg.textContent = 'Usuario no encontrado'; return; }
+    var data = snap.docs[0].data();
+    if (data.contrasena !== p) { msg.textContent = 'Contraseña incorrecta'; return; }
+    currentUser = { id: snap.docs[0].id, ...data };
+    msg.textContent = '';
+    $('loginUser').value = ''; $('loginPass').value = '';
+    mostrarPanel(currentUser.rol);
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+window.doLogin = doLogin;
+
+function doLogout() {
+  currentUser = null; mesasCache = []; productosCache = [];
+  $('loginScreen').classList.remove('hidden');
+  $('mainApp').classList.add('hidden');
+  ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue'].forEach(id => $(id).classList.add('hidden'));
+}
+window.doLogout = doLogout;
+
+$('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ══════════════════════════════════════
+// PANEL ROUTING
+// ══════════════════════════════════════
+function mostrarPanel(rol) {
+  $('loginScreen').classList.add('hidden');
+  $('mainApp').classList.remove('hidden');
+  $('userName').textContent = currentUser.nombre || currentUser.usuario;
+  var badge = $('userRol');
+  badge.textContent = rol;
+  badge.className = 'rol-badge rol-' + rol.toLowerCase().replace('_recepcion','');
+
+  ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue'].forEach(id => $(id).classList.add('hidden'));
+
+  if (rol === 'MOZO') {
+    $('panelMozo').classList.remove('hidden');
+    cargarMesas(); cargarProductos();
+  } else if (rol === 'CAJA') {
+    $('panelCaja').classList.remove('hidden');
+    cargarMesasCobro();
+  } else if (rol === 'STOCK') {
+    $('panelStock').classList.remove('hidden');
+    cargarStock();
+  } else if (rol === 'CHEF') {
+    $('panelChef').classList.remove('hidden');
+    cargarPlatos();
+  } else if (rol === 'ADMIN') {
+    $('panelAdmin').classList.remove('hidden');
+    cargarMesasAdmin();
+    $('filtroCierresFecha').valueAsDate = new Date();
+    $('filtroAuditFecha').valueAsDate = new Date();
+  } else if (rol === 'CARHUE_RECEPCION') {
+    $('panelCarhue').classList.remove('hidden');
+    cargarVouchers();
+  }
+}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+function setTab(btns, panels, idx) {
+  btns.forEach((b,i) => { b.classList.toggle('active', i===idx); });
+  panels.forEach((p,i) => { $(p).classList.toggle('hidden', i!==idx); });
+}
+
+function tabMozo(t, btn) {
+  document.querySelectorAll('#panelMozo .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('filtroMozos').style.display = t === 'filtro' ? 'flex' : 'none';
+}
+window.tabMozo = tabMozo;
+
+function tabStock(t, btn) {
+  document.querySelectorAll('#panelStock .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tabStockLista','tabStockIngreso','tabStockNuevo','tabStockHistorial'].forEach(id => $(id).classList.add('hidden'));
+  var map = { lista:'tabStockLista', ingreso:'tabStockIngreso', nuevo:'tabStockNuevo', historial:'tabStockHistorial' };
+  $(map[t]).classList.remove('hidden');
+  if (t === 'ingreso') poblarSelectStock();
+  if (t === 'historial') cargarHistorialStock();
+}
+window.tabStock = tabStock;
+
+function tabChef(t, btn) {
+  document.querySelectorAll('#panelChef .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tabChefPlatos','tabChefNuevo','tabChefReceta'].forEach(id => $(id).classList.add('hidden'));
+  var map = { platos:'tabChefPlatos', nuevo:'tabChefNuevo', receta:'tabChefReceta' };
+  $(map[t]).classList.remove('hidden');
+  if (t === 'receta') poblarSelectPlatos();
+}
+window.tabChef = tabChef;
+
+function tabAdmin(t, btn) {
+  document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria' };
+  $(map[t]).classList.remove('hidden');
+  if (t === 'mesas') cargarMesasAdmin();
+  if (t === 'productos') cargarProductosAdmin();
+  if (t === 'usuarios') cargarUsuariosAdmin();
+  if (t === 'cierres') cargarCierresDia();
+  if (t === 'auditoria') cargarAuditoria();
+}
+window.tabAdmin = tabAdmin;
+
+function tabCarhue(t, btn) {
+  document.querySelectorAll('#panelCarhue .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('tabCarhueVouchers').classList.toggle('hidden', t !== 'vouchers');
+  $('tabCarhueListado').classList.toggle('hidden', t !== 'listado');
+  if (t === 'listado') cargarVouchers();
+}
+window.tabCarhue = tabCarhue;
+
+// ══════════════════════════════════════
+// MESAS
+// ══════════════════════════════════════
+async function cargarMesas() {
+  $('mesasGrid').innerHTML = '<div style="color:var(--muted);padding:40px;text-align:center;"><span class="spinner"></span></div>';
+  try {
+    var snap = await getDocs(collection(db,'mesas'));
+    mesasCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderMesas();
+  } catch(e) { showToast('Error cargando mesas: '+e.message,'error'); }
+}
+window.cargarMesas = cargarMesas;
+
+function renderMesas() {
+  var filtro = $('filtroUbicacion').value;
+  var mesas = filtro ? mesasCache.filter(m => m.ubicacion === filtro) : mesasCache;
+  if (!mesas.length) { $('mesasGrid').innerHTML = '<p style="color:var(--muted);">No hay mesas configuradas</p>'; return; }
+  $('mesasGrid').innerHTML = mesas.map(m => {
+    var est = (m.estado||'LIBRE').toUpperCase();
+    var cls = est === 'LIBRE' ? 'libre' : est === 'FACTURACION' ? 'facturacion' : 'ocupada';
+    var click = est === 'LIBRE' ? `onclick="abrirMesaModal('${m.id}')"` : est === 'OCUPADA' ? `onclick="abrirComanda('${m.id}')"` : `onclick="abrirComanda('${m.id}')"`;
+    return `<div class="mesa-card ${cls}" ${click}>
+      <div class="mesa-nombre">${esc(m.nombre)}</div>
+      <div class="mesa-ubicacion">${esc(m.ubicacion)}</div>
+      <div class="mesa-estado estado-${cls}">${est}</div>
+      ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+window.renderMesas = renderMesas;
+
+// Abrir modal para nueva comanda
+function abrirMesaModal(mesaId) {
+  mesaAbierta = mesasCache.find(m => m.id === mesaId);
+  $('abrirMesaNombre').textContent = mesaAbierta?.nombre || '';
+  onTipoClienteChange();
+  mostrarModal('modalAbrirMesa');
+}
+window.abrirMesaModal = abrirMesaModal;
+
+function onTipoClienteChange() {
+  var tipo = $('abrirTipoCliente').value;
+  $('abrirCamposHuesped').style.display = tipo === 'EXTERNO' ? 'none' : 'block';
+}
+window.onTipoClienteChange = onTipoClienteChange;
+
+async function confirmarAbrirMesa() {
+  if (!mesaAbierta) return;
+  var tipo = $('abrirTipoCliente').value;
+  var hab  = $('abrirHabitacion').value.trim();
+  var nombre = $('abrirNombreCliente').value.trim();
+  var com  = parseInt($('abrirComensales').value) || 1;
+  try {
+    // Crear comanda
+    var cmdRef = await addDoc(collection(db,'comandas'), {
+      mesaId: mesaAbierta.id,
+      mesaNombre: mesaAbierta.nombre,
+      tipoCliente: tipo,
+      nroHabitacion: hab,
+      nombreCliente: nombre,
+      cantidadComensales: com,
+      estado: 'ABIERTA',
+      total: 0,
+      usuario: currentUser.usuario,
+      fechaAbierta: serverTimestamp()
+    });
+    // Actualizar mesa
+    await updateDoc(doc(db,'mesas',mesaAbierta.id), {
+      estado: 'OCUPADA',
+      comandaId: cmdRef.id,
+      tipoCliente: tipo,
+      nombreCliente: nombre,
+      nroHabitacion: hab
+    });
+    cerrarModal('modalAbrirMesa');
+    $('abrirHabitacion').value=''; $('abrirNombreCliente').value=''; $('abrirComensales').value='1';
+    await cargarMesas();
+    // Abrir comanda directamente
+    await abrirComanda(mesaAbierta.id);
+    showToast('Mesa abierta','success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.confirmarAbrirMesa = confirmarAbrirMesa;
+
+// ══════════════════════════════════════
+// COMANDA
+// ══════════════════════════════════════
+async function abrirComanda(mesaId) {
+  var mesa = mesasCache.find(m => m.id === mesaId);
+  if (!mesa || !mesa.comandaId) { showToast('Sin comanda activa','warning'); return; }
+  comandaActivaId = mesa.comandaId;
+  ticketImpreso = false;
+
+  $('comandaMesaTitulo').textContent = 'Comanda — ' + (mesa.nombre||'');
+  var tipo = mesa.tipoCliente || '';
+  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+  $('comandaClienteInfo').textContent = (labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '');
+
+  // Cargar items
+  try {
+    var snap = await getDocs(query(collection(db,'comandasDetalle'), where('comandaId','==',comandaActivaId)));
+    comandaActual = snap.docs.map(d => ({ docId:d.id, ...d.data() }));
+  } catch(e) { comandaActual = []; }
+
+  // Poblar select productos
+  var sel = $('prodSelect');
+  sel.innerHTML = '<option value="">Seleccionar...</option>';
+  productosCache.forEach(p => {
+    sel.innerHTML += `<option value="${p.id}" data-precio="${p.precioVenta}" data-sector="${p.sector||'COCINA'}">${esc(p.nombre)} ($${(p.precioVenta||0).toFixed(2)})</option>`;
+  });
+
+  renderComanda();
+  mostrarModal('modalComanda');
+}
+window.abrirComanda = abrirComanda;
+
+function renderComanda() {
+  var tbody = $('tbodyComanda');
+  if (!comandaActual.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Sin items</td></tr>';
+    $('totalComanda').textContent = '0.00';
+    return;
+  }
+  var total = 0;
+  tbody.innerHTML = comandaActual.map((item,i) => {
+    var sub = (item.cantidad||0) * (item.precio||0);
+    total += sub;
+    return `<tr>
+      <td>${esc(item.nombre)}</td>
+      <td>${item.cantidad}</td>
+      <td>$${(item.precio||0).toFixed(2)}</td>
+      <td>$${sub.toFixed(2)}</td>
+      <td><button class="btn btn-red btn-xs" onclick="quitarItem(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+  $('totalComanda').textContent = total.toFixed(2);
+}
+
+async function agregarItem() {
+  var sel = $('prodSelect');
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) { showToast('Seleccioná un producto','warning'); return; }
+  var cant = parseInt($('prodCantidad').value) || 1;
+  var precio = parseFloat(opt.dataset.precio) || 0;
+  var sector = opt.dataset.sector || 'COCINA';
+  var nombre = opt.text.split(' ($')[0];
+
+  // Buscar si ya existe
+  var idx = comandaActual.findIndex(i => i.productoId === opt.value);
+  try {
+    if (idx >= 0) {
+      var item = comandaActual[idx];
+      var newCant = item.cantidad + cant;
+      await updateDoc(doc(db,'comandasDetalle',item.docId), { cantidad: newCant, subtotal: newCant*precio });
+      comandaActual[idx].cantidad = newCant;
+      comandaActual[idx].subtotal = newCant*precio;
+    } else {
+      var ref = await addDoc(collection(db,'comandasDetalle'), {
+        comandaId: comandaActivaId,
+        productoId: opt.value,
+        nombre: nombre,
+        cantidad: cant,
+        precio: precio,
+        subtotal: cant*precio,
+        sector: sector
+      });
+      comandaActual.push({ docId:ref.id, comandaId:comandaActivaId, productoId:opt.value, nombre, cantidad:cant, precio, subtotal:cant*precio, sector });
+    }
+    // Actualizar total comanda
+    var total = comandaActual.reduce((a,i) => a + (i.cantidad*i.precio), 0);
+    await updateDoc(doc(db,'comandas',comandaActivaId), { total });
+    renderComanda();
+    $('prodCantidad').value = '1';
+    sel.value = '';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarItem = agregarItem;
+
+async function quitarItem(idx) {
+  var item = comandaActual[idx];
+  confirmarAccion('Eliminar Item', `<p style="padding:16px;">¿Eliminar <strong>${esc(item.nombre)}</strong> x${item.cantidad}?</p>`, 'Eliminar', async (ok) => {
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db,'comandasDetalle',item.docId));
+      // Auditoría
+      await addDoc(collection(db,'auditoria'), {
+        fecha: serverTimestamp(),
+        usuario: currentUser.usuario,
+        mesaId: comandaActual[0]?.mesaId || '',
+        productoId: item.productoId,
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precio: item.precio
+      });
+      comandaActual.splice(idx,1);
+      var total = comandaActual.reduce((a,i) => a + (i.cantidad*i.precio), 0);
+      await updateDoc(doc(db,'comandas',comandaActivaId), { total });
+      renderComanda();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.quitarItem = quitarItem;
+
+// ══════════════════════════════════════
+// CERRAR MESA
+// ══════════════════════════════════════
+function cerrarMesa() {
+  if (!comandaActual.length) { showToast('Sin items en la comanda','warning'); return; }
+
+  // Buscar mesa actual
+  var mesa = mesasCache.find(m => m.comandaId === comandaActivaId);
+  var tipo = mesa?.tipoCliente || 'EXTERNO';
+  var total = comandaActual.reduce((a,i) => a + (i.cantidad*i.precio), 0);
+  var totalBeb = comandaActual.filter(i => i.sector==='MOSTRADOR').reduce((a,i) => a + (i.cantidad*i.precio),0);
+  var totalCom = total - totalBeb;
+
+  var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+  var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', CARHUE:'var(--green)', EXTERNO:'var(--red)' };
+
+  var cuerpo = `<div style="padding:20px;">
+    <div style="margin-bottom:12px;"><span style="background:${colors[tipo]||'var(--muted)'};color:#fff;padding:3px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">${labels[tipo]||tipo}</span></div>
+    <div style="background:var(--card);border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Bebidas</span><span>$${totalBeb.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--muted);">Comidas</span><span>$${totalCom.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;"><span style="font-weight:700;">Total</span><span style="font-weight:700;font-size:1.1rem;color:var(--green);">$${total.toFixed(2)}</span></div>
+    </div>
+    ${tipo!=='EXTERNO' ? '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--text);">LIBRE</strong> automáticamente.</p>'
+      : '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--gold);">FACTURACIÓN</strong> para que Caja realice el cobro.</p>'}
+  </div>`;
+
+  var textoBtn = tipo !== 'EXTERNO' ? 'Cerrar Mesa' : 'Enviar a Caja';
+
+  confirmarAccion('Cerrar Mesa', cuerpo, textoBtn, async (ok) => {
+    if (!ok) return;
+    if (tipo !== 'EXTERNO') {
+      await cerrarMesaHuesped(mesa, total, totalBeb, totalCom);
+    } else {
+      await pasarAFacturacion(mesa, total);
+    }
+  });
+}
+window.cerrarMesa = cerrarMesa;
+
+async function cerrarMesaHuesped(mesa, total, totalBeb, totalCom) {
+  try {
+    var ahora = serverTimestamp();
+    // Guardar cierre
+    await addDoc(collection(db,'cierres'), {
+      comandaId: comandaActivaId,
+      mesaId: mesa?.id || '',
+      mesaNombre: mesa?.nombre || '',
+      tipoCliente: mesa?.tipoCliente || '',
+      nombreCliente: mesa?.nombreCliente || '',
+      nroHabitacion: mesa?.nroHabitacion || '',
+      totalBebidas: totalBeb,
+      totalComidas: totalCom,
+      totalGeneral: total,
+      medioPago: 'SIN_COBRO',
+      descuento: 0,
+      usuario: currentUser.usuario,
+      fechaCierre: ahora
+    });
+    // Actualizar comanda
+    await updateDoc(doc(db,'comandas',comandaActivaId), { estado:'CERRADA_SIN_COBRO', fechaCierre: ahora });
+    // Liberar mesa
+    await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'' });
+    // Imprimir ticket
+    imprimirTicketConsumo(mesa, total);
+    cerrarModal('modalComanda');
+    showToast('Mesa cerrada — $'+total.toFixed(2),'success');
+    await cargarMesas();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+async function pasarAFacturacion(mesa, total) {
+  try {
+    await updateDoc(doc(db,'mesas',mesa.id), { estado:'FACTURACION' });
+    await updateDoc(doc(db,'comandas',comandaActivaId), { estado:'FACTURACION', total });
+    cerrarModal('modalComanda');
+    showToast('Mesa enviada a facturación','success');
+    await cargarMesas();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+function imprimirTicketConsumo(mesa, total) {
+  var fecha = new Date().toLocaleString('es-AR');
+  var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #000;padding-top:4px;margin-top:4px;}
+    .firma{margin-top:12px;border-top:1px solid #000;text-align:center;font-size:11px;padding-top:4px;}
+  </style></head><body>
+    <h2>Hotel Epecuén</h2>
+    <h3 style="font-size:11px;">Ticket de Consumo</h3>
+    <p style="text-align:center;font-size:10px;">${fecha}</p>
+    <hr>
+    <p style="font-size:11px;"><b>Mesa:</b> ${esc(mesa.nombre)}</p>
+    ${mesa.nombreCliente ? `<p style="font-size:11px;"><b>Cliente:</b> ${esc(mesa.nombreCliente)}</p>` : ''}
+    ${mesa.nroHabitacion ? `<p style="font-size:11px;"><b>Hab:</b> ${esc(mesa.nroHabitacion)}</p>` : ''}
+    <hr>
+    ${items}
+    <div class="total"><span>TOTAL</span><span>$${total.toFixed(2)}</span></div>
+    <div class="firma"><p>Firma del huésped</p><p style="margin-top:16px;">_____________________</p></div>
+  </body></html>`;
+  imprimirHTML(html);
+}
+
+function imprimirComanda(sector) {
+  var items = comandaActual.filter(i => i.sector === sector);
+  if (!items.length) { showToast('Sin items para '+sector,'warning'); return; }
+  var mesa = mesasCache.find(m => m.comandaId === comandaActivaId);
+  var titulo = sector === 'COCINA' ? 'COMANDA COCINA' : 'COMANDA BEBIDAS';
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:13px;width:72mm;}
+    h2{text-align:center;font-size:16px;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .item{font-size:14px;font-weight:bold;margin:6px 0;}
+  </style></head><body>
+    <h2>${titulo}</h2>
+    <p style="text-align:center;font-size:10px;">${new Date().toLocaleString('es-AR')}</p>
+    <hr>
+    <p><b>Mesa:</b> ${esc(mesa?.nombre||'')}</p>
+    ${mesa?.nombreCliente ? `<p><b>Cliente:</b> ${esc(mesa.nombreCliente)}</p>` : ''}
+    <hr>
+    ${items.map(i => `<div class="item">▸ ${i.cantidad}x ${esc(i.nombre)}</div>`).join('')}
+    <hr>
+    <p style="text-align:center;font-size:10px;">Items: ${items.length}</p>
+  </body></html>`;
+  imprimirHTML(html);
+  ticketImpreso = true;
+}
+window.imprimirComanda = imprimirComanda;
+
+// ══════════════════════════════════════
+// CAJA — FACTURACIÓN
+// ══════════════════════════════════════
+async function cargarMesasCobro() {
+  try {
+    var snap = await getDocs(query(collection(db,'mesas'), where('estado','==','FACTURACION')));
+    var mesas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var grid = $('mesasCobroGrid');
+    if (!mesas.length) { grid.innerHTML = '<p style="color:var(--muted);padding:20px;">No hay mesas para cobrar</p>'; return; }
+    grid.innerHTML = mesas.map(m => `
+      <div class="mesa-card facturacion" onclick="abrirFacturacion('${m.id}','${esc(m.nombre)}','${m.comandaId}')">
+        <div class="mesa-nombre">${esc(m.nombre)}</div>
+        <div class="mesa-ubicacion">${esc(m.ubicacion||'')}</div>
+        <div class="mesa-estado estado-facturacion">PARA COBRAR</div>
+        ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
+      </div>`).join('');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+async function abrirFacturacion(mesaId, mesaNombre, cmdId) {
+  mesaParaFacturar = { id: mesaId, nombre: mesaNombre, comandaId: cmdId };
+  // Cargar total de la comanda
+  try {
+    var cmdSnap = await getDoc(doc(db,'comandas',cmdId));
+    var total = cmdSnap.data()?.total || 0;
+    $('facturarMesaNombre').textContent = mesaNombre;
+    $('facturarTotal').textContent = total.toFixed(2);
+    $('facturarDescuento').value = '0';
+    mostrarModal('modalFacturacion');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.abrirFacturacion = abrirFacturacion;
+
+async function confirmarFacturacion() {
+  if (!mesaParaFacturar) return;
+  var medioPago = $('facturarMedioPago').value;
+  var descuento = parseFloat($('facturarDescuento').value) || 0;
+  var totalBase = parseFloat($('facturarTotal').textContent) || 0;
+  var totalFinal = totalBase * (1 - descuento/100);
+  try {
+    var ahora = serverTimestamp();
+    // Cargar items de la comanda para el cierre
+    var itemsSnap = await getDocs(query(collection(db,'comandasDetalle'), where('comandaId','==',mesaParaFacturar.comandaId)));
+    var items = itemsSnap.docs.map(d => d.data());
+    var totalBeb = items.filter(i => i.sector==='MOSTRADOR').reduce((a,i) => a+(i.cantidad*i.precio),0);
+    var totalCom = totalBase - totalBeb;
+
+    // Guardar cierre
+    await addDoc(collection(db,'cierres'), {
+      comandaId: mesaParaFacturar.comandaId,
+      mesaId: mesaParaFacturar.id,
+      mesaNombre: mesaParaFacturar.nombre,
+      totalBebidas: totalBeb,
+      totalComidas: totalCom,
+      totalGeneral: totalFinal,
+      medioPago, descuento,
+      usuario: currentUser.usuario,
+      fechaCierre: ahora
+    });
+    // Guardar cobro
+    await addDoc(collection(db,'cobros'), {
+      comandaId: mesaParaFacturar.comandaId,
+      mesaId: mesaParaFacturar.id,
+      total: totalFinal, medioPago, descuento,
+      usuario: currentUser.usuario, fecha: ahora
+    });
+    // Actualizar comanda y mesa
+    await updateDoc(doc(db,'comandas',mesaParaFacturar.comandaId), { estado:'CERRADA', fechaCierre: ahora });
+    var mesaDoc = await getDoc(doc(db,'mesas',mesaParaFacturar.id));
+    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'' });
+
+    cerrarModal('modalFacturacion');
+    showToast('Cobro registrado — $'+totalFinal.toFixed(2),'success');
+    await cargarMesasCobro();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.confirmarFacturacion = confirmarFacturacion;
+
+// ══════════════════════════════════════
+// PRODUCTOS
+// ══════════════════════════════════════
+async function cargarProductos() {
+  try {
+    var snap = await getDocs(query(collection(db,'productos'), where('activo','==',true)));
+    productosCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+}
+
+async function cargarStock() {
+  await cargarProductos();
+  var tbody = $('tbodyStock');
+  if (!productosCache.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">Sin productos</td></tr>'; return; }
+  tbody.innerHTML = productosCache.map(p => {
+    var st = p.stockActual||0; var sm = p.stockMinimo||5;
+    var est = st <= 0 ? ['SIN STOCK','var(--red)'] : st <= sm ? ['BAJO','var(--gold)'] : ['OK','var(--green)'];
+    return `<tr>
+      <td><strong>${esc(p.nombre)}</strong></td>
+      <td><span style="color:var(--muted);">${esc(p.categoria)}</span></td>
+      <td>${st}</td><td>${sm}</td>
+      <td><span class="badge" style="background:${est[1]}20;color:${est[1]};">${est[0]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function poblarSelectStock() {
+  var sel = $('stockProdSelect');
+  sel.innerHTML = '<option value="">Seleccionar...</option>';
+  productosCache.forEach(p => { sel.innerHTML += `<option value="${p.id}">${esc(p.nombre)}</option>`; });
+}
+
+async function registrarMovimientoStock() {
+  var id = $('stockProdSelect').value;
+  var tipo = $('stockTipo').value;
+  var cant = parseFloat($('stockCantidad').value) || 0;
+  var precio = parseFloat($('stockPrecio').value) || 0;
+  if (!id || cant <= 0) { showToast('Completá los campos','warning'); return; }
+  try {
+    var prod = productosCache.find(p => p.id === id);
+    var actual = prod?.stockActual || 0;
+    var nuevo = tipo.includes('NEGATIVO') || tipo === 'MERMA' ? actual - cant : actual + cant;
+    await updateDoc(doc(db,'productos',id), {
+      stockActual: nuevo,
+      ...(precio > 0 ? { precioCosto: precio } : {})
+    });
+    await addDoc(collection(db,'historialStock'), {
+      productoId: id, nombreProducto: prod?.nombre||'',
+      tipo, cantidad: cant, stockAnterior: actual, stockNuevo: nuevo,
+      usuario: currentUser.usuario, fecha: serverTimestamp()
+    });
+    showToast('Stock actualizado','success');
+    $('stockCantidad').value='1'; $('stockPrecio').value='';
+    await cargarStock();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarMovimientoStock = registrarMovimientoStock;
+
+async function agregarProducto() {
+  var nombre = $('npNombre').value.trim();
+  var cat = $('npCategoria').value;
+  var costo = parseFloat($('npPrecioCosto').value)||0;
+  var venta = parseFloat($('npPrecioVenta').value)||0;
+  var stock = parseInt($('npStockInicial').value)||0;
+  var sector = $('npSector').value;
+  if (!nombre) { showToast('Ingresá el nombre','warning'); return; }
+  try {
+    await addDoc(collection(db,'productos'), {
+      nombre, categoria:cat, precioCosto:costo, precioVenta:venta,
+      stockActual:stock, stockMinimo:5, sector, activo:true, fechaCreacion:serverTimestamp()
+    });
+    showToast('Producto agregado','success');
+    $('npNombre').value=''; $('npPrecioCosto').value='0'; $('npPrecioVenta').value='0'; $('npStockInicial').value='0';
+    await cargarProductos();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarProducto = agregarProducto;
+
+async function cargarHistorialStock() {
+  try {
+    var snap = await getDocs(query(collection(db,'historialStock'), orderBy('fecha','desc'), limit(100)));
+    var tbody = $('tbodyHistorialStock');
+    tbody.innerHTML = snap.docs.map(d => {
+      var h = d.data();
+      return `<tr><td>${fmtFecha(h.fecha)}</td><td>${esc(h.nombreProducto)}</td><td>${esc(h.tipo)}</td><td>${h.cantidad}</td><td>${h.stockNuevo}</td><td style="color:var(--muted);">${esc(h.usuario)}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin movimientos</td></tr>';
+  } catch(e) {}
+}
+
+async function cargarProductosAdmin() {
+  await cargarProductos();
+  var tbody = $('tbodyAdminProductos');
+  tbody.innerHTML = productosCache.map(p => `<tr>
+    <td><strong>${esc(p.nombre)}</strong></td>
+    <td>${esc(p.categoria)}</td>
+    <td>$${(p.precioCosto||0).toFixed(2)}</td>
+    <td>$${(p.precioVenta||0).toFixed(2)}</td>
+    <td><button class="btn btn-ghost btn-xs" onclick="editarPrecioProducto('${p.id}','${esc(p.nombre)}',${p.precioVenta||0})">Editar Precio</button></td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin productos</td></tr>';
+}
+
+function editarPrecioProducto(id, nombre, precioActual) {
+  confirmarAccion('Editar Precio', `
+    <div style="padding:20px;">
+      <p style="margin-bottom:12px;color:var(--muted);">${esc(nombre)}</p>
+      <div class="form-group">
+        <label>Nuevo Precio de Venta</label>
+        <input type="number" id="nuevoPrecioInput" value="${precioActual}" step="0.01" min="0" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+      </div>
+    </div>`, 'Guardar', async (ok) => {
+    if (!ok) return;
+    var nuevo = parseFloat($('nuevoPrecioInput').value)||0;
+    try {
+      await updateDoc(doc(db,'productos',id), { precioVenta: nuevo });
+      showToast('Precio actualizado','success');
+      cargarProductosAdmin();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.editarPrecioProducto = editarPrecioProducto;
+
+// ══════════════════════════════════════
+// CHEF — PLATOS Y RECETAS
+// ══════════════════════════════════════
+async function cargarPlatos() {
+  try {
+    var snap = await getDocs(collection(db,'platos'));
+    var tbody = $('tbodyPlatos');
+    tbody.innerHTML = snap.docs.map(d => {
+      var p = d.data();
+      var margen = p.precioVenta > 0 ? (((p.precioVenta - (p.costoTotal||0)) / p.precioVenta)*100).toFixed(1) : '0';
+      var color = parseFloat(margen) > 30 ? 'var(--green)' : parseFloat(margen) > 10 ? 'var(--gold)' : 'var(--red)';
+      return `<tr>
+        <td><strong>${esc(p.nombre)}</strong></td>
+        <td>${esc(p.categoria)}</td>
+        <td>$${(p.precioVenta||0).toFixed(2)}</td>
+        <td>$${(p.costoTotal||0).toFixed(2)}</td>
+        <td style="color:${color};font-weight:600;">${margen}%</td>
+        <td><button class="btn btn-ghost btn-xs" onclick="verReceta('${d.id}')">Ver Receta</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin platos</td></tr>';
+  } catch(e) {}
+}
+
+async function agregarPlato() {
+  var nombre = $('chefNombre').value.trim();
+  var cat = $('chefCategoria').value;
+  if (!nombre) { showToast('Ingresá el nombre','warning'); return; }
+  try {
+    await addDoc(collection(db,'platos'), { nombre, categoria:cat, precioVenta:0, costoTotal:0, margen:0, activo:true });
+    showToast('Plato agregado','success');
+    $('chefNombre').value='';
+    await cargarPlatos();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarPlato = agregarPlato;
+
+async function poblarSelectPlatos() {
+  var snap = await getDocs(collection(db,'platos'));
+  var sel = $('chefPlatoSel');
+  sel.innerHTML = '<option value="">Seleccionar plato...</option>';
+  snap.docs.forEach(d => { sel.innerHTML += `<option value="${d.id}">${esc(d.data().nombre)}</option>`; });
+}
+
+async function cargarReceta() {
+  var id = $('chefPlatoSel').value;
+  if (!id) { $('recetaEditor').classList.add('hidden'); return; }
+  $('recetaEditor').classList.remove('hidden');
+  await cargarProductos();
+  try {
+    var snap = await getDocs(query(collection(db,'recetas'), where('platoId','==',id)));
+    recetaActual = snap.docs.map(d => ({ docId:d.id, ...d.data() }));
+  } catch(e) { recetaActual = []; }
+  renderReceta();
+}
+window.cargarReceta = cargarReceta;
+
+function renderReceta() {
+  var cont = $('recetaItems');
+  var costo = 0;
+  cont.innerHTML = recetaActual.map((ing,i) => {
+    var costoLinea = (ing.costoUnitario||0) * (ing.cantidad||0);
+    costo += costoLinea;
+    return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:var(--card);border-radius:8px;">
+      <select onchange="onIngChange(${i},this)" style="flex:2;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+        <option value="">Seleccionar...</option>
+        ${productosCache.map(p => `<option value="${p.id}" data-precio="${p.precioCosto||0}" ${p.id===ing.productoId?'selected':''}>${esc(p.nombre)}</option>`).join('')}
+      </select>
+      <input type="number" value="${ing.cantidad||1}" min="0.001" step="0.001" onchange="onCantChange(${i},this)" style="flex:0.8;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+      <span style="flex:0.6;text-align:right;font-size:0.85rem;color:var(--muted);">$${costoLinea.toFixed(2)}</span>
+      <button onclick="quitarIngrediente(${i})" style="background:var(--red);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;">✕</button>
+    </div>`;
+  }).join('');
+  $('costoReceta').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Costo Total de Receta:</span>
+    <span style="font-size:1.2rem;font-weight:700;color:var(--green);">$${costo.toFixed(2)}</span>
+  </div><p style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Se propaga automáticamente al precio de costo del producto al guardar.</p>`;
+}
+
+function onIngChange(i, sel) {
+  var opt = sel.options[sel.selectedIndex];
+  recetaActual[i].productoId = opt.value;
+  recetaActual[i].nombre = opt.text;
+  recetaActual[i].costoUnitario = parseFloat(opt.dataset.precio)||0;
+  recetaActual[i].costoLinea = recetaActual[i].costoUnitario * (recetaActual[i].cantidad||0);
+  renderReceta();
+}
+window.onIngChange = onIngChange;
+
+function onCantChange(i, inp) {
+  recetaActual[i].cantidad = parseFloat(inp.value)||0;
+  recetaActual[i].costoLinea = (recetaActual[i].costoUnitario||0) * recetaActual[i].cantidad;
+  renderReceta();
+}
+window.onCantChange = onCantChange;
+
+function addIngredienteReceta() {
+  recetaActual.push({ productoId:'', nombre:'', cantidad:1, costoUnitario:0, costoLinea:0 });
+  renderReceta();
+}
+window.addIngredienteReceta = addIngredienteReceta;
+
+function quitarIngrediente(i) {
+  recetaActual.splice(i,1);
+  renderReceta();
+}
+window.quitarIngrediente = quitarIngrediente;
+
+async function guardarReceta() {
+  var platoId = $('chefPlatoSel').value;
+  if (!platoId) { showToast('Seleccioná un plato','warning'); return; }
+  var validos = recetaActual.filter(i => i.productoId && i.cantidad > 0);
+  if (!validos.length) { showToast('Agregá al menos un ingrediente','warning'); return; }
+  try {
+    // Borrar receta anterior
+    var viejos = await getDocs(query(collection(db,'recetas'), where('platoId','==',platoId)));
+    for (var d of viejos.docs) await deleteDoc(doc(db,'recetas',d.id));
+    // Guardar nueva
+    var costoTotal = 0;
+    for (var ing of validos) {
+      costoTotal += ing.costoLinea || 0;
+      await addDoc(collection(db,'recetas'), {
+        platoId, productoId: ing.productoId, nombre: ing.nombre,
+        cantidad: ing.cantidad, costoUnitario: ing.costoUnitario, costoLinea: ing.costoLinea||0
+      });
+    }
+    // Actualizar costo del plato
+    var platoSnap = await getDoc(doc(db,'platos',platoId));
+    var precioVenta = platoSnap.data()?.precioVenta || 0;
+    var margen = precioVenta > 0 ? (((precioVenta - costoTotal)/precioVenta)*100).toFixed(2) : 0;
+    await updateDoc(doc(db,'platos',platoId), { costoTotal, margen: parseFloat(margen) });
+    // Propagar a producto con mismo nombre
+    var nombrePlato = platoSnap.data()?.nombre?.trim().toLowerCase();
+    var prods = await getDocs(query(collection(db,'productos'), where('activo','==',true)));
+    for (var pd of prods.docs) {
+      if ((pd.data().nombre||'').trim().toLowerCase() === nombrePlato) {
+        await updateDoc(doc(db,'productos',pd.id), { precioCosto: costoTotal });
+        break;
+      }
+    }
+    showToast('Receta guardada — Costo: $'+costoTotal.toFixed(2)+' → propagado a Productos','success');
+    await cargarReceta();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.guardarReceta = guardarReceta;
+
+function verReceta(platoId) {
+  tabChef('receta', document.querySelectorAll('#panelChef .tab')[2]);
+  poblarSelectPlatos().then(() => {
+    $('chefPlatoSel').value = platoId;
+    cargarReceta();
+  });
+}
+window.verReceta = verReceta;
+
+// ══════════════════════════════════════
+// ADMIN — MESAS
+// ══════════════════════════════════════
+async function cargarMesasAdmin() {
+  try {
+    var snap = await getDocs(collection(db,'mesas'));
+    mesasCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var tbody = $('tbodyAdminMesas');
+    tbody.innerHTML = mesasCache.map(m => {
+      var est = m.estado||'LIBRE';
+      var color = est==='LIBRE'?'var(--green)':est==='FACTURACION'?'var(--gold)':'var(--red)';
+      return `<tr>
+        <td style="color:var(--muted);">${m.id.slice(-4)}</td>
+        <td><strong>${esc(m.nombre)}</strong></td>
+        <td>${esc(m.ubicacion)}</td>
+        <td><span class="badge" style="background:${color}20;color:${color};">${est}</span></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-xs" data-id="${m.id}" data-nombre="${esc(m.nombre)}" data-ubic="${esc(m.ubicacion)}" onclick="abrirEditarMesa(this)">Editar</button>
+          ${est==='LIBRE' ? `<button class="btn btn-red btn-xs" onclick="eliminarMesa('${m.id}')">Eliminar</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin mesas</td></tr>';
+  } catch(e) {}
+}
+
+async function agregarMesa() {
+  var nombre = $('adminMesaNombre').value.trim();
+  var ubic = $('adminMesaUbicacion').value;
+  if (!nombre) { showToast('Ingresá el nombre','warning'); return; }
+  try {
+    await addDoc(collection(db,'mesas'), { nombre, ubicacion:ubic, estado:'LIBRE' });
+    showToast('Mesa agregada','success');
+    $('adminMesaNombre').value='';
+    await cargarMesasAdmin();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarMesa = agregarMesa;
+
+function abrirEditarMesa(btn) {
+  $('editMesaId').value = btn.dataset.id;
+  $('editMesaNombre').value = btn.dataset.nombre;
+  var sel = $('editMesaUbicacion');
+  for (var o of sel.options) { if (o.value === btn.dataset.ubic) { o.selected=true; break; } }
+  mostrarModal('modalEditarMesa');
+}
+window.abrirEditarMesa = abrirEditarMesa;
+
+async function guardarEditarMesa() {
+  var id = $('editMesaId').value;
+  var nombre = $('editMesaNombre').value.trim();
+  var ubic = $('editMesaUbicacion').value;
+  if (!nombre) { showToast('Ingresá el nombre','warning'); return; }
+  try {
+    await updateDoc(doc(db,'mesas',id), { nombre, ubicacion:ubic });
+    cerrarModal('modalEditarMesa');
+    showToast('Mesa actualizada','success');
+    await cargarMesasAdmin();
+    await cargarMesas();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.guardarEditarMesa = guardarEditarMesa;
+
+async function eliminarMesa(id) {
+  confirmarAccion('Eliminar Mesa', '<p style="padding:16px;">¿Eliminar esta mesa? Solo se puede si está LIBRE.</p>', 'Eliminar', async (ok) => {
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db,'mesas',id));
+      showToast('Mesa eliminada','success');
+      await cargarMesasAdmin();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.eliminarMesa = eliminarMesa;
+
+// ══════════════════════════════════════
+// ADMIN — USUARIOS
+// ══════════════════════════════════════
+async function cargarUsuariosAdmin() {
+  try {
+    var snap = await getDocs(collection(db,'usuarios'));
+    var tbody = $('tbodyUsuarios');
+    tbody.innerHTML = snap.docs.map(d => {
+      var u = d.data();
+      return `<tr>
+        <td><strong>${esc(u.usuario)}</strong></td>
+        <td>${esc(u.nombre)}</td>
+        <td><span class="badge" style="background:rgba(139,92,246,0.15);color:var(--purple);">${esc(u.rol)}</span></td>
+        <td><button class="btn btn-red btn-xs" onclick="eliminarUsuario('${d.id}','${esc(u.usuario)}')">Eliminar</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Sin usuarios</td></tr>';
+  } catch(e) {}
+}
+
+async function agregarUsuario() {
+  var usu = $('nuUsuario').value.trim();
+  var pass = $('nuPass').value.trim();
+  var nombre = $('nuNombre').value.trim();
+  var rol = $('nuRol').value;
+  if (!usu || !pass || !nombre) { showToast('Completá todos los campos','warning'); return; }
+  try {
+    // Verificar que no exista
+    var existing = await getDocs(query(collection(db,'usuarios'), where('usuario','==',usu)));
+    if (!existing.empty) { showToast('El usuario ya existe','error'); return; }
+    await addDoc(collection(db,'usuarios'), { usuario:usu, contrasena:pass, nombre, rol });
+    showToast('Usuario creado','success');
+    $('nuUsuario').value=''; $('nuPass').value=''; $('nuNombre').value='';
+    await cargarUsuariosAdmin();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarUsuario = agregarUsuario;
+
+async function eliminarUsuario(id, usu) {
+  confirmarAccion('Eliminar Usuario', `<p style="padding:16px;">¿Eliminar al usuario <strong>${esc(usu)}</strong>?</p>`, 'Eliminar', async (ok) => {
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db,'usuarios',id));
+      showToast('Usuario eliminado','success');
+      await cargarUsuariosAdmin();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.eliminarUsuario = eliminarUsuario;
+
+// ══════════════════════════════════════
+// ADMIN — CIERRES DEL DÍA
+// ══════════════════════════════════════
+async function cargarCierresDia() {
+  var fechaStr = $('filtroCierresFecha').value;
+  if (!fechaStr) return;
+  var desde = new Date(fechaStr + 'T00:00:00');
+  var hasta = new Date(fechaStr + 'T23:59:59');
+  try {
+    var snap = await getDocs(query(collection(db,'cierres'),
+      where('fechaCierre','>=', Timestamp.fromDate(desde)),
+      where('fechaCierre','<=', Timestamp.fromDate(hasta)),
+      orderBy('fechaCierre','desc')
+    ));
+    var cierres = snap.docs.map(d => d.data());
+    // Resumen
+    var totBeb=0, totCom=0, totGen=0, sinCobro=0, conCobro=0;
+    cierres.forEach(c => {
+      totBeb += c.totalBebidas||0; totCom += c.totalComidas||0; totGen += c.totalGeneral||0;
+      c.medioPago === 'SIN_COBRO' ? sinCobro++ : conCobro++;
+    });
+    $('resumenCierres').innerHTML = [
+      ['Mesas', cierres.length, 'var(--blue)'],
+      ['Total General', '$'+totGen.toFixed(2), 'var(--green)'],
+      ['Bebidas', '$'+totBeb.toFixed(2), 'var(--gold)'],
+      ['Comidas', '$'+totCom.toFixed(2), 'var(--red)'],
+      ['Con Cobro', conCobro, 'var(--green)'],
+      ['Sin Cobro', sinCobro, 'var(--purple)']
+    ].map(([l,v,c]) => `<div class="stat-card"><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+
+    var tbody = $('tbodyCierres');
+    tbody.innerHTML = cierres.map(c => {
+      var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',CARHUE:'Carhue',EXTERNO:'Ext.'};
+      return `<tr>
+        <td>${fmtHora(c.fechaCierre)}</td>
+        <td><strong>${esc(c.mesaNombre)}</strong></td>
+        <td>${esc(c.nombreCliente||'-')}</td>
+        <td><span style="font-size:0.8rem;color:var(--muted);">${labels[c.tipoCliente]||'-'}</span></td>
+        <td><strong>$${(c.totalGeneral||0).toFixed(2)}</strong></td>
+        <td><span class="badge" style="background:${c.medioPago==='SIN_COBRO'?'rgba(139,92,246,0.2)':'rgba(46,204,113,0.2)'};color:${c.medioPago==='SIN_COBRO'?'var(--purple)':'var(--green)'};">${c.medioPago==='SIN_COBRO'?'Huésped':esc(c.medioPago)}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin cierres para esta fecha</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarCierresDia = cargarCierresDia;
+
+// ══════════════════════════════════════
+// ADMIN — AUDITORÍA
+// ══════════════════════════════════════
+async function cargarAuditoria() {
+  var fechaStr = $('filtroAuditFecha').value;
+  if (!fechaStr) return;
+  var desde = new Date(fechaStr + 'T00:00:00');
+  var hasta = new Date(fechaStr + 'T23:59:59');
+  try {
+    var snap = await getDocs(query(collection(db,'auditoria'),
+      where('fecha','>=', Timestamp.fromDate(desde)),
+      where('fecha','<=', Timestamp.fromDate(hasta)),
+      orderBy('fecha','desc')
+    ));
+    var tbody = $('tbodyAuditoria');
+    tbody.innerHTML = snap.docs.map(d => {
+      var a = d.data();
+      return `<tr><td>${fmtFecha(a.fecha)}</td><td>${esc(a.mesaId||'-')}</td><td>${esc(a.nombre)}</td><td>${a.cantidad}</td><td style="color:var(--muted);">${esc(a.usuario)}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin eliminaciones</td></tr>';
+  } catch(e) {}
+}
+window.cargarAuditoria = cargarAuditoria;
+
+// ══════════════════════════════════════
+// CARHUE — VOUCHERS
+// ══════════════════════════════════════
+async function crearVoucher() {
+  var nombre = $('vNombre').value.trim();
+  var apellido = $('vApellido').value.trim();
+  var hab = $('vHabitacion').value.trim();
+  var pension = $('vPension').value;
+  var com = parseInt($('vComensales').value)||1;
+  if (!nombre||!apellido||!hab) { showToast('Completá los campos requeridos','warning'); return; }
+  try {
+    await addDoc(collection(db,'vouchers'), {
+      nombre, apellido, nroHabitacion:hab, tipoPension:pension,
+      cantidadComensales:com, usuario:currentUser.usuario, fecha:serverTimestamp()
+    });
+    showToast('Voucher creado para '+nombre+' '+apellido,'success');
+    $('vNombre').value=''; $('vApellido').value=''; $('vHabitacion').value=''; $('vComensales').value='1';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.crearVoucher = crearVoucher;
+
+async function cargarVouchers() {
+  try {
+    var desde = hoy();
+    var snap = await getDocs(query(collection(db,'vouchers'),
+      where('fecha','>=', Timestamp.fromDate(desde)), orderBy('fecha','desc')
+    ));
+    var tbody = $('tbodyVouchers');
+    tbody.innerHTML = snap.docs.map(d => {
+      var v = d.data();
+      return `<tr>
+        <td>${fmtHora(v.fecha)}</td>
+        <td><strong>${esc(v.nombre)} ${esc(v.apellido)}</strong></td>
+        <td>${esc(v.nroHabitacion)}</td>
+        <td><span class="badge" style="background:rgba(46,204,113,0.15);color:var(--green);">${esc(v.tipoPension)}</span></td>
+        <td>${v.cantidadComensales}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin vouchers hoy</td></tr>';
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════
+// INIT — Crear datos base si Firestore está vacío
+// ══════════════════════════════════════
+async function inicializarDatosBase() {
+  try {
+    // Verificar usuarios
+    var usSnap = await getDocs(collection(db,'usuarios'));
+    if (usSnap.empty) {
+      var usuarios = [
+        { usuario:'mozo',   contrasena:'mozo123',  rol:'MOZO',             nombre:'Mozo Salon' },
+        { usuario:'caja',   contrasena:'caja123',  rol:'CAJA',             nombre:'Cajero' },
+        { usuario:'stock',  contrasena:'stock123', rol:'STOCK',            nombre:'Encargado Stock' },
+        { usuario:'chef',   contrasena:'chef123',  rol:'CHEF',             nombre:'Chef Principal' },
+        { usuario:'admin',  contrasena:'admin123', rol:'ADMIN',            nombre:'Administrador' },
+        { usuario:'carhue', contrasena:'123',      rol:'CARHUE_RECEPCION', nombre:'Recepcion Hotel Carhue' }
+      ];
+      for (var u of usuarios) await addDoc(collection(db,'usuarios'), u);
+      console.log('Usuarios base creados');
+    } else {
+      // Verificar que existe carhue
+      var carhueSnap = await getDocs(query(collection(db,'usuarios'), where('usuario','==','carhue')));
+      if (carhueSnap.empty) {
+        await addDoc(collection(db,'usuarios'), { usuario:'carhue', contrasena:'123', rol:'CARHUE_RECEPCION', nombre:'Recepcion Hotel Carhue' });
+        console.log('Usuario carhue creado');
+      }
+    }
+
+    // Verificar mesas
+    var mesSnap = await getDocs(collection(db,'mesas'));
+    if (mesSnap.empty) {
+      var mesas = [
+        {nombre:'Mesa 1',ubicacion:'Salon Primer Piso',estado:'LIBRE'},
+        {nombre:'Mesa 2',ubicacion:'Salon Primer Piso',estado:'LIBRE'},
+        {nombre:'Mesa 3',ubicacion:'Salon Primer Piso',estado:'LIBRE'},
+        {nombre:'Mesa 4',ubicacion:'Salon Segundo Piso',estado:'LIBRE'},
+        {nombre:'Mesa 5',ubicacion:'Salon Segundo Piso',estado:'LIBRE'},
+        {nombre:'Ext 1', ubicacion:'Consumos Externos',estado:'LIBRE'},
+        {nombre:'Ext 2', ubicacion:'Consumos Externos',estado:'LIBRE'},
+      ];
+      for (var m of mesas) await addDoc(collection(db,'mesas'), m);
+      console.log('Mesas base creadas');
+    }
+  } catch(e) {
+    console.log('Error inicializando datos:', e.message);
+  }
+}
+
+// Arrancar
+inicializarDatosBase();
+
+</script>
+</body>
+</html>
