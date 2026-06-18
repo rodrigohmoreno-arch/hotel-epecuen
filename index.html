@@ -602,7 +602,11 @@
       <button class="modal-close" onclick="cerrarModal('modalComanda')">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="form-row" style="margin-bottom:16px;">
+      <div id="comandaFacturacionMsg" style="display:none;padding:14px;background:rgba(245,183,49,0.1);border:1px solid var(--gold);border-radius:10px;margin-bottom:16px;text-align:center;">
+        <span style="font-size:0.9rem;color:var(--gold);font-weight:600;">Mesa en facturación — Solo lectura</span>
+        <p style="font-size:0.8rem;color:var(--muted);margin-top:4px;">No se pueden agregar ni quitar productos. Esperando cobro por Caja.</p>
+      </div>
+      <div id="comandaAddForm" class="form-row" style="margin-bottom:16px;">
         <div class="form-group" style="flex:2;">
           <label>Producto</label>
           <select id="prodSelect"></select>
@@ -625,9 +629,11 @@
     </div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
       <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalComanda')">Volver</button>
-      <button class="btn btn-blue btn-sm" onclick="imprimirComanda('COCINA')">🍳 Cocina</button>
-      <button class="btn btn-gold btn-sm" onclick="imprimirComanda('MOSTRADOR')">🥤 Bebidas</button>
-      <button class="btn btn-red btn-sm" onclick="cerrarMesa()">Cerrar Mesa</button>
+      <div id="comandaFooterActions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-blue btn-sm" onclick="imprimirComanda('COCINA')">🍳 Cocina</button>
+        <button class="btn btn-gold btn-sm" onclick="imprimirComanda('MOSTRADOR')">🥤 Bebidas</button>
+        <button class="btn btn-red btn-sm" onclick="cerrarMesa()">Cerrar Mesa</button>
+      </div>
     </div>
   </div>
 </div>
@@ -680,12 +686,16 @@
       </div>
       <div class="form-group" style="margin-bottom:16px;">
         <label>Medio de Pago *</label>
-        <select id="facturarMedioPago">
+        <select id="facturarMedioPago" onchange="onMedioPagoChange()">
           <option value="EFECTIVO">Efectivo</option>
           <option value="TARJETA_DEBITO">Tarjeta Débito</option>
           <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
           <option value="TRANSFERENCIA">Transferencia</option>
         </select>
+      </div>
+      <div id="campoIdTransaccion" class="form-group" style="margin-bottom:16px;display:none;">
+        <label id="labelIdTransaccion">N° Cupón / ID Transacción *</label>
+        <input type="text" id="facturarIdTransaccion" placeholder="Ingresá el número de cupón o ID">
       </div>
       <div class="form-group">
         <label>Descuento %</label>
@@ -772,6 +782,7 @@ let comandaActual = [];
 let comandaActivaId = null;
 let mesaParaFacturar = null;
 let ticketImpreso = false;
+let comandaEnFacturacion = false;
 let _confirmCb = null;
 
 // ══════════════════════════════════════
@@ -986,12 +997,28 @@ function renderMesas() {
   $('mesasGrid').innerHTML = mesas.map(m => {
     var est = (m.estado||'LIBRE').toUpperCase();
     var cls = est === 'LIBRE' ? 'libre' : est === 'FACTURACION' ? 'facturacion' : 'ocupada';
-    var click = est === 'LIBRE' ? `onclick="abrirMesaModal('${m.id}')"` : est === 'OCUPADA' ? `onclick="abrirComanda('${m.id}')"` : `onclick="abrirComanda('${m.id}')"`;
+    var click = est === 'LIBRE' ? `onclick="abrirMesaModal('${m.id}')"` : `onclick="abrirComanda('${m.id}')"`;
+    var infoExtra = '';
+    if (est !== 'LIBRE') {
+      var tipo = m.tipoCliente || '';
+      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+      var tipoLabel = tipoLabels[tipo] || tipo;
+      infoExtra += `<div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>`;
+      if (tipo !== 'EXTERNO' && m.nroHabitacion) {
+        infoExtra += `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">Hab. ${esc(m.nroHabitacion)}</div>`;
+      }
+      if (m.nombreCliente) {
+        infoExtra += `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>`;
+      }
+      if (m.cantidadComensales) {
+        infoExtra += `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">🍽 ${m.cantidadComensales} comensal${m.cantidadComensales>1?'es':''}</div>`;
+      }
+    }
     return `<div class="mesa-card ${cls}" ${click}>
       <div class="mesa-nombre">${esc(m.nombre)}</div>
       <div class="mesa-ubicacion">${esc(m.ubicacion)}</div>
       <div class="mesa-estado estado-${cls}">${est}</div>
-      ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
+      ${infoExtra}
     </div>`;
   }).join('');
 }
@@ -1038,7 +1065,8 @@ async function confirmarAbrirMesa() {
       comandaId: cmdRef.id,
       tipoCliente: tipo,
       nombreCliente: nombre,
-      nroHabitacion: hab
+      nroHabitacion: hab,
+      cantidadComensales: com
     });
     cerrarModal('modalAbrirMesa');
     $('abrirHabitacion').value=''; $('abrirNombreCliente').value=''; $('abrirComensales').value='1';
@@ -1058,6 +1086,7 @@ async function abrirComanda(mesaId) {
   if (!mesa || !mesa.comandaId) { showToast('Sin comanda activa','warning'); return; }
   comandaActivaId = mesa.comandaId;
   ticketImpreso = false;
+  var enFacturacion = (mesa.estado||'').toUpperCase() === 'FACTURACION';
 
   $('comandaMesaTitulo').textContent = 'Comanda — ' + (mesa.nombre||'');
   var tipo = mesa.tipoCliente || '';
@@ -1076,6 +1105,12 @@ async function abrirComanda(mesaId) {
   productosCache.forEach(p => {
     sel.innerHTML += `<option value="${p.id}" data-precio="${p.precioVenta}" data-sector="${p.sector||'COCINA'}">${esc(p.nombre)} ($${(p.precioVenta||0).toFixed(2)})</option>`;
   });
+
+  // Block actions when in FACTURACION
+  $('comandaAddForm').style.display = enFacturacion ? 'none' : '';
+  $('comandaFooterActions').style.display = enFacturacion ? 'none' : '';
+  $('comandaFacturacionMsg').style.display = enFacturacion ? 'block' : 'none';
+  comandaEnFacturacion = enFacturacion;
 
   renderComanda();
   mostrarModal('modalComanda');
@@ -1098,7 +1133,7 @@ function renderComanda() {
       <td>${item.cantidad}</td>
       <td>$${(item.precio||0).toFixed(2)}</td>
       <td>$${sub.toFixed(2)}</td>
-      <td><button class="btn btn-red btn-xs" onclick="quitarItem(${i})">✕</button></td>
+      <td>${comandaEnFacturacion ? '' : `<button class="btn btn-red btn-xs" onclick="quitarItem(${i})">✕</button>`}</td>
     </tr>`;
   }).join('');
   $('totalComanda').textContent = total.toFixed(2);
@@ -1231,7 +1266,7 @@ async function cerrarMesaHuesped(mesa, total, totalBeb, totalCom) {
     // Actualizar comanda
     await updateDoc(doc(db,'comandas',comandaActivaId), { estado:'CERRADA_SIN_COBRO', fechaCierre: ahora });
     // Liberar mesa
-    await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'' });
+    await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0 });
     // Imprimir ticket
     imprimirTicketConsumo(mesa, total);
     cerrarModal('modalComanda');
@@ -1253,6 +1288,9 @@ async function pasarAFacturacion(mesa, total) {
 function imprimirTicketConsumo(mesa, total) {
   var fecha = new Date().toLocaleString('es-AR');
   var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var comensales = mesa.cantidadComensales || 1;
+  var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+  var tipoLabel = tipoLabels[mesa.tipoCliente] || mesa.tipoCliente || '';
   var html = `<!DOCTYPE html><html><head><style>
     @page{size:80mm auto;margin:4mm}
     body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
@@ -1266,12 +1304,51 @@ function imprimirTicketConsumo(mesa, total) {
     <p style="text-align:center;font-size:10px;">${fecha}</p>
     <hr>
     <p style="font-size:11px;"><b>Mesa:</b> ${esc(mesa.nombre)}</p>
+    <p style="font-size:11px;"><b>Tipo:</b> ${esc(tipoLabel)}</p>
     ${mesa.nombreCliente ? `<p style="font-size:11px;"><b>Cliente:</b> ${esc(mesa.nombreCliente)}</p>` : ''}
     ${mesa.nroHabitacion ? `<p style="font-size:11px;"><b>Hab:</b> ${esc(mesa.nroHabitacion)}</p>` : ''}
+    <p style="font-size:11px;"><b>Comensales:</b> ${comensales}</p>
     <hr>
     ${items}
     <div class="total"><span>TOTAL</span><span>$${total.toFixed(2)}</span></div>
     <div class="firma"><p>Firma del huésped</p><p style="margin-top:16px;">_____________________</p></div>
+  </body></html>`;
+  imprimirHTML(html);
+}
+
+function imprimirTicketNoFiscal(data) {
+  var fecha = new Date().toLocaleString('es-AR');
+  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
+  var medioLabel = medioLabels[data.medioPago] || data.medioPago;
+  var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #000;padding-top:4px;margin-top:4px;}
+    .subtot{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+  </style></head><body>
+    <h2>Hotel Epecuén</h2>
+    <h3 style="font-size:11px;">TICKET NO FISCAL</h3>
+    <p style="text-align:center;font-size:10px;">${fecha}</p>
+    <hr>
+    <p style="font-size:11px;"><b>Mesa:</b> ${esc(data.mesaNombre)}</p>
+    ${data.nombreCliente ? `<p style="font-size:11px;"><b>Cliente:</b> ${esc(data.nombreCliente)}</p>` : ''}
+    <p style="font-size:11px;"><b>Comensales:</b> ${data.cantidadComensales}</p>
+    <hr>
+    ${items}
+    <hr>
+    <div class="subtot"><span>Bebidas</span><span>$${data.totalBebidas.toFixed(2)}</span></div>
+    <div class="subtot"><span>Comidas</span><span>$${data.totalComidas.toFixed(2)}</span></div>
+    ${data.descuento > 0 ? `<div class="subtot"><span>Descuento (${data.descuento}%)</span><span>-$${(data.totalBase * data.descuento/100).toFixed(2)}</span></div>` : ''}
+    <div class="total"><span>TOTAL</span><span>$${data.totalFinal.toFixed(2)}</span></div>
+    <hr>
+    <p style="font-size:11px;"><b>Medio de Pago:</b> ${esc(medioLabel)}</p>
+    ${data.idTransaccion ? `<p style="font-size:11px;"><b>${data.medioPago === 'TRANSFERENCIA' ? 'ID Transferencia' : 'N° Cupón'}:</b> ${esc(data.idTransaccion)}</p>` : ''}
+    <hr>
+    <p style="text-align:center;font-size:10px;margin-top:8px;">*** DOCUMENTO NO FISCAL ***</p>
+    <p style="text-align:center;font-size:10px;">Gracias por su visita</p>
   </body></html>`;
   imprimirHTML(html);
 }
@@ -1317,7 +1394,9 @@ async function cargarMesasCobro() {
         <div class="mesa-nombre">${esc(m.nombre)}</div>
         <div class="mesa-ubicacion">${esc(m.ubicacion||'')}</div>
         <div class="mesa-estado estado-facturacion">PARA COBRAR</div>
+        <div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">Consumidor Final</div>
         ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
+        ${m.cantidadComensales ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">🍽 ${m.cantidadComensales} comensal${m.cantidadComensales>1?'es':''}</div>` : ''}
       </div>`).join('');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -1331,17 +1410,44 @@ async function abrirFacturacion(mesaId, mesaNombre, cmdId) {
     $('facturarMesaNombre').textContent = mesaNombre;
     $('facturarTotal').textContent = total.toFixed(2);
     $('facturarDescuento').value = '0';
+    $('facturarMedioPago').value = 'EFECTIVO';
+    $('facturarIdTransaccion').value = '';
+    $('campoIdTransaccion').style.display = 'none';
     mostrarModal('modalFacturacion');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.abrirFacturacion = abrirFacturacion;
 
+function onMedioPagoChange() {
+  var medio = $('facturarMedioPago').value;
+  var requiereId = medio !== 'EFECTIVO';
+  $('campoIdTransaccion').style.display = requiereId ? 'flex' : 'none';
+  if (medio === 'TRANSFERENCIA') {
+    $('labelIdTransaccion').textContent = 'ID de Transferencia *';
+    $('facturarIdTransaccion').placeholder = 'Ingresá el ID de transferencia';
+  } else if (medio === 'TARJETA_DEBITO' || medio === 'TARJETA_CREDITO') {
+    $('labelIdTransaccion').textContent = 'N° de Cupón *';
+    $('facturarIdTransaccion').placeholder = 'Ingresá el número de cupón';
+  }
+  if (!requiereId) $('facturarIdTransaccion').value = '';
+}
+window.onMedioPagoChange = onMedioPagoChange;
+
 async function confirmarFacturacion() {
   if (!mesaParaFacturar) return;
   var medioPago = $('facturarMedioPago').value;
+  var idTransaccion = $('facturarIdTransaccion').value.trim();
   var descuento = parseFloat($('facturarDescuento').value) || 0;
   var totalBase = parseFloat($('facturarTotal').textContent) || 0;
   var totalFinal = totalBase * (1 - descuento/100);
+
+  // Validar ID transacción para pagos no efectivo
+  if (medioPago !== 'EFECTIVO' && !idTransaccion) {
+    showToast('Completá el N° de cupón / ID de transacción','warning');
+    $('facturarIdTransaccion').focus();
+    return;
+  }
+
   try {
     var ahora = serverTimestamp();
     // Cargar items de la comanda para el cierre
@@ -1349,6 +1455,12 @@ async function confirmarFacturacion() {
     var items = itemsSnap.docs.map(d => d.data());
     var totalBeb = items.filter(i => i.sector==='MOSTRADOR').reduce((a,i) => a+(i.cantidad*i.precio),0);
     var totalCom = totalBase - totalBeb;
+
+    // Cargar datos de la mesa y comanda para el ticket
+    var mesaDoc = await getDoc(doc(db,'mesas',mesaParaFacturar.id));
+    var mesaData = mesaDoc.data() || {};
+    var cmdDoc = await getDoc(doc(db,'comandas',mesaParaFacturar.comandaId));
+    var cmdData = cmdDoc.data() || {};
 
     // Guardar cierre
     await addDoc(collection(db,'cierres'), {
@@ -1359,6 +1471,7 @@ async function confirmarFacturacion() {
       totalComidas: totalCom,
       totalGeneral: totalFinal,
       medioPago, descuento,
+      idTransaccion: idTransaccion || '',
       usuario: currentUser.usuario,
       fechaCierre: ahora
     });
@@ -1367,12 +1480,27 @@ async function confirmarFacturacion() {
       comandaId: mesaParaFacturar.comandaId,
       mesaId: mesaParaFacturar.id,
       total: totalFinal, medioPago, descuento,
+      idTransaccion: idTransaccion || '',
       usuario: currentUser.usuario, fecha: ahora
     });
     // Actualizar comanda y mesa
     await updateDoc(doc(db,'comandas',mesaParaFacturar.comandaId), { estado:'CERRADA', fechaCierre: ahora });
-    var mesaDoc = await getDoc(doc(db,'mesas',mesaParaFacturar.id));
-    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'' });
+    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0 });
+
+    // Generar ticket no fiscal
+    imprimirTicketNoFiscal({
+      mesaNombre: mesaParaFacturar.nombre,
+      nombreCliente: mesaData.nombreCliente || '',
+      cantidadComensales: mesaData.cantidadComensales || cmdData.cantidadComensales || 1,
+      items: items,
+      totalBase: totalBase,
+      totalBebidas: totalBeb,
+      totalComidas: totalCom,
+      descuento: descuento,
+      totalFinal: totalFinal,
+      medioPago: medioPago,
+      idTransaccion: idTransaccion
+    });
 
     cerrarModal('modalFacturacion');
     showToast('Cobro registrado — $'+totalFinal.toFixed(2),'success');
