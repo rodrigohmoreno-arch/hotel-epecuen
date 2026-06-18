@@ -647,18 +647,19 @@
     </div>
     <div class="modal-body">
       <div class="form-group" style="margin-bottom:16px;">
-        <label>Tipo de Cliente *</label>
+        <label>Tipo de Consumo *</label>
         <select id="abrirTipoCliente" onchange="onTipoClienteChange()">
           <option value="EPECUEN_MAP">Epecuén Con MAP</option>
           <option value="EPECUEN_SIN_MAP">Epecuén Sin MAP</option>
           <option value="CARHUE">Hotel Carhue</option>
-          <option value="EXTERNO">Consumidor Final</option>
+          <option value="SERVICIO_HABITACION">Servicio a Habitación</option>
+          <option value="EXTERNO">Externo - Consumidor Final</option>
         </select>
       </div>
       <div id="abrirCamposHuesped">
         <div class="form-row">
-          <div class="form-group"><label>N° Habitación</label><input type="text" id="abrirHabitacion"></div>
-          <div class="form-group"><label>Nombre Cliente</label><input type="text" id="abrirNombreCliente"></div>
+          <div class="form-group"><label>N° Habitación *</label><input type="text" id="abrirHabitacion"></div>
+          <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente"></div>
         </div>
       </div>
       <div class="form-group">
@@ -705,6 +706,43 @@
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modalFacturacion')">Cancelar</button>
       <button class="btn btn-green btn-sm" onclick="confirmarFacturacion()">Confirmar Cobro</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DATOS FACTURACIÓN (post-cobro) -->
+<div id="modalDatosFactura" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>Datos para el Ticket</h3>
+      <button class="modal-close" onclick="imprimirTicketSinDatos()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Completá los datos del cliente para el ticket, o presioná "Solo Consumidor Final" para omitir.</p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Tipo de Contribuyente</label>
+        <select id="factTipoContribuyente" onchange="onTipoContribuyenteChange()">
+          <option value="PERSONA">Persona Física</option>
+          <option value="EMPRESA">Empresa</option>
+        </select>
+      </div>
+      <div id="factCamposPersona">
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input type="text" id="factNombre"></div>
+          <div class="form-group"><label>Apellido</label><input type="text" id="factApellido"></div>
+        </div>
+      </div>
+      <div id="factCamposEmpresa" class="hidden">
+        <div class="form-group"><label>Razón Social</label><input type="text" id="factRazonSocial"></div>
+      </div>
+      <div class="form-group">
+        <label>CUIT</label>
+        <input type="text" id="factCuit" placeholder="XX-XXXXXXXX-X">
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="imprimirTicketSinDatos()">Solo Consumidor Final</button>
+      <button class="btn btn-green btn-sm" onclick="imprimirTicketConDatos()">Imprimir con Datos</button>
     </div>
   </div>
 </div>
@@ -783,6 +821,7 @@ let comandaActivaId = null;
 let mesaParaFacturar = null;
 let ticketImpreso = false;
 let comandaEnFacturacion = false;
+let ticketNoFiscalPendiente = null;
 let _confirmCb = null;
 
 // ══════════════════════════════════════
@@ -1001,7 +1040,7 @@ function renderMesas() {
     var infoExtra = '';
     if (est !== 'LIBRE') {
       var tipo = m.tipoCliente || '';
-      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
       var tipoLabel = tipoLabels[tipo] || tipo;
       infoExtra += `<div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>`;
       if (tipo !== 'EXTERNO' && m.nroHabitacion) {
@@ -1035,7 +1074,8 @@ window.abrirMesaModal = abrirMesaModal;
 
 function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
-  $('abrirCamposHuesped').style.display = tipo === 'EXTERNO' ? 'none' : 'block';
+  var mostrar = tipo !== 'EXTERNO';
+  $('abrirCamposHuesped').style.display = mostrar ? 'block' : 'none';
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
@@ -1044,7 +1084,13 @@ async function confirmarAbrirMesa() {
   var tipo = $('abrirTipoCliente').value;
   var hab  = $('abrirHabitacion').value.trim();
   var nombre = $('abrirNombreCliente').value.trim();
-  var com  = parseInt($('abrirComensales').value) || 1;
+  var com  = parseInt($('abrirComensales').value) || 0;
+
+  // Validar campos obligatorios para tipos no externos
+  if (tipo !== 'EXTERNO') {
+    if (!hab) { showToast('Completá el N° de Habitación','warning'); $('abrirHabitacion').focus(); return; }
+    if (!nombre) { showToast('Completá el Nombre del Cliente','warning'); $('abrirNombreCliente').focus(); return; }
+  }
   try {
     // Crear comanda
     var cmdRef = await addDoc(collection(db,'comandas'), {
@@ -1090,7 +1136,7 @@ async function abrirComanda(mesaId) {
 
   $('comandaMesaTitulo').textContent = 'Comanda — ' + (mesa.nombre||'');
   var tipo = mesa.tipoCliente || '';
-  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Cons. Final' };
   $('comandaClienteInfo').textContent = (labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '');
 
   // Cargar items
@@ -1217,8 +1263,8 @@ function cerrarMesa() {
   var totalBeb = comandaActual.filter(i => i.sector==='MOSTRADOR').reduce((a,i) => a + (i.cantidad*i.precio),0);
   var totalCom = total - totalBeb;
 
-  var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
-  var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', CARHUE:'var(--green)', EXTERNO:'var(--red)' };
+  var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
+  var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', CARHUE:'var(--green)', SERVICIO_HABITACION:'var(--blue)', EXTERNO:'var(--red)' };
 
   var cuerpo = `<div style="padding:20px;">
     <div style="margin-bottom:12px;"><span style="background:${colors[tipo]||'var(--muted)'};color:#fff;padding:3px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">${labels[tipo]||tipo}</span></div>
@@ -1289,7 +1335,7 @@ function imprimirTicketConsumo(mesa, total) {
   var fecha = new Date().toLocaleString('es-AR');
   var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
   var comensales = mesa.cantidadComensales || 1;
-  var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', EXTERNO:'Consumidor Final' };
+  var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
   var tipoLabel = tipoLabels[mesa.tipoCliente] || mesa.tipoCliente || '';
   var html = `<!DOCTYPE html><html><head><style>
     @page{size:80mm auto;margin:4mm}
@@ -1321,6 +1367,20 @@ function imprimirTicketNoFiscal(data) {
   var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
   var medioLabel = medioLabels[data.medioPago] || data.medioPago;
   var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+
+  // Datos del cliente para el ticket
+  var dc = data.datosCliente || { tipo: 'CONSUMIDOR_FINAL' };
+  var clienteHtml = '';
+  if (dc.tipo === 'PERSONA' && (dc.nombre || dc.apellido)) {
+    clienteHtml = `<p style="font-size:11px;"><b>Cliente:</b> ${esc((dc.nombre||'')+' '+(dc.apellido||''))}</p>`;
+    if (dc.cuit) clienteHtml += `<p style="font-size:11px;"><b>CUIT:</b> ${esc(dc.cuit)}</p>`;
+  } else if (dc.tipo === 'EMPRESA' && dc.razonSocial) {
+    clienteHtml = `<p style="font-size:11px;"><b>Razón Social:</b> ${esc(dc.razonSocial)}</p>`;
+    if (dc.cuit) clienteHtml += `<p style="font-size:11px;"><b>CUIT:</b> ${esc(dc.cuit)}</p>`;
+  } else {
+    clienteHtml = `<p style="font-size:11px;"><b>Cliente:</b> Consumidor Final</p>`;
+  }
+
   var html = `<!DOCTYPE html><html><head><style>
     @page{size:80mm auto;margin:4mm}
     body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
@@ -1334,8 +1394,8 @@ function imprimirTicketNoFiscal(data) {
     <p style="text-align:center;font-size:10px;">${fecha}</p>
     <hr>
     <p style="font-size:11px;"><b>Mesa:</b> ${esc(data.mesaNombre)}</p>
-    ${data.nombreCliente ? `<p style="font-size:11px;"><b>Cliente:</b> ${esc(data.nombreCliente)}</p>` : ''}
-    <p style="font-size:11px;"><b>Comensales:</b> ${data.cantidadComensales}</p>
+    ${clienteHtml}
+    ${data.cantidadComensales ? `<p style="font-size:11px;"><b>Comensales:</b> ${data.cantidadComensales}</p>` : ''}
     <hr>
     ${items}
     <hr>
@@ -1394,7 +1454,7 @@ async function cargarMesasCobro() {
         <div class="mesa-nombre">${esc(m.nombre)}</div>
         <div class="mesa-ubicacion">${esc(m.ubicacion||'')}</div>
         <div class="mesa-estado estado-facturacion">PARA COBRAR</div>
-        <div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">Consumidor Final</div>
+        <div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">Externo - Consumidor Final</div>
         ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
         ${m.cantidadComensales ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">🍽 ${m.cantidadComensales} comensal${m.cantidadComensales>1?'es':''}</div>` : ''}
       </div>`).join('');
@@ -1487,11 +1547,11 @@ async function confirmarFacturacion() {
     await updateDoc(doc(db,'comandas',mesaParaFacturar.comandaId), { estado:'CERRADA', fechaCierre: ahora });
     await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0 });
 
-    // Generar ticket no fiscal
-    imprimirTicketNoFiscal({
+    // Guardar datos para ticket y mostrar modal de datos de facturación
+    ticketNoFiscalPendiente = {
       mesaNombre: mesaParaFacturar.nombre,
       nombreCliente: mesaData.nombreCliente || '',
-      cantidadComensales: mesaData.cantidadComensales || cmdData.cantidadComensales || 1,
+      cantidadComensales: mesaData.cantidadComensales || cmdData.cantidadComensales || 0,
       items: items,
       totalBase: totalBase,
       totalBebidas: totalBeb,
@@ -1500,14 +1560,58 @@ async function confirmarFacturacion() {
       totalFinal: totalFinal,
       medioPago: medioPago,
       idTransaccion: idTransaccion
-    });
+    };
 
     cerrarModal('modalFacturacion');
     showToast('Cobro registrado — $'+totalFinal.toFixed(2),'success');
+
+    // Mostrar modal para datos opcionales del ticket
+    $('factTipoContribuyente').value = 'PERSONA';
+    $('factNombre').value = '';
+    $('factApellido').value = '';
+    $('factRazonSocial').value = '';
+    $('factCuit').value = '';
+    onTipoContribuyenteChange();
+    mostrarModal('modalDatosFactura');
+
     await cargarMesasCobro();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.confirmarFacturacion = confirmarFacturacion;
+
+function onTipoContribuyenteChange() {
+  var tipo = $('factTipoContribuyente').value;
+  $('factCamposPersona').style.display = tipo === 'PERSONA' ? 'block' : 'none';
+  $('factCamposEmpresa').style.display = tipo === 'EMPRESA' ? 'block' : 'none';
+}
+window.onTipoContribuyenteChange = onTipoContribuyenteChange;
+
+function imprimirTicketSinDatos() {
+  if (!ticketNoFiscalPendiente) return;
+  ticketNoFiscalPendiente.datosCliente = { tipo: 'CONSUMIDOR_FINAL' };
+  imprimirTicketNoFiscal(ticketNoFiscalPendiente);
+  ticketNoFiscalPendiente = null;
+  cerrarModal('modalDatosFactura');
+}
+window.imprimirTicketSinDatos = imprimirTicketSinDatos;
+
+function imprimirTicketConDatos() {
+  if (!ticketNoFiscalPendiente) return;
+  var tipoC = $('factTipoContribuyente').value;
+  var cuit = $('factCuit').value.trim();
+  if (tipoC === 'PERSONA') {
+    var nom = $('factNombre').value.trim();
+    var ape = $('factApellido').value.trim();
+    ticketNoFiscalPendiente.datosCliente = { tipo: 'PERSONA', nombre: nom, apellido: ape, cuit: cuit };
+  } else {
+    var razon = $('factRazonSocial').value.trim();
+    ticketNoFiscalPendiente.datosCliente = { tipo: 'EMPRESA', razonSocial: razon, cuit: cuit };
+  }
+  imprimirTicketNoFiscal(ticketNoFiscalPendiente);
+  ticketNoFiscalPendiente = null;
+  cerrarModal('modalDatosFactura');
+}
+window.imprimirTicketConDatos = imprimirTicketConDatos;
 
 // ══════════════════════════════════════
 // PRODUCTOS
@@ -2050,7 +2154,7 @@ async function cargarCierresDia() {
 
     var tbody = $('tbodyCierres');
     tbody.innerHTML = cierres.map(c => {
-      var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',CARHUE:'Carhue',EXTERNO:'Ext.'};
+      var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',CARHUE:'Carhue',SERVICIO_HABITACION:'Serv.Hab.',EXTERNO:'Ext.CF'};
       return `<tr>
         <td>${fmtHora(c.fechaCierre)}</td>
         <td><strong>${esc(c.mesaNombre)}</strong></td>
