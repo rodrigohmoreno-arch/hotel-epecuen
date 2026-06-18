@@ -283,6 +283,8 @@
       <button class="tab active" onclick="tabStock('lista',this)">Stock Actual</button>
       <button class="tab" onclick="tabStock('ingreso',this)">Ingreso</button>
       <button class="tab" onclick="tabStock('nuevo',this)">Nuevo Producto</button>
+      <button class="tab" onclick="tabStock('ingredientes',this)">Ingredientes</button>
+      <button class="tab" onclick="tabStock('nuevoPlato',this)">Nuevo Plato</button>
       <button class="tab" onclick="tabStock('historial',this)">Historial</button>
     </div>
     <div id="tabStockLista">
@@ -341,6 +343,59 @@
         <button class="btn btn-gold btn-sm" onclick="agregarProducto()">Agregar</button>
       </div>
     </div>
+    <div id="tabStockIngredientes" class="hidden">
+      <div class="card">
+        <div class="card-title">Gestión de Ingredientes</div>
+        <div style="padding:16px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Agregar Ingrediente</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Nombre *</label><input type="text" id="ingNombre" placeholder="Ej: Harina 000"></div>
+            <div class="form-group"><label>Unidad *</label>
+              <select id="ingUnidad">
+                <option value="kg">Kilogramo (kg)</option>
+                <option value="gr">Gramo (gr)</option>
+                <option value="lt">Litro (lt)</option>
+                <option value="ml">Mililitro (ml)</option>
+                <option value="unidad">Unidad</option>
+                <option value="docena">Docena</option>
+              </select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Precio de Compra *</label><input type="number" id="ingPrecioCompra" step="0.01" min="0" placeholder="Precio por unidad"></div>
+            <div class="form-group"><label>Stock Actual</label><input type="number" id="ingStock" step="0.01" min="0" value="0"></div>
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="agregarIngrediente()">Agregar Ingrediente</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Ingrediente</th><th>Unidad</th><th>Precio Compra</th><th>Stock</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyIngredientes"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabStockNuevoPlato" class="hidden">
+      <div class="card">
+        <div class="card-title">Crear Plato (Producto)</div>
+        <div style="padding:12px;background:rgba(74,144,217,0.08);border-radius:8px;border-left:3px solid var(--blue);font-size:0.83rem;color:var(--muted);margin-bottom:16px;">
+          Al crear un plato, se genera automáticamente como producto disponible para venta. El Chef podrá luego cargar los ingredientes de la receta y se calculará el precio de costo.
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre del Plato *</label><input type="text" id="spNombre" placeholder="Ej: Milanesa napolitana"></div>
+          <div class="form-group"><label>Categoría</label>
+            <select id="spCategoria">
+              <option value="Platos Principales">Platos Principales</option>
+              <option value="Entradas">Entradas</option>
+              <option value="Postres">Postres</option>
+              <option value="Cafetería">Cafetería</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Precio de Venta *</label><input type="number" id="spPrecioVenta" step="0.01" min="0" placeholder="Precio al público"></div>
+          <div class="form-group"><label>Sector</label>
+            <select id="spSector"><option value="COCINA">Cocina</option><option value="MOSTRADOR">Mostrador</option></select></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="crearPlatoDesdeStock()">Crear Plato</button>
+      </div>
+    </div>
     <div id="tabStockHistorial" class="hidden">
       <div class="card">
         <div class="card-title">Historial de Movimientos</div>
@@ -379,7 +434,7 @@
             </select></div>
         </div>
         <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:8px;border-left:3px solid var(--gold);font-size:0.83rem;color:var(--muted);margin-bottom:16px;">
-          El precio de venta lo define el administrador en Productos. El costo se calcula desde la receta.
+          El precio de venta lo define Stock o el administrador. El costo se calcula desde la receta con los ingredientes cargados por el Chef.
         </div>
         <button class="btn btn-gold btn-sm" onclick="agregarPlato()">Agregar Plato</button>
       </div>
@@ -710,6 +765,7 @@ const db = getFirestore(firebase);
 let currentUser = null;
 let mesasCache = [];
 let productosCache = [];
+let ingredientesCache = [];
 let recetaActual = [];
 let mesaAbierta = null;
 let comandaActual = [];
@@ -868,10 +924,11 @@ window.tabMozo = tabMozo;
 function tabStock(t, btn) {
   document.querySelectorAll('#panelStock .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabStockLista','tabStockIngreso','tabStockNuevo','tabStockHistorial'].forEach(id => $(id).classList.add('hidden'));
-  var map = { lista:'tabStockLista', ingreso:'tabStockIngreso', nuevo:'tabStockNuevo', historial:'tabStockHistorial' };
+  ['tabStockLista','tabStockIngreso','tabStockNuevo','tabStockIngredientes','tabStockNuevoPlato','tabStockHistorial'].forEach(id => $(id).classList.add('hidden'));
+  var map = { lista:'tabStockLista', ingreso:'tabStockIngreso', nuevo:'tabStockNuevo', ingredientes:'tabStockIngredientes', nuevoPlato:'tabStockNuevoPlato', historial:'tabStockHistorial' };
   $(map[t]).classList.remove('hidden');
   if (t === 'ingreso') poblarSelectStock();
+  if (t === 'ingredientes') cargarIngredientes();
   if (t === 'historial') cargarHistorialStock();
 }
 window.tabStock = tabStock;
@@ -1413,6 +1470,109 @@ async function cargarHistorialStock() {
   } catch(e) {}
 }
 
+// ══════════════════════════════════════
+// INGREDIENTES
+// ══════════════════════════════════════
+async function cargarIngredientes() {
+  try {
+    var snap = await getDocs(query(collection(db,'ingredientes'), where('activo','==',true)));
+    ingredientesCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var tbody = $('tbodyIngredientes');
+    tbody.innerHTML = ingredientesCache.map(ing => `<tr>
+      <td><strong>${esc(ing.nombre)}</strong></td>
+      <td>${esc(ing.unidad)}</td>
+      <td>$${(ing.precioCompra||0).toFixed(2)}</td>
+      <td>${(ing.stockActual||0).toFixed(2)}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-xs" onclick="editarIngrediente('${ing.id}','${esc(ing.nombre)}',${ing.precioCompra||0},${ing.stockActual||0})">Editar</button>
+        <button class="btn btn-red btn-xs" onclick="eliminarIngrediente('${ing.id}','${esc(ing.nombre)}')">Eliminar</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin ingredientes</td></tr>';
+  } catch(e) { showToast('Error cargando ingredientes: '+e.message,'error'); }
+}
+
+async function agregarIngrediente() {
+  var nombre = $('ingNombre').value.trim();
+  var unidad = $('ingUnidad').value;
+  var precioCompra = parseFloat($('ingPrecioCompra').value)||0;
+  var stockActual = parseFloat($('ingStock').value)||0;
+  if (!nombre) { showToast('Ingresá el nombre del ingrediente','warning'); return; }
+  if (precioCompra <= 0) { showToast('Ingresá el precio de compra','warning'); return; }
+  try {
+    await addDoc(collection(db,'ingredientes'), {
+      nombre, unidad, precioCompra, stockActual, activo:true, fechaCreacion:serverTimestamp()
+    });
+    showToast('Ingrediente agregado','success');
+    $('ingNombre').value=''; $('ingPrecioCompra').value=''; $('ingStock').value='0';
+    await cargarIngredientes();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarIngrediente = agregarIngrediente;
+
+function editarIngrediente(id, nombre, precio, stock) {
+  confirmarAccion('Editar Ingrediente', `
+    <div style="padding:20px;">
+      <p style="margin-bottom:12px;color:var(--muted);font-weight:600;">${esc(nombre)}</p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Precio de Compra</label>
+        <input type="number" id="editIngPrecio" value="${precio}" step="0.01" min="0" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+      </div>
+      <div class="form-group">
+        <label>Stock Actual</label>
+        <input type="number" id="editIngStock" value="${stock}" step="0.01" min="0" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+      </div>
+    </div>`, 'Guardar', async (ok) => {
+    if (!ok) return;
+    var nuevoPrecio = parseFloat($('editIngPrecio').value)||0;
+    var nuevoStock = parseFloat($('editIngStock').value)||0;
+    try {
+      await updateDoc(doc(db,'ingredientes',id), { precioCompra: nuevoPrecio, stockActual: nuevoStock });
+      showToast('Ingrediente actualizado','success');
+      await cargarIngredientes();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.editarIngrediente = editarIngrediente;
+
+function eliminarIngrediente(id, nombre) {
+  confirmarAccion('Eliminar Ingrediente', `<p style="padding:20px;">¿Eliminar <strong>${esc(nombre)}</strong>?</p>`, 'Eliminar', async (ok) => {
+    if (!ok) return;
+    try {
+      await updateDoc(doc(db,'ingredientes',id), { activo:false });
+      showToast('Ingrediente eliminado','success');
+      await cargarIngredientes();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.eliminarIngrediente = eliminarIngrediente;
+
+// ══════════════════════════════════════
+// STOCK — CREAR PLATO (→ producto + plato)
+// ══════════════════════════════════════
+async function crearPlatoDesdeStock() {
+  var nombre = $('spNombre').value.trim();
+  var cat = $('spCategoria').value;
+  var precioVenta = parseFloat($('spPrecioVenta').value)||0;
+  var sector = $('spSector').value;
+  if (!nombre) { showToast('Ingresá el nombre del plato','warning'); return; }
+  if (precioVenta <= 0) { showToast('Ingresá el precio de venta','warning'); return; }
+  try {
+    // Crear en colección platos
+    await addDoc(collection(db,'platos'), {
+      nombre, categoria:cat, precioVenta, costoTotal:0, margen:0, activo:true
+    });
+    // Crear en colección productos
+    await addDoc(collection(db,'productos'), {
+      nombre, categoria:cat, precioCosto:0, precioVenta,
+      stockActual:0, stockMinimo:5, sector, activo:true, fechaCreacion:serverTimestamp()
+    });
+    showToast('Plato creado como producto — el Chef puede cargar la receta','success');
+    $('spNombre').value=''; $('spPrecioVenta').value='';
+    await cargarProductos();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.crearPlatoDesdeStock = crearPlatoDesdeStock;
+
 async function cargarProductosAdmin() {
   await cargarProductos();
   var tbody = $('tbodyAdminProductos');
@@ -1492,7 +1652,11 @@ async function cargarReceta() {
   var id = $('chefPlatoSel').value;
   if (!id) { $('recetaEditor').classList.add('hidden'); return; }
   $('recetaEditor').classList.remove('hidden');
-  await cargarProductos();
+  // Cargar ingredientes para el select
+  try {
+    var ingSnap = await getDocs(query(collection(db,'ingredientes'), where('activo','==',true)));
+    ingredientesCache = ingSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) { ingredientesCache = []; }
   try {
     var snap = await getDocs(query(collection(db,'recetas'), where('platoId','==',id)));
     recetaActual = snap.docs.map(d => ({ docId:d.id, ...d.data() }));
@@ -1507,12 +1671,15 @@ function renderReceta() {
   cont.innerHTML = recetaActual.map((ing,i) => {
     var costoLinea = (ing.costoUnitario||0) * (ing.cantidad||0);
     costo += costoLinea;
+    var ingData = ingredientesCache.find(x => x.id === ing.ingredienteId);
+    var unidad = ing.unidad || ingData?.unidad || '';
     return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:var(--card);border-radius:8px;">
       <select onchange="onIngChange(${i},this)" style="flex:2;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
-        <option value="">Seleccionar...</option>
-        ${productosCache.map(p => `<option value="${p.id}" data-precio="${p.precioCosto||0}" ${p.id===ing.productoId?'selected':''}>${esc(p.nombre)}</option>`).join('')}
+        <option value="">Seleccionar ingrediente...</option>
+        ${ingredientesCache.map(ig => `<option value="${ig.id}" data-precio="${ig.precioCompra||0}" data-unidad="${ig.unidad||''}" ${ig.id===ing.ingredienteId?'selected':''}>${esc(ig.nombre)} (${ig.unidad})</option>`).join('')}
       </select>
-      <input type="number" value="${ing.cantidad||1}" min="0.001" step="0.001" onchange="onCantChange(${i},this)" style="flex:0.8;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+      <input type="number" value="${ing.cantidad||1}" min="0.001" step="0.001" onchange="onCantChange(${i},this)" placeholder="Cant." style="flex:0.6;padding:9px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+      <span style="flex:0.4;font-size:0.8rem;color:var(--muted);">${esc(unidad)}</span>
       <span style="flex:0.6;text-align:right;font-size:0.85rem;color:var(--muted);">$${costoLinea.toFixed(2)}</span>
       <button onclick="quitarIngrediente(${i})" style="background:var(--red);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;">✕</button>
     </div>`;
@@ -1525,8 +1692,9 @@ function renderReceta() {
 
 function onIngChange(i, sel) {
   var opt = sel.options[sel.selectedIndex];
-  recetaActual[i].productoId = opt.value;
+  recetaActual[i].ingredienteId = opt.value;
   recetaActual[i].nombre = opt.text;
+  recetaActual[i].unidad = opt.dataset.unidad || '';
   recetaActual[i].costoUnitario = parseFloat(opt.dataset.precio)||0;
   recetaActual[i].costoLinea = recetaActual[i].costoUnitario * (recetaActual[i].cantidad||0);
   renderReceta();
@@ -1541,7 +1709,7 @@ function onCantChange(i, inp) {
 window.onCantChange = onCantChange;
 
 function addIngredienteReceta() {
-  recetaActual.push({ productoId:'', nombre:'', cantidad:1, costoUnitario:0, costoLinea:0 });
+  recetaActual.push({ ingredienteId:'', nombre:'', cantidad:1, unidad:'', costoUnitario:0, costoLinea:0 });
   renderReceta();
 }
 window.addIngredienteReceta = addIngredienteReceta;
@@ -1555,7 +1723,7 @@ window.quitarIngrediente = quitarIngrediente;
 async function guardarReceta() {
   var platoId = $('chefPlatoSel').value;
   if (!platoId) { showToast('Seleccioná un plato','warning'); return; }
-  var validos = recetaActual.filter(i => i.productoId && i.cantidad > 0);
+  var validos = recetaActual.filter(i => i.ingredienteId && i.cantidad > 0);
   if (!validos.length) { showToast('Agregá al menos un ingrediente','warning'); return; }
   try {
     // Borrar receta anterior
@@ -1566,8 +1734,8 @@ async function guardarReceta() {
     for (var ing of validos) {
       costoTotal += ing.costoLinea || 0;
       await addDoc(collection(db,'recetas'), {
-        platoId, productoId: ing.productoId, nombre: ing.nombre,
-        cantidad: ing.cantidad, costoUnitario: ing.costoUnitario, costoLinea: ing.costoLinea||0
+        platoId, ingredienteId: ing.ingredienteId, nombre: ing.nombre,
+        cantidad: ing.cantidad, unidad: ing.unidad||'', costoUnitario: ing.costoUnitario, costoLinea: ing.costoLinea||0
       });
     }
     // Actualizar costo del plato
@@ -1873,6 +2041,34 @@ async function inicializarDatosBase() {
       ];
       for (var m of mesas) await addDoc(collection(db,'mesas'), m);
       console.log('Mesas base creadas');
+    }
+
+    // Verificar ingredientes base
+    var ingSnap = await getDocs(collection(db,'ingredientes'));
+    if (ingSnap.empty) {
+      var ingredientes = [
+        {nombre:'Harina 000', unidad:'kg', precioCompra:800, stockActual:50, activo:true},
+        {nombre:'Huevos', unidad:'docena', precioCompra:3500, stockActual:10, activo:true},
+        {nombre:'Sal fina', unidad:'kg', precioCompra:500, stockActual:20, activo:true},
+        {nombre:'Pimienta negra', unidad:'gr', precioCompra:15, stockActual:500, activo:true},
+        {nombre:'Aceite girasol', unidad:'lt', precioCompra:2200, stockActual:20, activo:true},
+        {nombre:'Manteca', unidad:'kg', precioCompra:5500, stockActual:10, activo:true},
+        {nombre:'Leche entera', unidad:'lt', precioCompra:1200, stockActual:30, activo:true},
+        {nombre:'Queso muzzarella', unidad:'kg', precioCompra:9000, stockActual:10, activo:true},
+        {nombre:'Tomate triturado', unidad:'lt', precioCompra:1800, stockActual:15, activo:true},
+        {nombre:'Cebolla', unidad:'kg', precioCompra:1500, stockActual:20, activo:true},
+        {nombre:'Ajo', unidad:'kg', precioCompra:4000, stockActual:5, activo:true},
+        {nombre:'Pan rallado', unidad:'kg', precioCompra:2500, stockActual:10, activo:true},
+        {nombre:'Azúcar', unidad:'kg', precioCompra:1000, stockActual:20, activo:true},
+        {nombre:'Carne vacuna', unidad:'kg', precioCompra:8500, stockActual:15, activo:true},
+        {nombre:'Pollo entero', unidad:'kg', precioCompra:4500, stockActual:10, activo:true},
+        {nombre:'Papa', unidad:'kg', precioCompra:1200, stockActual:30, activo:true},
+      ];
+      for (var ig of ingredientes) {
+        ig.fechaCreacion = serverTimestamp();
+        await addDoc(collection(db,'ingredientes'), ig);
+      }
+      console.log('Ingredientes base creados');
     }
   } catch(e) {
     console.log('Error inicializando datos:', e.message);
