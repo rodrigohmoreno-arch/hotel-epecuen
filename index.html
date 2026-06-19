@@ -115,6 +115,12 @@
     .reserva-info { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.85rem; }
     .reserva-info span { color:var(--muted); }
 
+    /* ── CALENDARIO ── */
+    #calendarioHab table td[draggable="true"] { cursor:grab; }
+    #calendarioHab table td[draggable="true"]:active { cursor:grabbing; }
+    #calendarioHab table td { transition:background 0.2s; }
+    #calendarioHab table td:hover { filter:brightness(1.1); }
+
     /* ── TABS ── */
     .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
     .tab {
@@ -496,6 +502,9 @@
       <button class="tab" onclick="tabAdmin('usuarios',this)">Usuarios</button>
       <button class="tab" onclick="tabAdmin('cierres',this)">Cierres del Día</button>
       <button class="tab" onclick="tabAdmin('auditoria',this)">Auditoría</button>
+      <button class="tab" onclick="tabAdmin('adminHab',this)">Habitaciones</button>
+      <button class="tab" onclick="tabAdmin('adminTarifas',this)">Tarifas</button>
+      <button class="tab" onclick="tabAdmin('adminConfig',this)">Config Hotel</button>
     </div>
     <!-- Admin Mesas -->
     <div id="tabAdminMesas">
@@ -584,6 +593,84 @@
         </table></div>
       </div>
     </div>
+    <!-- Admin Habitaciones -->
+    <div id="tabAdminHab" class="hidden">
+      <div class="card">
+        <div class="card-title">Administrar Habitaciones</div>
+        <div style="padding:16px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nueva Habitación</h4>
+          <div class="form-row">
+            <div class="form-group"><label>N° Habitación *</label><input type="text" id="habNro" placeholder="Ej: 101"></div>
+            <div class="form-group"><label>Nombre</label><input type="text" id="habNombre" placeholder="Ej: Suite Lago"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Tipo *</label>
+              <select id="habTipo">
+                <option value="Single">Single</option>
+                <option value="Doble">Doble</option>
+                <option value="Triple">Triple</option>
+                <option value="Suite">Suite</option>
+                <option value="Suite Premium">Suite Premium</option>
+              </select></div>
+            <div class="form-group"><label>Capacidad Máx.</label><input type="number" id="habCapMax" value="2" min="1"></div>
+          </div>
+          <button class="btn btn-blue btn-sm" onclick="agregarHabitacion()">Agregar Habitación</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>N°</th><th>Nombre</th><th>Tipo</th><th>Cap.</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyHabitaciones"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Tarifas -->
+    <div id="tabAdminTarifas" class="hidden">
+      <div class="card">
+        <div class="card-title">Tarifas por Tipo de Habitación</div>
+        <div style="padding:16px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nueva Tarifa</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Tipo Habitación *</label>
+              <select id="tarTipo">
+                <option value="Single">Single</option>
+                <option value="Doble">Doble</option>
+                <option value="Triple">Triple</option>
+                <option value="Suite">Suite</option>
+                <option value="Suite Premium">Suite Premium</option>
+              </select></div>
+            <div class="form-group"><label>Pensión *</label>
+              <select id="tarPension">
+                <option value="MAP">Media Pensión (MAP)</option>
+                <option value="COMPLETA">Pensión Completa</option>
+                <option value="SIN_PENSION">Sin Pensión</option>
+              </select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Precio/Noche ARS *</label><input type="number" id="tarPrecioARS" step="0.01" min="0" placeholder="$ ARS"></div>
+            <div class="form-group"><label>Precio/Noche USD</label><input type="number" id="tarPrecioUSD" step="0.01" min="0" placeholder="U$D"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;"><label>Notas</label><input type="text" id="tarNotas" placeholder="Temporada, condiciones, etc."></div>
+          <button class="btn btn-gold btn-sm" onclick="guardarTarifa()">Guardar Tarifa</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tipo</th><th>Pensión</th><th>$/Noche ARS</th><th>$/Noche USD</th><th>Notas</th><th></th></tr></thead>
+          <tbody id="tbodyTarifas"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Config Hotel -->
+    <div id="tabAdminConfig" class="hidden">
+      <div class="card">
+        <div class="card-title">Configuración Hotel</div>
+        <div class="form-row">
+          <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
+        </div>
+        <div class="form-row" style="margin-top:16px;">
+          <div class="form-group"><label>Promoción Activa</label><input type="text" id="cfgPromo" placeholder="Ej: 3x2 temporada baja"></div>
+          <div class="form-group"><label>Descuento Promo %</label><input type="number" id="cfgDescPromo" value="0" min="0" max="100"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- PANEL CARHUE -->
@@ -626,48 +713,34 @@
       <button class="tab" onclick="tabRecepcion('reservas',this)">Reservas</button>
       <button class="tab" onclick="tabRecepcion('checkin',this)">Check-In/Out</button>
       <button class="tab" onclick="tabRecepcion('huespedes',this)">Huéspedes</button>
-      <button class="tab" onclick="tabRecepcion('tarifas',this)">Tarifas</button>
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
-      <button class="tab" onclick="tabRecepcion('config',this)">Config</button>
     </div>
     <!-- Tab Habitaciones -->
     <div id="tabRecHabitaciones">
       <div id="resumenHab" class="stats-row"></div>
       <div class="card">
-        <div class="card-title">Mapa de Habitaciones</div>
+        <div class="card-title">Mapa de Habitaciones <span style="font-size:0.75rem;color:var(--muted);">(click en habitación libre para pre-reservar)</span></div>
         <div id="habGrid" class="hab-grid"></div>
       </div>
+      <!-- Calendario de Habitaciones -->
       <div class="card" style="margin-top:16px;">
-        <div class="card-title">Administrar Habitaciones</div>
-        <div style="padding:16px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:20px;">
-          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nueva Habitación</h4>
-          <div class="form-row">
-            <div class="form-group"><label>N° Habitación *</label><input type="text" id="habNro" placeholder="Ej: 101"></div>
-            <div class="form-group"><label>Nombre</label><input type="text" id="habNombre" placeholder="Ej: Suite Lago"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Tipo *</label>
-              <select id="habTipo">
-                <option value="Single">Single</option>
-                <option value="Doble">Doble</option>
-                <option value="Triple">Triple</option>
-                <option value="Suite">Suite</option>
-                <option value="Suite Premium">Suite Premium</option>
-              </select></div>
-            <div class="form-group"><label>Capacidad Máx.</label><input type="number" id="habCapMax" value="2" min="1"></div>
-          </div>
-          <button class="btn btn-blue btn-sm" onclick="agregarHabitacion()">Agregar Habitación</button>
+        <div class="card-title">Calendario de Ocupación</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;">
+          <button class="btn btn-sm" onclick="moverCalendario(-7)">&larr; Semana</button>
+          <input type="date" id="calendarioFechaInicio" onchange="renderCalendarioHab()">
+          <button class="btn btn-sm" onclick="moverCalendario(7)">Semana &rarr;</button>
+          <span style="font-size:0.8rem;color:var(--muted);margin-left:auto;">Arrastrar para cambiar habitación</span>
         </div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>N°</th><th>Nombre</th><th>Tipo</th><th>Cap.</th><th>Estado</th><th>Acciones</th></tr></thead>
-          <tbody id="tbodyHabitaciones"></tbody>
-        </table></div>
+        <div id="calendarioHab" style="overflow-x:auto;"></div>
       </div>
     </div>
     <!-- Tab Reservas -->
     <div id="tabRecReservas" class="hidden">
       <div class="card">
-        <div class="card-title">Nueva Reserva</div>
+        <div class="card-title">Nueva Reserva / Pre-Reserva</div>
+        <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;font-size:0.85rem;color:var(--gold);">
+          <strong>Importante:</strong> Sin seña confirmada la reserva queda como PRE-RESERVA (no se asigna habitación). Para confirmar la reserva debe registrarse la seña.
+        </div>
         <div class="form-row">
           <div class="form-group"><label>Huésped (Nombre Completo) *</label><input type="text" id="resHuesped"></div>
           <div class="form-group"><label>DNI</label><input type="text" id="resDni"></div>
@@ -702,10 +775,10 @@
           <div class="form-group"><label>Descuento %</label><input type="number" id="resDescuento" value="0" min="0" max="100" onchange="calcularTotalReserva()"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Seña/Reserva $</label><input type="number" id="resSena" value="0" step="0.01" onchange="calcularTotalReserva()"></div>
-          <div class="form-group"><label>Medio Pago Seña</label>
+          <div class="form-group"><label>Seña/Reserva $ *</label><input type="number" id="resSena" value="0" step="0.01" onchange="calcularTotalReserva()"></div>
+          <div class="form-group"><label>Medio Pago Seña *</label>
             <select id="resMedioPagoSena">
-              <option value="">Sin seña</option>
+              <option value="">Sin seña (Pre-Reserva)</option>
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA">Tarjeta</option>
@@ -716,7 +789,11 @@
         <button class="btn btn-gold btn-sm" onclick="crearReserva()">Crear Reserva</button>
       </div>
       <div class="card" style="margin-top:16px;">
-        <div class="card-title">Reservas Activas</div>
+        <div class="card-title">Pre-Reservas (pendientes de seña)</div>
+        <div id="listaPreReservas"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Reservas Confirmadas</div>
         <div id="listaReservas"></div>
       </div>
     </div>
@@ -762,41 +839,6 @@
         </table></div>
       </div>
     </div>
-    <!-- Tab Tarifas -->
-    <div id="tabRecTarifas" class="hidden">
-      <div class="card">
-        <div class="card-title">Tarifas por Tipo de Habitación</div>
-        <div style="padding:16px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:20px;">
-          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nueva Tarifa</h4>
-          <div class="form-row">
-            <div class="form-group"><label>Tipo Habitación *</label>
-              <select id="tarTipo">
-                <option value="Single">Single</option>
-                <option value="Doble">Doble</option>
-                <option value="Triple">Triple</option>
-                <option value="Suite">Suite</option>
-                <option value="Suite Premium">Suite Premium</option>
-              </select></div>
-            <div class="form-group"><label>Pensión *</label>
-              <select id="tarPension">
-                <option value="MAP">Media Pensión (MAP)</option>
-                <option value="COMPLETA">Pensión Completa</option>
-                <option value="SIN_PENSION">Sin Pensión</option>
-              </select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Precio/Noche ARS *</label><input type="number" id="tarPrecioARS" step="0.01" min="0" placeholder="$ ARS"></div>
-            <div class="form-group"><label>Precio/Noche USD</label><input type="number" id="tarPrecioUSD" step="0.01" min="0" placeholder="U$D"></div>
-          </div>
-          <div class="form-group" style="margin-bottom:12px;"><label>Notas</label><input type="text" id="tarNotas" placeholder="Temporada, condiciones, etc."></div>
-          <button class="btn btn-gold btn-sm" onclick="guardarTarifa()">Guardar Tarifa</button>
-        </div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>Tipo</th><th>Pensión</th><th>$/Noche ARS</th><th>$/Noche USD</th><th>Notas</th><th></th></tr></thead>
-          <tbody id="tbodyTarifas"></tbody>
-        </table></div>
-      </div>
-    </div>
     <!-- Tab Consumos -->
     <div id="tabRecConsumos" class="hidden">
       <div class="card">
@@ -808,20 +850,6 @@
           <thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
           <tbody id="tbodyConsumosHab"></tbody>
         </table></div>
-      </div>
-    </div>
-    <!-- Tab Config -->
-    <div id="tabRecConfig" class="hidden">
-      <div class="card">
-        <div class="card-title">Configuración Hotel</div>
-        <div class="form-row">
-          <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
-          <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
-        </div>
-        <div class="form-row" style="margin-top:16px;">
-          <div class="form-group"><label>Promoción Activa</label><input type="text" id="cfgPromo" placeholder="Ej: 3x2 temporada baja"></div>
-          <div class="form-group"><label>Descuento Promo %</label><input type="number" id="cfgDescPromo" value="0" min="0" max="100"></div>
-        </div>
       </div>
     </div>
   </div>
@@ -896,8 +924,8 @@
       </div>
       <div id="abrirCamposHuesped">
         <div class="form-row">
-          <div class="form-group"><label>N° Habitación *</label><input type="text" id="abrirHabitacion"></div>
-          <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente"></div>
+          <div class="form-group"><label>N° Habitación *</label><select id="abrirHabitacion" onchange="onHabSelectChange()"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente" readonly style="background:var(--surface);"></div>
         </div>
       </div>
       <div class="form-group">
@@ -1237,14 +1265,17 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
   if (t === 'usuarios') cargarUsuariosAdmin();
   if (t === 'cierres') cargarCierresDia();
   if (t === 'auditoria') cargarAuditoria();
+  if (t === 'adminHab') cargarHabitaciones();
+  if (t === 'adminTarifas') cargarTarifas();
+  if (t === 'adminConfig') cargarConfigHotel();
 }
 window.tabAdmin = tabAdmin;
 
@@ -1313,12 +1344,40 @@ function abrirMesaModal(mesaId) {
 }
 window.abrirMesaModal = abrirMesaModal;
 
-function onTipoClienteChange() {
+async function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
   var mostrar = tipo !== 'EXTERNO';
   $('abrirCamposHuesped').style.display = mostrar ? 'block' : 'none';
+  if (mostrar) {
+    // Populate habitación select with OCCUPIED rooms + guest names
+    try {
+      var snap = await getDocs(collection(db,'habitaciones'));
+      var habs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      var habOcupadas = habs.filter(h => h.estado === 'OCUPADA');
+      var sel = $('abrirHabitacion');
+      sel.innerHTML = '<option value="">Seleccionar habitación...</option>';
+      habOcupadas.forEach(h => {
+        sel.innerHTML += `<option value="${esc(h.numero)}" data-huesped="${esc(h.huespedActual||'')}">${h.numero} — ${esc(h.huespedActual||'Sin huésped')}</option>`;
+      });
+      if (!habOcupadas.length) {
+        sel.innerHTML = '<option value="">No hay habitaciones ocupadas</option>';
+      }
+    } catch(e) {}
+    $('abrirNombreCliente').value = '';
+  }
 }
 window.onTipoClienteChange = onTipoClienteChange;
+
+function onHabSelectChange() {
+  var sel = $('abrirHabitacion');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.huesped) {
+    $('abrirNombreCliente').value = opt.dataset.huesped;
+  } else {
+    $('abrirNombreCliente').value = '';
+  }
+}
+window.onHabSelectChange = onHabSelectChange;
 
 async function confirmarAbrirMesa() {
   if (!mesaAbierta) return;
@@ -2489,16 +2548,14 @@ let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecTarifas','tabRecConsumos','tabRecConfig'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', tarifas:'tabRecTarifas', consumos:'tabRecConsumos', config:'tabRecConfig' };
+  ['tabRecHabitaciones','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos' };
   $(map[t]).classList.remove('hidden');
-  if (t === 'habitaciones') cargarHabitaciones();
-  if (t === 'reservas') { cargarTarifas(); cargarReservasActivas(); poblarSelectHabReserva(); }
+  if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
+  if (t === 'reservas') { cargarTarifas(); cargarReservasActivas(); cargarPreReservas(); poblarSelectHabReserva(); }
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
-  if (t === 'tarifas') cargarTarifas();
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
-  if (t === 'config') cargarConfigHotel();
 }
 window.tabRecepcion = tabRecepcion;
 
@@ -2562,6 +2619,11 @@ function verDetalleHab(id) {
   var h = habitacionesCache.find(x => x.id === id);
   if (!h) return;
   var est = (h.estado||'LIBRE').toUpperCase();
+  // Si está libre → abrir flujo de pre-reserva
+  if (est === 'LIBRE') {
+    abrirPreReservaDesdeHab(h);
+    return;
+  }
   var info = `<div style="padding:20px;">
     <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">Hab. ${esc(h.numero)}</div>
     <p style="color:var(--muted);margin-bottom:4px;">Tipo: ${esc(h.tipo)} | Cap: ${h.capacidadMax||2}</p>
@@ -2572,6 +2634,25 @@ function verDetalleHab(id) {
   confirmarAccion('Detalle Habitación', info, 'Cerrar', ()=>{});
 }
 window.verDetalleHab = verDetalleHab;
+
+function abrirPreReservaDesdeHab(hab) {
+  // Switch to reservas tab and pre-fill the room
+  document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
+  var btns = document.querySelectorAll('#panelRecepcion .tab');
+  btns[1].classList.add('active'); // Reservas tab
+  ['tabRecHabitaciones','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
+  $('tabRecReservas').classList.remove('hidden');
+  cargarTarifas(); cargarReservasActivas(); cargarPreReservas(); poblarSelectHabReserva().then(() => {
+    // Pre-select the room
+    var sel = $('resHabitacion');
+    for (var i=0; i<sel.options.length; i++) {
+      if (sel.options[i].value === hab.id) { sel.selectedIndex = i; break; }
+    }
+    calcularTotalReserva();
+  });
+  showToast('Completá los datos para pre-reservar Hab. '+hab.numero,'info');
+}
+window.abrirPreReservaDesdeHab = abrirPreReservaDesdeHab;
 
 async function agregarHabitacion() {
   var nro = $('habNro').value.trim();
@@ -2793,6 +2874,10 @@ async function crearReserva() {
   var adultos = parseInt($('resAdultos').value)||1;
   var menores = parseInt($('resMenores').value)||0;
 
+  // Determinar si es PRE-RESERVA o CONFIRMADA según seña
+  var tieneSeña = sena > 0 && medioPagoSena;
+  var estadoReserva = tieneSeña ? 'CONFIRMADA' : 'PRE_RESERVA';
+
   // Calc pricing
   var tarifa = tarifasCache.find(t => t.tipo === tipoHab && t.pension === pension);
   var precioNoche = tarifa ? (moneda === 'USD' ? (tarifa.precioUSD||0) : (tarifa.precioARS||0)) : 0;
@@ -2807,14 +2892,16 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
-      estado: 'CONFIRMADA',
+      estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
       fechaReserva: serverTimestamp(),
       usuario: currentUser.usuario
     };
     await addDoc(collection(db,'reservas'), reservaData);
-    // Marcar habitación como reservada
-    await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
+    // Solo marcar habitación como reservada si tiene seña (CONFIRMADA)
+    if (tieneSeña) {
+      await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
+    }
     // Guardar huésped si no existe
     if (dni) {
       var huesExiste = await getDocs(query(collection(db,'huespedes'), where('dni','==',dni)));
@@ -2822,16 +2909,74 @@ async function crearReserva() {
         await addDoc(collection(db,'huespedes'), { nombre: huesped.split(' ')[0], apellido: huesped.split(' ').slice(1).join(' '), dni, telefono:tel, email, localidad:'', notas:'', ultimaVisita:serverTimestamp() });
       }
     }
-    showToast('Reserva creada — Hab. '+habNro,'success');
+    var msg = tieneSeña ? 'Reserva CONFIRMADA — Hab. '+habNro : 'PRE-RESERVA creada — Hab. '+habNro+' (pendiente seña)';
+    showToast(msg, tieneSeña ? 'success' : 'warning');
     // Reset form
     $('resHuesped').value=''; $('resDni').value=''; $('resTelefono').value=''; $('resEmail').value='';
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
     $('resDescuento').value='0'; $('resumenReserva').style.display='none';
     await poblarSelectHabReserva();
     await cargarReservasActivas();
+    await cargarPreReservas();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.crearReserva = crearReserva;
+
+// Pre-reservas list
+async function cargarPreReservas() {
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','PRE_RESERVA')));
+    var preReservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var cont = $('listaPreReservas');
+    if (!preReservas.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay pre-reservas pendientes</p>'; return; }
+    cont.innerHTML = preReservas.map(r => `<div class="reserva-card">
+      <div class="reserva-header">
+        <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''}</div>
+        <span class="reserva-estado" style="background:rgba(245,183,49,0.2);color:var(--gold);">PRE-RESERVA</span>
+      </div>
+      <div class="reserva-info">
+        <span>Hab. ${esc(r.habitacionNro)} (${esc(r.tipoHab)})</span>
+        <span>In: ${r.fechaIn} → Out: ${r.fechaOut}</span>
+        <span>${r.noches} noches</span>
+        <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-green btn-xs" onclick="confirmarPreReserva('${r.id}','${r.habitacionId}')">Confirmar Seña</button>
+        <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
+      </div>
+    </div>`).join('');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+async function confirmarPreReserva(resId, habId) {
+  var cuerpo = `<div style="padding:20px;">
+    <p style="margin-bottom:16px;">Para confirmar la reserva, registrá la seña recibida:</p>
+    <div class="form-row">
+      <div class="form-group"><label>Monto Seña *</label><input type="number" id="confirmarSenaMonto" step="0.01" min="1" placeholder="$"></div>
+      <div class="form-group"><label>Medio de Pago *</label>
+        <select id="confirmarSenaMedio">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+          <option value="TARJETA">Tarjeta</option>
+        </select></div>
+    </div>
+  </div>`;
+  confirmarAccion('Confirmar Seña', cuerpo, 'Confirmar Reserva', async (ok) => {
+    if (!ok) return;
+    var monto = parseFloat($('confirmarSenaMonto')?.value)||0;
+    var medio = $('confirmarSenaMedio')?.value||'EFECTIVO';
+    if (monto <= 0) { showToast('Ingresá el monto de la seña','warning'); return; }
+    try {
+      await updateDoc(doc(db,'reservas',resId), { estado:'CONFIRMADA', sena:monto, medioPagoSena:medio });
+      await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
+      showToast('Reserva CONFIRMADA con seña','success');
+      await cargarPreReservas();
+      await cargarReservasActivas();
+      await cargarHabitaciones();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.confirmarPreReserva = confirmarPreReserva;
 
 async function cargarReservasActivas() {
   try {
@@ -3033,6 +3178,113 @@ async function cargarConsumosHab() {
 }
 window.cargarConsumosHab = cargarConsumosHab;
 
+// ── CALENDARIO DE HABITACIONES ──
+let calendarioInicio = new Date();
+calendarioInicio.setHours(0,0,0,0);
+
+function moverCalendario(dias) {
+  calendarioInicio = new Date(calendarioInicio.getTime() + dias*86400000);
+  $('calendarioFechaInicio').value = calendarioInicio.toISOString().split('T')[0];
+  renderCalendarioHab();
+}
+window.moverCalendario = moverCalendario;
+
+async function renderCalendarioHab() {
+  var fechaInput = $('calendarioFechaInicio');
+  if (fechaInput && fechaInput.value) {
+    calendarioInicio = new Date(fechaInput.value+'T00:00:00');
+  } else if (fechaInput) {
+    fechaInput.value = calendarioInicio.toISOString().split('T')[0];
+  }
+
+  // Load reservations for calendar range
+  var allRes = [];
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','in',['CONFIRMADA','CHECKIN','PRE_RESERVA'])));
+    allRes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+
+  var dias = 14; // Show 14 days
+  var fechas = [];
+  for (var i=0; i<dias; i++) {
+    var d = new Date(calendarioInicio.getTime() + i*86400000);
+    fechas.push(d);
+  }
+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;min-width:'+(120+dias*60)+'px;">';
+  html += '<thead><tr><th style="padding:6px 8px;border:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:1;">Hab.</th>';
+  fechas.forEach(f => {
+    var dow = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][f.getDay()];
+    var isWeekend = f.getDay()===0||f.getDay()===6;
+    html += `<th style="padding:4px 2px;border:1px solid var(--border);min-width:56px;text-align:center;${isWeekend?'background:rgba(139,92,246,0.05);':''}">${dow}<br>${f.getDate()}/${f.getMonth()+1}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  habitacionesCache.forEach(hab => {
+    html += `<tr><td style="padding:6px 8px;border:1px solid var(--border);font-weight:600;position:sticky;left:0;background:var(--surface);z-index:1;" data-hab-id="${hab.id}" data-hab-nro="${hab.numero}">${hab.numero}<br><span style="font-weight:400;color:var(--muted);">${hab.tipo}</span></td>`;
+    fechas.forEach(f => {
+      var fStr = f.toISOString().split('T')[0];
+      // Check if any reservation covers this date for this room
+      var res = allRes.find(r => r.habitacionNro === hab.numero && r.fechaIn <= fStr && r.fechaOut > fStr);
+      var bgColor = '';
+      var content = '';
+      var draggable = '';
+      if (res) {
+        if (res.estado === 'CHECKIN') { bgColor = 'rgba(232,69,60,0.2)'; content = esc(res.huesped.split(' ')[0]); }
+        else if (res.estado === 'CONFIRMADA') { bgColor = 'rgba(245,183,49,0.2)'; content = esc(res.huesped.split(' ')[0]); }
+        else { bgColor = 'rgba(139,92,246,0.15)'; content = '(pre)'; }
+        draggable = ` draggable="true" ondragstart="dragReserva(event,'${res.id}','${hab.numero}')"`;
+      }
+      html += `<td style="padding:2px 4px;border:1px solid var(--border);text-align:center;background:${bgColor};cursor:${res?'grab':'default'};"${draggable} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  $('calendarioHab').innerHTML = html;
+}
+window.renderCalendarioHab = renderCalendarioHab;
+
+var dragReservaId = '';
+var dragDesdeHab = '';
+function dragReserva(ev, resId, habNro) {
+  dragReservaId = resId;
+  dragDesdeHab = habNro;
+  ev.dataTransfer.setData('text/plain', resId);
+}
+window.dragReserva = dragReserva;
+
+function dropReserva(ev, habId, habNro) {
+  ev.preventDefault();
+  if (!dragReservaId || habNro === dragDesdeHab) return;
+  var resId = dragReservaId;
+  confirmarAccion('Cambio de Habitación', `<div style="padding:20px;">
+    <p>¿Estás seguro de mover la reserva de <strong>Hab. ${esc(dragDesdeHab)}</strong> a <strong>Hab. ${esc(habNro)}</strong>?</p>
+    <p style="color:var(--muted);font-size:0.85rem;margin-top:8px;">Se actualizará la habitación asignada en la reserva.</p>
+  </div>`, 'Confirmar Cambio', async (ok) => {
+    if (!ok) { dragReservaId=''; dragDesdeHab=''; return; }
+    try {
+      // Find old room and new room
+      var oldHab = habitacionesCache.find(h => h.numero === dragDesdeHab);
+      var newHab = habitacionesCache.find(h => h.id === habId);
+      if (!newHab) { showToast('Habitación destino no encontrada','error'); return; }
+      // Get reservation data
+      var resSnap = await getDoc(doc(db,'reservas',resId));
+      var resData = resSnap.data();
+      // Update reservation
+      await updateDoc(doc(db,'reservas',resId), { habitacionId:habId, habitacionNro:habNro, tipoHab:newHab.tipo });
+      // Update room states
+      if (oldHab) await updateDoc(doc(db,'habitaciones',oldHab.id), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+      var newEstado = resData.estado === 'CHECKIN' ? 'OCUPADA' : 'RESERVADA';
+      await updateDoc(doc(db,'habitaciones',habId), { estado:newEstado, huespedActual:resData.huesped||'', reservaId:resId });
+      showToast('Reserva movida a Hab. '+habNro,'success');
+      await cargarHabitaciones();
+      await renderCalendarioHab();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+    dragReservaId=''; dragDesdeHab='';
+  });
+}
+window.dropReserva = dropReserva;
+
 // ── CONFIG HOTEL ──
 async function cargarConfigHotel() {
   try {
@@ -3062,6 +3314,12 @@ window.guardarConfigHotel = guardarConfigHotel;
 async function registrarConsumoHabitacion(mesa, items, total) {
   var habNro = mesa.nroHabitacion;
   if (!habNro) return;
+  // Validar que la habitación esté OCUPADA
+  var habCheck = habitacionesCache.find(h => h.numero === habNro);
+  if (habCheck && habCheck.estado !== 'OCUPADA') {
+    showToast('No se puede cargar consumo: Hab. '+habNro+' no está ocupada','warning');
+    return;
+  }
   // Buscar reserva activa (CHECKIN) para esa habitación
   var habDoc = habitacionesCache.find(h => h.numero === habNro) || null;
   var reservaId = '';
