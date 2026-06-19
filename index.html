@@ -94,19 +94,19 @@
       cursor:pointer; transition:all .2s; position:relative;
     }
     .hab-card:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
-    .hab-card.hab-libre { border-color:rgba(46,204,113,0.4); }
-    .hab-card.hab-reservada { border-color:rgba(245,183,49,0.5); }
-    .hab-card.hab-ocupada { border-color:rgba(232,69,60,0.5); }
+    .hab-card.hab-libre { border-color:rgba(200,200,200,0.6); background:rgba(255,255,255,0.05); }
+    .hab-card.hab-reservada { border-color:rgba(46,204,113,0.6); background:rgba(46,204,113,0.05); }
+    .hab-card.hab-ocupada { border-color:rgba(232,69,60,0.6); background:rgba(232,69,60,0.05); }
+    .hab-card.hab-prereserva { border-color:rgba(245,183,49,0.6); background:rgba(245,183,49,0.05); }
     .hab-card.hab-mantenimiento { border-color:rgba(139,92,246,0.5); }
     .hab-nro { font-weight:700; font-size:1.2rem; margin-bottom:4px; }
     .hab-tipo { font-size:0.72rem; color:var(--muted); margin-bottom:8px; }
     .hab-estado { font-size:0.72rem; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:20px; display:inline-block; }
-    .hest-libre { background:rgba(46,204,113,0.15); color:var(--green); }
-    .hest-reservada { background:rgba(245,183,49,0.15); color:var(--gold); }
+    .hest-libre { background:rgba(200,200,200,0.15); color:#999; }
+    .hest-reservada { background:rgba(46,204,113,0.15); color:var(--green); }
     .hest-ocupada { background:rgba(232,69,60,0.15); color:var(--red); }
     .hest-prereserva { background:rgba(245,183,49,0.15); color:var(--gold); }
     .hest-mantenimiento { background:rgba(139,92,246,0.15); color:var(--purple); }
-    .hab-prereserva { border-left:4px solid var(--gold); }
     .hab-huesped { font-size:0.75rem; color:var(--muted); margin-top:6px; }
 
     /* ── RESERVA CARDS ── */
