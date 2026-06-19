@@ -767,17 +767,12 @@
           <strong>Importante:</strong> Sin seña confirmada la reserva queda como PRE-RESERVA (no se asigna habitación). Para confirmar la reserva debe registrarse la seña.
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Huésped (Nombre Completo) *</label><input type="text" id="resHuesped"></div>
-          <div class="form-group"><label>DNI *</label><input type="text" id="resDni"></div>
+          <div class="form-group"><label>Apellido *</label><input type="text" id="resApellido"></div>
+          <div class="form-group"><label>Nombre *</label><input type="text" id="resNombre"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
-          <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Teléfono</label><input type="text" id="resTelefono"></div>
           <div class="form-group"><label>Nacionalidad</label>
-            <select id="resNacionalidad">
+            <select id="resNacionalidad" onchange="toggleDocReserva()">
               <option value="AR">Argentina</option>
               <option value="BR">Brasil</option>
               <option value="CL">Chile</option>
@@ -790,9 +785,15 @@
               <option value="EU">Europa</option>
               <option value="OTRO">Otro</option>
             </select></div>
+          <div class="form-group" id="resGrupoDni"><label>DNI *</label><input type="text" id="resDni"></div>
+          <div class="form-group hidden" id="resGrupoPasaporte"><label>Pasaporte / Cédula *</label><input type="text" id="resPasaporte"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>N° Pasaporte (extranjeros)</label><input type="text" id="resPasaporte" placeholder="Solo si es extranjero"></div>
+          <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
+          <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Teléfono</label><input type="text" id="resTelefono"></div>
         </div>
         <div style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -836,7 +837,7 @@
               <option value="SIMPLE">Cama Simple</option>
               <option value="2_SIMPLES">2 Camas Simples</option>
             </select></div>
-          <div class="form-group"><label>Seña/Reserva $ *</label><input type="number" id="resSena" value="0" step="0.01" onchange="calcularTotalReserva()"></div>
+          <div class="form-group"><label>Seña/Reserva $ *</label><input type="number" id="resSena" value="0" step="0.01" onchange="calcularTotalReserva();toggleMedioPagoSena()"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Medio Pago Seña *</label>
@@ -1475,45 +1476,61 @@ function renderMesas() {
 window.renderMesas = renderMesas;
 
 // Abrir modal para nueva comanda
-function abrirMesaModal(mesaId) {
+async function abrirMesaModal(mesaId) {
   mesaAbierta = mesasCache.find(m => m.id === mesaId);
   $('abrirMesaNombre').textContent = mesaAbierta?.nombre || '';
-  onTipoClienteChange();
+  var tipoSel = $('abrirTipoCliente');
+  tipoSel.value = 'EPECUEN_MAP';
+  tipoSel.querySelectorAll('option').forEach(o => o.disabled = false);
+  $('abrirCamposHuesped').style.display = 'block';
+  $('abrirNombreCliente').value = '';
+  $('abrirComensales').value = '1';
+  // Load occupied rooms with pension data from reservas
+  try {
+    var snap = await getDocs(collection(db,'habitaciones'));
+    var habs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var habOcupadas = habs.filter(h => h.estado === 'OCUPADA');
+    var resSnap = await getDocs(collection(db,'reservas'));
+    var reservasMap = {};
+    resSnap.docs.forEach(d => { reservasMap[d.id] = d.data(); });
+    var sel = $('abrirHabitacion');
+    sel.innerHTML = '<option value="">Seleccionar habitación...</option>';
+    habOcupadas.forEach(h => {
+      var pension = (h.reservaId && reservasMap[h.reservaId]) ? (reservasMap[h.reservaId].pension || '') : '';
+      sel.innerHTML += `<option value="${esc(h.numero)}" data-huesped="${esc(h.huespedActual||'')}" data-pension="${esc(pension)}">${h.numero} — ${esc(h.huespedActual||'Sin huésped')}</option>`;
+    });
+    if (!habOcupadas.length) { sel.innerHTML = '<option value="">No hay habitaciones ocupadas</option>'; }
+  } catch(e) {}
   mostrarModal('modalAbrirMesa');
 }
 window.abrirMesaModal = abrirMesaModal;
 
-async function onTipoClienteChange() {
+function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
   var mostrar = tipo !== 'EXTERNO';
   $('abrirCamposHuesped').style.display = mostrar ? 'block' : 'none';
-  if (mostrar) {
-    // Populate habitación select with OCCUPIED rooms + guest names
-    try {
-      var snap = await getDocs(collection(db,'habitaciones'));
-      var habs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      var habOcupadas = habs.filter(h => h.estado === 'OCUPADA');
-      var sel = $('abrirHabitacion');
-      sel.innerHTML = '<option value="">Seleccionar habitación...</option>';
-      habOcupadas.forEach(h => {
-        sel.innerHTML += `<option value="${esc(h.numero)}" data-huesped="${esc(h.huespedActual||'')}">${h.numero} — ${esc(h.huespedActual||'Sin huésped')}</option>`;
-      });
-      if (!habOcupadas.length) {
-        sel.innerHTML = '<option value="">No hay habitaciones ocupadas</option>';
-      }
-    } catch(e) {}
-    $('abrirNombreCliente').value = '';
-  }
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
 function onHabSelectChange() {
   var sel = $('abrirHabitacion');
   var opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.huesped) {
-    $('abrirNombreCliente').value = opt.dataset.huesped;
-  } else {
-    $('abrirNombreCliente').value = '';
+  $('abrirNombreCliente').value = (opt && opt.dataset.huesped) ? opt.dataset.huesped : '';
+  // Auto-set tipo de consumo based on room's contracted pension
+  var pension = (opt && opt.value) ? (opt.dataset.pension || '') : '';
+  var tipoSel = $('abrirTipoCliente');
+  var mapOpt = tipoSel.querySelector('option[value="EPECUEN_MAP"]');
+  var sinMapOpt = tipoSel.querySelector('option[value="EPECUEN_SIN_MAP"]');
+  if (mapOpt) mapOpt.disabled = false;
+  if (sinMapOpt) sinMapOpt.disabled = false;
+  if (!pension) return;
+  var currentTipo = tipoSel.value;
+  if (pension === 'MAP' || pension === 'COMPLETA') {
+    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_MAP';
+    if (sinMapOpt) sinMapOpt.disabled = true;
+  } else if (pension === 'SIN_PENSION') {
+    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
+    if (mapOpt) mapOpt.disabled = true;
   }
 }
 window.onHabSelectChange = onHabSelectChange;
@@ -3101,33 +3118,73 @@ window.calcularTotalReserva = calcularTotalReserva;
   if (el) el.addEventListener('change', calcularTotalReserva);
 });
 
+var inputStyle = 'padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;';
 function agregarAcompanante() {
   var cont = $('listaAcompanantes');
-  var idx = cont.querySelectorAll('.acomp-item').length + 1;
   var div = document.createElement('div');
   div.className = 'acomp-item';
-  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;';
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;';
   div.innerHTML = `
-    <input class="acomp-nombre" type="text" placeholder="Nombre completo" style="flex:2;min-width:120px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
-    <input class="acomp-fechanac" type="date" style="flex:1;min-width:110px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
-    <input class="acomp-email" type="email" placeholder="Email" style="flex:1.5;min-width:120px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
-    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;white-space:nowrap;"><input class="acomp-menor" type="checkbox" style="width:16px;height:16px;cursor:pointer;"> Menor</label>
+    <input class="acomp-apellido" type="text" placeholder="Apellido" style="flex:1;min-width:90px;${inputStyle}">
+    <input class="acomp-nombre" type="text" placeholder="Nombre" style="flex:1;min-width:90px;${inputStyle}">
+    <select class="acomp-nac" onchange="toggleDocAcomp(this)" style="flex:0.8;min-width:80px;${inputStyle}">
+      <option value="AR">AR</option><option value="BR">BR</option><option value="CL">CL</option><option value="UY">UY</option>
+      <option value="PY">PY</option><option value="BO">BO</option><option value="PE">PE</option><option value="CO">CO</option>
+      <option value="US">US</option><option value="EU">EU</option><option value="OTRO">Otro</option>
+    </select>
+    <input class="acomp-dni" type="text" placeholder="DNI" style="flex:1;min-width:80px;${inputStyle}">
+    <input class="acomp-pasaporte hidden" type="text" placeholder="Pasaporte/Cédula" style="flex:1;min-width:80px;${inputStyle}">
+    <input class="acomp-fechanac" type="date" style="flex:1;min-width:110px;${inputStyle}">
     <button type="button" class="btn btn-red btn-xs" onclick="this.parentElement.remove()">X</button>`;
   cont.appendChild(div);
 }
 window.agregarAcompanante = agregarAcompanante;
 
+function toggleDocReserva() {
+  var nac = $('resNacionalidad').value;
+  var esAR = nac === 'AR';
+  $('resGrupoDni').classList.toggle('hidden', !esAR);
+  $('resGrupoPasaporte').classList.toggle('hidden', esAR);
+  if (esAR) { $('resPasaporte').value=''; } else { $('resDni').value=''; }
+}
+window.toggleDocReserva = toggleDocReserva;
+
+function toggleMedioPagoSena() {
+  var sena = parseFloat($('resSena').value)||0;
+  var sel = $('resMedioPagoSena');
+  var sinSenaOpt = sel.querySelector('option[value=""]');
+  if (sena > 0) {
+    if (sinSenaOpt) sinSenaOpt.disabled = true;
+    if (!sel.value) sel.value = 'EFECTIVO';
+  } else {
+    if (sinSenaOpt) sinSenaOpt.disabled = false;
+  }
+}
+window.toggleMedioPagoSena = toggleMedioPagoSena;
+
+function toggleDocAcomp(sel) {
+  var item = sel.closest('.acomp-item');
+  var esAR = sel.value === 'AR';
+  item.querySelector('.acomp-dni').classList.toggle('hidden', !esAR);
+  item.querySelector('.acomp-pasaporte').classList.toggle('hidden', esAR);
+  if (esAR) { item.querySelector('.acomp-pasaporte').value=''; } else { item.querySelector('.acomp-dni').value=''; }
+}
+window.toggleDocAcomp = toggleDocAcomp;
+
 async function crearReserva() {
-  var huesped = $('resHuesped').value.trim();
-  var dni = $('resDni').value.trim();
+  var resApellido = $('resApellido').value.trim();
+  var resNombre = $('resNombre').value.trim();
+  var huesped = (resApellido + ' ' + resNombre).trim();
+  var nacionalidad = $('resNacionalidad').value;
+  var esAR = nacionalidad === 'AR';
+  var dni = esAR ? $('resDni').value.trim() : '';
+  var pasaporte = !esAR ? $('resPasaporte').value.trim() : '';
   var tel = $('resTelefono').value.trim();
   var email = $('resEmail').value.trim();
   var fechaNac = $('resFechaNac').value;
-  var nacionalidad = $('resNacionalidad').value;
-  var pasaporte = $('resPasaporte').value.trim();
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
-  if (!huesped) { showToast('Ingresá el nombre del huésped','warning'); return; }
+  if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
   if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
@@ -3155,11 +3212,13 @@ async function crearReserva() {
   var acompanantes = [];
   var acompItems = document.querySelectorAll('.acomp-item');
   acompItems.forEach(item => {
+    var apellido = item.querySelector('.acomp-apellido').value.trim();
     var nombre = item.querySelector('.acomp-nombre').value.trim();
+    var nacA = item.querySelector('.acomp-nac').value;
+    var dniA = item.querySelector('.acomp-dni').value.trim();
+    var pasA = item.querySelector('.acomp-pasaporte').value.trim();
     var fechaN = item.querySelector('.acomp-fechanac').value;
-    var esmenor = item.querySelector('.acomp-menor').checked;
-    var emailA = item.querySelector('.acomp-email').value.trim();
-    if (nombre) acompanantes.push({ nombre, fechaNac:fechaN, esMenor:esmenor, email:emailA });
+    if (apellido || nombre) acompanantes.push({ apellido, nombre, nacionalidad:nacA, dni:nacA==='AR'?dniA:'', pasaporte:nacA!=='AR'?pasA:'', fechaNac:fechaN });
   });
 
   // Determinar si es PRE-RESERVA o CONFIRMADA según seña
@@ -3168,7 +3227,8 @@ async function crearReserva() {
 
   // Validar campos obligatorios para reserva confirmada
   if (tieneSeña) {
-    if (!dni) { showToast('DNI del huésped es obligatorio para confirmar reserva','warning'); return; }
+    if (esAR && !dni) { showToast('DNI del huésped es obligatorio para confirmar reserva','warning'); return; }
+    if (!esAR && !pasaporte) { showToast('Pasaporte/Cédula del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!email) { showToast('Email del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!fechaNac) { showToast('Fecha de nacimiento es obligatoria para confirmar reserva','warning'); return; }
   }
@@ -3205,19 +3265,28 @@ async function crearReserva() {
       await updateDoc(doc(db,'habitaciones',habId), { estado:'PRE_RESERVA' });
     }
     // Guardar huésped si no existe
-    if (dni) {
-      var huesExiste = await getDocs(query(collection(db,'huespedes'), where('dni','==',dni)));
+    var docId = esAR ? dni : pasaporte;
+    if (docId) {
+      var campo = esAR ? 'dni' : 'pasaporte';
+      var huesExiste = await getDocs(query(collection(db,'huespedes'), where(campo,'==',docId)));
       if (huesExiste.empty) {
-        await addDoc(collection(db,'huespedes'), { nombre: huesped.split(' ')[0], apellido: huesped.split(' ').slice(1).join(' '), dni, fechaNac, telefono:tel, email, localidad:'', nacionalidad, pasaporte, notas:'', ultimaVisita:serverTimestamp() });
+        await addDoc(collection(db,'huespedes'), { nombre: resNombre, apellido: resApellido, dni: dni||'', fechaNac: fechaNac||'', telefono:tel, email: email||'', localidad:'', nacionalidad: nacionalidad||'AR', pasaporte: pasaporte||'', notas:'', ultimaVisita:serverTimestamp() });
       } else {
-        await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), { fechaNac:fechaNac||huesExiste.docs[0].data().fechaNac, email:email||huesExiste.docs[0].data().email, nacionalidad:nacionalidad||huesExiste.docs[0].data().nacionalidad, pasaporte:pasaporte||huesExiste.docs[0].data().pasaporte, ultimaVisita:serverTimestamp() });
+        var updateData = { ultimaVisita:serverTimestamp() };
+        if (fechaNac) updateData.fechaNac = fechaNac;
+        if (email) updateData.email = email;
+        if (nacionalidad) updateData.nacionalidad = nacionalidad;
+        if (pasaporte) updateData.pasaporte = pasaporte;
+        if (dni) updateData.dni = dni;
+        await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), updateData);
       }
     }
     var msg = tieneSeña ? 'Reserva CONFIRMADA — Hab. '+habNro : 'PRE-RESERVA creada — Hab. '+habNro+' (pendiente seña)';
     showToast(msg, tieneSeña ? 'success' : 'warning');
     // Reset form
-    $('resHuesped').value=''; $('resDni').value=''; $('resTelefono').value=''; $('resEmail').value='';
+    $('resApellido').value=''; $('resNombre').value=''; $('resDni').value=''; $('resTelefono').value=''; $('resEmail').value='';
     $('resFechaNac').value=''; $('resPasaporte').value=''; $('resNacionalidad').value='AR';
+    $('resGrupoDni').classList.remove('hidden'); $('resGrupoPasaporte').classList.add('hidden');
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
     $('resDescuento').value='0'; $('resFestejo').value=''; $('resPedidosEsp').value='';
     $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
