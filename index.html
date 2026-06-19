@@ -563,7 +563,7 @@
           <button class="btn btn-purple btn-sm" onclick="agregarUsuario()">Crear Usuario</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Clave</th><th>Acciones</th></tr></thead>
           <tbody id="tbodyUsuarios"></tbody>
         </table></div>
       </div>
@@ -2546,9 +2546,13 @@ async function cargarUsuariosAdmin() {
         <td><strong>${esc(u.usuario)}</strong></td>
         <td>${esc(u.nombre)}</td>
         <td><span class="badge" style="background:rgba(139,92,246,0.15);color:var(--purple);">${esc(u.rol)}</span></td>
+        <td>
+          <button class="btn btn-blue btn-xs" onclick="cambiarClaveUsuario('${d.id}','${esc(u.usuario)}')">Cambiar Clave</button>
+          <button class="btn btn-ghost btn-xs" style="margin-left:4px;" onclick="resetearClaveUsuario('${d.id}','${esc(u.usuario)}')">Resetear</button>
+        </td>
         <td><button class="btn btn-red btn-xs" onclick="eliminarUsuario('${d.id}','${esc(u.usuario)}')">Eliminar</button></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Sin usuarios</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin usuarios</td></tr>';
   } catch(e) {}
 }
 
@@ -2581,6 +2585,34 @@ async function eliminarUsuario(id, usu) {
   });
 }
 window.eliminarUsuario = eliminarUsuario;
+
+function cambiarClaveUsuario(id, usu) {
+  confirmarAccion('Cambiar Contraseña', `<div style="padding:16px;"><p style="margin-bottom:12px;">Nueva contraseña para <strong>${esc(usu)}</strong>:</p><input type="password" id="inputNuevaClave" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;" placeholder="Nueva contraseña"><input type="password" id="inputConfirmarClave" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:1rem;margin-top:8px;" placeholder="Confirmar contraseña"></div>`, 'Guardar', async (ok) => {
+    if (!ok) return;
+    var nueva = $('inputNuevaClave').value.trim();
+    var confirmar = $('inputConfirmarClave').value.trim();
+    if (!nueva) { showToast('Ingresá la nueva contraseña','warning'); return; }
+    if (nueva.length < 4) { showToast('La contraseña debe tener al menos 4 caracteres','warning'); return; }
+    if (nueva !== confirmar) { showToast('Las contraseñas no coinciden','warning'); return; }
+    try {
+      await updateDoc(doc(db,'usuarios',id), { contrasena: nueva });
+      showToast('Contraseña actualizada para ' + usu,'success');
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cambiarClaveUsuario = cambiarClaveUsuario;
+
+function resetearClaveUsuario(id, usu) {
+  var claveDefault = usu + '123';
+  confirmarAccion('Resetear Contraseña', `<p style="padding:16px;">¿Resetear la contraseña de <strong>${esc(usu)}</strong> a <code style="background:var(--card);padding:4px 8px;border-radius:4px;">${esc(claveDefault)}</code>?</p>`, 'Resetear', async (ok) => {
+    if (!ok) return;
+    try {
+      await updateDoc(doc(db,'usuarios',id), { contrasena: claveDefault });
+      showToast('Contraseña reseteada a ' + claveDefault,'success');
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.resetearClaveUsuario = resetearClaveUsuario;
 
 // ══════════════════════════════════════
 // ADMIN — CIERRES DEL DÍA
