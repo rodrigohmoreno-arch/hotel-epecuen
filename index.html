@@ -104,7 +104,9 @@
     .hest-libre { background:rgba(46,204,113,0.15); color:var(--green); }
     .hest-reservada { background:rgba(245,183,49,0.15); color:var(--gold); }
     .hest-ocupada { background:rgba(232,69,60,0.15); color:var(--red); }
+    .hest-prereserva { background:rgba(245,183,49,0.15); color:var(--gold); }
     .hest-mantenimiento { background:rgba(139,92,246,0.15); color:var(--purple); }
+    .hab-prereserva { border-left:4px solid var(--gold); }
     .hab-huesped { font-size:0.75rem; color:var(--muted); margin-top:6px; }
 
     /* ── RESERVA CARDS ── */
@@ -2570,13 +2572,14 @@ async function cargarHabitaciones() {
 }
 
 function renderHabitaciones() {
-  var libre=0, reservada=0, ocupada=0, mant=0;
+  var libre=0, reservada=0, ocupada=0, mant=0, preRes=0;
   habitacionesCache.forEach(h => {
     var e = (h.estado||'LIBRE').toUpperCase();
-    if (e==='LIBRE') libre++; else if (e==='RESERVADA') reservada++; else if (e==='OCUPADA') ocupada++; else mant++;
+    if (e==='LIBRE') libre++; else if (e==='RESERVADA') reservada++; else if (e==='OCUPADA') ocupada++; else if (e==='PRE_RESERVA') preRes++; else mant++;
   });
   $('resumenHab').innerHTML = [
     ['Libres', libre, 'var(--green)'],
+    ['Pre-Reserva', preRes, 'var(--gold)'],
     ['Reservadas', reservada, 'var(--gold)'],
     ['Ocupadas', ocupada, 'var(--red)'],
     ['Mantenimiento', mant, 'var(--purple)'],
@@ -2586,8 +2589,8 @@ function renderHabitaciones() {
   // Grid visual
   $('habGrid').innerHTML = habitacionesCache.map(h => {
     var est = (h.estado||'LIBRE').toUpperCase();
-    var cls = est==='LIBRE'?'hab-libre':est==='RESERVADA'?'hab-reservada':est==='OCUPADA'?'hab-ocupada':'hab-mantenimiento';
-    var estCls = est==='LIBRE'?'hest-libre':est==='RESERVADA'?'hest-reservada':est==='OCUPADA'?'hest-ocupada':'hest-mantenimiento';
+    var cls = est==='LIBRE'?'hab-libre':est==='RESERVADA'?'hab-reservada':est==='OCUPADA'?'hab-ocupada':est==='PRE_RESERVA'?'hab-prereserva':'hab-mantenimiento';
+    var estCls = est==='LIBRE'?'hest-libre':est==='RESERVADA'?'hest-reservada':est==='OCUPADA'?'hest-ocupada':est==='PRE_RESERVA'?'hest-prereserva':'hest-mantenimiento';
     return `<div class="hab-card ${cls}" onclick="verDetalleHab('${h.id}')">
       <div class="hab-nro">${esc(h.numero)}</div>
       <div class="hab-tipo">${esc(h.tipo)} — Cap. ${h.capacidadMax||2}</div>
@@ -2622,6 +2625,17 @@ function verDetalleHab(id) {
   // Si está libre → abrir flujo de pre-reserva
   if (est === 'LIBRE') {
     abrirPreReservaDesdeHab(h);
+    return;
+  }
+  // Si está en PRE_RESERVA → mostrar info y opción de confirmar seña
+  if (est === 'PRE_RESERVA') {
+    var info = `<div style="padding:20px;">
+      <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">Hab. ${esc(h.numero)} — PRE-RESERVA</div>
+      <p style="color:var(--gold);margin-bottom:8px;">Pendiente de seña. No se pueden cargar consumos.</p>
+      <p style="color:var(--muted);">Tipo: ${esc(h.tipo)} | Cap: ${h.capacidadMax||2}</p>
+      <p style="margin-top:12px;font-size:0.85rem;">Ir a pestaña <strong>Reservas</strong> para confirmar la seña.</p>
+    </div>`;
+    confirmarAccion('Habitación en Pre-Reserva', info, 'Cerrar', ()=>{});
     return;
   }
   var info = `<div style="padding:20px;">
@@ -2895,12 +2909,17 @@ async function crearReserva() {
       estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
       fechaReserva: serverTimestamp(),
+      fechaPreReserva: !tieneSeña ? new Date().toISOString() : null,
+      vencePreReserva: !tieneSeña ? new Date(Date.now()+48*3600000).toISOString() : null,
       usuario: currentUser.usuario
     };
     await addDoc(collection(db,'reservas'), reservaData);
-    // Solo marcar habitación como reservada si tiene seña (CONFIRMADA)
+    // Marcar habitación según estado
     if (tieneSeña) {
       await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
+    } else {
+      // Pre-reserva: marcar habitación como PRE_RESERVA (no libre, no se pueden cargar consumos)
+      await updateDoc(doc(db,'habitaciones',habId), { estado:'PRE_RESERVA' });
     }
     // Guardar huésped si no existe
     if (dni) {
@@ -2927,9 +2946,23 @@ async function cargarPreReservas() {
   try {
     var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','PRE_RESERVA')));
     var preReservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    // Auto-liberar pre-reservas vencidas (>48hs)
+    var ahora = new Date().toISOString();
+    for (var pr of preReservas) {
+      if (pr.vencePreReserva && pr.vencePreReserva < ahora) {
+        await updateDoc(doc(db,'reservas',pr.id), { estado:'VENCIDA' });
+        await updateDoc(doc(db,'habitaciones',pr.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+        showToast('Pre-reserva de '+pr.huesped+' venció (48hs) — Hab. '+pr.habitacionNro+' liberada','warning');
+      }
+    }
+    // Re-filter only active pre-reservas
+    preReservas = preReservas.filter(pr => !pr.vencePreReserva || pr.vencePreReserva >= ahora);
     var cont = $('listaPreReservas');
     if (!preReservas.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay pre-reservas pendientes</p>'; return; }
-    cont.innerHTML = preReservas.map(r => `<div class="reserva-card">
+    cont.innerHTML = preReservas.map(r => {
+      var vence = r.vencePreReserva ? new Date(r.vencePreReserva) : null;
+      var horasRestantes = vence ? Math.max(0,Math.round((vence-new Date())/3600000)) : '?';
+      return `<div class="reserva-card">
       <div class="reserva-header">
         <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''}</div>
         <span class="reserva-estado" style="background:rgba(245,183,49,0.2);color:var(--gold);">PRE-RESERVA</span>
@@ -2940,36 +2973,52 @@ async function cargarPreReservas() {
         <span>${r.noches} noches</span>
         <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
+      <div style="margin-top:6px;font-size:0.78rem;color:${horasRestantes<=12?'var(--red)':'var(--muted)'};">⏱ Vence en ${horasRestantes}hs — sin seña se libera automáticamente</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-green btn-xs" onclick="confirmarPreReserva('${r.id}','${r.habitacionId}')">Confirmar Seña</button>
         <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
       </div>
-    </div>`).join('');
+    </div>`}).join('');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
 async function confirmarPreReserva(resId, habId) {
   var cuerpo = `<div style="padding:20px;">
-    <p style="margin-bottom:16px;">Para confirmar la reserva, registrá la seña recibida:</p>
+    <p style="margin-bottom:16px;">Registrá la seña recibida para confirmar la reserva:</p>
     <div class="form-row">
       <div class="form-group"><label>Monto Seña *</label><input type="number" id="confirmarSenaMonto" step="0.01" min="1" placeholder="$"></div>
       <div class="form-group"><label>Medio de Pago *</label>
         <select id="confirmarSenaMedio">
           <option value="EFECTIVO">Efectivo</option>
           <option value="TRANSFERENCIA">Transferencia</option>
-          <option value="TARJETA">Tarjeta</option>
+          <option value="DEBITO">Tarjeta Débito</option>
+          <option value="CREDITO">Tarjeta Crédito</option>
         </select></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label>N° Comprobante / ID Transacción</label><input type="text" id="confirmarSenaComprobante" placeholder="Ej: CBU, N° operación, cupón"></div>
+      <div class="form-group"><label>Fecha de Pago</label><input type="date" id="confirmarSenaFecha" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">El medio de pago y comprobante quedan registrados para conciliaciones bancarias.</p>
   </div>`;
   confirmarAccion('Confirmar Seña', cuerpo, 'Confirmar Reserva', async (ok) => {
     if (!ok) return;
     var monto = parseFloat($('confirmarSenaMonto')?.value)||0;
     var medio = $('confirmarSenaMedio')?.value||'EFECTIVO';
+    var comprobante = $('confirmarSenaComprobante')?.value?.trim()||'';
+    var fechaPago = $('confirmarSenaFecha')?.value||new Date().toISOString().split('T')[0];
     if (monto <= 0) { showToast('Ingresá el monto de la seña','warning'); return; }
     try {
-      await updateDoc(doc(db,'reservas',resId), { estado:'CONFIRMADA', sena:monto, medioPagoSena:medio });
+      await updateDoc(doc(db,'reservas',resId), {
+        estado:'CONFIRMADA',
+        sena:monto,
+        medioPagoSena:medio,
+        comprobanteSena:comprobante,
+        fechaPagoSena:fechaPago,
+        fechaConfirmacion:new Date().toISOString()
+      });
       await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
-      showToast('Reserva CONFIRMADA con seña','success');
+      showToast('Reserva CONFIRMADA con seña — lista para check-in','success');
       await cargarPreReservas();
       await cargarReservasActivas();
       await cargarHabitaciones();
@@ -3012,12 +3061,13 @@ async function cargarReservasActivas() {
 }
 
 async function cancelarReserva(resId, habId) {
-  confirmarAccion('Cancelar Reserva','<p style="padding:16px;">¿Cancelar esta reserva? La habitación volverá a LIBRE.</p>','Cancelar Reserva', async (ok) => {
+  confirmarAccion('Cancelar Reserva','<p style="padding:16px;">¿Cancelar esta reserva/pre-reserva? La habitación volverá a LIBRE.</p>','Cancelar Reserva', async (ok) => {
     if (!ok) return;
     try {
       await updateDoc(doc(db,'reservas',resId), { estado:'CANCELADA' });
       await updateDoc(doc(db,'habitaciones',habId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
       showToast('Reserva cancelada','success');
+      await cargarPreReservas();
       await cargarReservasActivas();
       await cargarHabitaciones();
     } catch(e) { showToast('Error: '+e.message,'error'); }
@@ -3314,10 +3364,15 @@ window.guardarConfigHotel = guardarConfigHotel;
 async function registrarConsumoHabitacion(mesa, items, total) {
   var habNro = mesa.nroHabitacion;
   if (!habNro) return;
-  // Validar que la habitación esté OCUPADA
+  // Validar que la habitación esté OCUPADA (no PRE_RESERVA, no LIBRE, no RESERVADA)
   var habCheck = habitacionesCache.find(h => h.numero === habNro);
+  if (!habCheck) {
+    // Si no está en cache, refrescar
+    try { var s = await getDocs(collection(db,'habitaciones')); habitacionesCache = s.docs.map(d=>({id:d.id,...d.data()})); habCheck = habitacionesCache.find(h=>h.numero===habNro); } catch(e){}
+  }
   if (habCheck && habCheck.estado !== 'OCUPADA') {
-    showToast('No se puede cargar consumo: Hab. '+habNro+' no está ocupada','warning');
+    var motivo = habCheck.estado === 'PRE_RESERVA' ? ' (está en pre-reserva, pendiente de seña)' : ' (estado: '+habCheck.estado+')';
+    showToast('No se puede cargar consumo: Hab. '+habNro+motivo,'warning');
     return;
   }
   // Buscar reserva activa (CHECKIN) para esa habitación
