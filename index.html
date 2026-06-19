@@ -616,10 +616,14 @@
               </select></div>
             <div class="form-group"><label>Capacidad Máx.</label><input type="number" id="habCapMax" value="2" min="1"></div>
           </div>
+          <div class="form-row" style="align-items:center;">
+            <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="habSepararCamas" style="width:18px;height:18px;cursor:pointer;"> ¿Se pueden separar camas?</label></div>
+          </div>
           <button class="btn btn-blue btn-sm" onclick="agregarHabitacion()">Agregar Habitación</button>
         </div>
+        <div style="margin-bottom:12px;"><button class="btn btn-sm" onclick="imprimirReporteHab()">Imprimir Reporte</button></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>N°</th><th>Nombre</th><th>Tipo</th><th>Cap.</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>N°</th><th>Nombre</th><th>Tipo</th><th>Cap.</th><th>Camas Sep.</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody id="tbodyHabitaciones"></tbody>
         </table></div>
       </div>
@@ -712,6 +716,8 @@
   <div id="panelRecepcion" class="hidden">
     <div class="tabs">
       <button class="tab active" onclick="tabRecepcion('habitaciones',this)">Habitaciones</button>
+      <button class="tab" onclick="tabRecepcion('nuevaReserva',this)">Nueva Reserva</button>
+      <button class="tab" onclick="tabRecepcion('preReservas',this)">Pre-Reservas</button>
       <button class="tab" onclick="tabRecepcion('reservas',this)">Reservas</button>
       <button class="tab" onclick="tabRecepcion('checkin',this)">Check-In/Out</button>
       <button class="tab" onclick="tabRecepcion('huespedes',this)">Huéspedes</button>
@@ -736,8 +742,8 @@
         <div id="calendarioHab" style="overflow-x:auto;"></div>
       </div>
     </div>
-    <!-- Tab Reservas -->
-    <div id="tabRecReservas" class="hidden">
+    <!-- Tab Nueva Reserva -->
+    <div id="tabRecNuevaReserva" class="hidden">
       <div class="card">
         <div class="card-title">Nueva Reserva / Pre-Reserva</div>
         <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;font-size:0.85rem;color:var(--gold);">
@@ -790,11 +796,17 @@
         <div id="resumenReserva" style="padding:14px;background:var(--card);border-radius:10px;margin-bottom:16px;display:none;"></div>
         <button class="btn btn-gold btn-sm" onclick="crearReserva()">Crear Reserva</button>
       </div>
-      <div class="card" style="margin-top:16px;">
+    </div>
+    <!-- Tab Pre-Reservas -->
+    <div id="tabRecPreReservas" class="hidden">
+      <div class="card">
         <div class="card-title">Pre-Reservas (pendientes de seña)</div>
         <div id="listaPreReservas"></div>
       </div>
-      <div class="card" style="margin-top:16px;">
+    </div>
+    <!-- Tab Reservas Confirmadas -->
+    <div id="tabRecReservas" class="hidden">
+      <div class="card">
         <div class="card-title">Reservas Confirmadas</div>
         <div id="listaReservas"></div>
       </div>
@@ -2550,11 +2562,13 @@ let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos' };
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
-  if (t === 'reservas') { cargarTarifas(); cargarReservasActivas(); cargarPreReservas(); poblarSelectHabReserva(); }
+  if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); }
+  if (t === 'preReservas') { cargarPreReservas(); }
+  if (t === 'reservas') { cargarReservasActivas(); }
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
@@ -2591,9 +2605,13 @@ function renderHabitaciones() {
     var est = (h.estado||'LIBRE').toUpperCase();
     var cls = est==='LIBRE'?'hab-libre':est==='RESERVADA'?'hab-reservada':est==='OCUPADA'?'hab-ocupada':est==='PRE_RESERVA'?'hab-prereserva':'hab-mantenimiento';
     var estCls = est==='LIBRE'?'hest-libre':est==='RESERVADA'?'hest-reservada':est==='OCUPADA'?'hest-ocupada':est==='PRE_RESERVA'?'hest-prereserva':'hest-mantenimiento';
+    var cap = h.capacidadMax||2;
+    var capIcon = cap<=1?'&#128100;':cap<=2?'&#128101;':'&#128101;+';
+    var camaIcon = h.separarCamas ? ' <span title="Camas separables" style="font-size:0.85rem;">&#128716;</span>' : '';
     return `<div class="hab-card ${cls}" onclick="verDetalleHab('${h.id}')">
       <div class="hab-nro">${esc(h.numero)}</div>
-      <div class="hab-tipo">${esc(h.tipo)} — Cap. ${h.capacidadMax||2}</div>
+      <div class="hab-tipo">${esc(h.tipo)}</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;" title="Capacidad: ${cap} personas">${capIcon} ${cap}${camaIcon}</div>
       <div class="hab-estado ${estCls}">${est}</div>
       ${h.huespedActual ? `<div class="hab-huesped">${esc(h.huespedActual)}</div>` : ''}
     </div>`;
@@ -2602,12 +2620,13 @@ function renderHabitaciones() {
   // Table
   $('tbodyHabitaciones').innerHTML = habitacionesCache.map(h => {
     var est = (h.estado||'LIBRE').toUpperCase();
-    var color = est==='LIBRE'?'var(--green)':est==='RESERVADA'?'var(--gold)':est==='OCUPADA'?'var(--red)':'var(--purple)';
+    var color = est==='LIBRE'?'#999':est==='RESERVADA'?'var(--green)':est==='OCUPADA'?'var(--red)':est==='PRE_RESERVA'?'var(--gold)':'var(--purple)';
     return `<tr>
       <td><strong>${esc(h.numero)}</strong></td>
       <td>${esc(h.nombre||'-')}</td>
       <td>${esc(h.tipo)}</td>
       <td>${h.capacidadMax||2}</td>
+      <td>${h.separarCamas?'Si':'No'}</td>
       <td><span class="badge" style="background:${color}20;color:${color};">${est}</span></td>
       <td style="display:flex;gap:6px;">
         ${est==='LIBRE'?`<button class="btn btn-purple btn-xs" onclick="cambiarEstadoHab('${h.id}','MANTENIMIENTO')">Mant.</button>`:''}
@@ -2615,7 +2634,7 @@ function renderHabitaciones() {
         ${est==='LIBRE'?`<button class="btn btn-red btn-xs" onclick="eliminarHabitacion('${h.id}')">Elim.</button>`:''}
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin habitaciones</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin habitaciones</td></tr>';
 }
 
 function verDetalleHab(id) {
@@ -2650,13 +2669,13 @@ function verDetalleHab(id) {
 window.verDetalleHab = verDetalleHab;
 
 function abrirPreReservaDesdeHab(hab) {
-  // Switch to reservas tab and pre-fill the room
+  // Switch to Nueva Reserva tab and pre-fill the room
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   var btns = document.querySelectorAll('#panelRecepcion .tab');
-  btns[1].classList.add('active'); // Reservas tab
-  ['tabRecHabitaciones','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
-  $('tabRecReservas').classList.remove('hidden');
-  cargarTarifas(); cargarReservasActivas(); cargarPreReservas(); poblarSelectHabReserva().then(() => {
+  btns[1].classList.add('active'); // Nueva Reserva tab
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
+  $('tabRecNuevaReserva').classList.remove('hidden');
+  cargarTarifas(); poblarSelectHabReserva().then(() => {
     // Pre-select the room
     var sel = $('resHabitacion');
     for (var i=0; i<sel.options.length; i++) {
@@ -2673,6 +2692,7 @@ async function agregarHabitacion() {
   var nombre = $('habNombre').value.trim();
   var tipo = $('habTipo').value;
   var cap = parseInt($('habCapMax').value) || 2;
+  var separarCamas = $('habSepararCamas').checked;
   if (!nro) { showToast('Ingresá el número de habitación','warning'); return; }
   // Verificar que no exista
   var existe = habitacionesCache.find(h => h.numero === nro);
@@ -2680,14 +2700,63 @@ async function agregarHabitacion() {
   try {
     await addDoc(collection(db,'habitaciones'), {
       numero: nro, nombre: nombre, tipo: tipo, capacidadMax: cap,
+      separarCamas: separarCamas,
       estado: 'LIBRE', huespedActual: '', reservaId: ''
     });
     showToast('Habitación '+nro+' agregada','success');
-    $('habNro').value=''; $('habNombre').value='';
+    $('habNro').value=''; $('habNombre').value=''; $('habSepararCamas').checked=false;
     await cargarHabitaciones();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.agregarHabitacion = agregarHabitacion;
+
+function imprimirReporteHab() {
+  var hoy = new Date().toLocaleDateString('es-AR');
+  var rows = habitacionesCache.map(h => {
+    var est = (h.estado||'LIBRE').toUpperCase();
+    return `<tr>
+      <td>${esc(h.numero)}</td>
+      <td>${esc(h.nombre||'-')}</td>
+      <td>${esc(h.tipo)}</td>
+      <td style="text-align:center;">${h.capacidadMax||2}</td>
+      <td style="text-align:center;">${h.separarCamas?'Si':'No'}</td>
+      <td>${est}</td>
+      <td>${h.huespedActual?esc(h.huespedActual):'-'}</td>
+    </tr>`;
+  }).join('');
+  var libre = habitacionesCache.filter(h=>(h.estado||'LIBRE')==='LIBRE').length;
+  var ocupada = habitacionesCache.filter(h=>h.estado==='OCUPADA').length;
+  var reservada = habitacionesCache.filter(h=>h.estado==='RESERVADA').length;
+  var preRes = habitacionesCache.filter(h=>h.estado==='PRE_RESERVA').length;
+  var win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Reporte Habitaciones — ${hoy}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
+    h1{font-size:18px;margin-bottom:4px;}
+    h2{font-size:14px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}
+    th{background:#f5f5f5;font-weight:700;}
+    .resumen{display:flex;gap:20px;margin-bottom:16px;font-size:13px;}
+    .resumen span{padding:4px 12px;border-radius:4px;}
+    @media print{body{padding:0;}.no-print{display:none;}}</style></head>
+    <body>
+    <h1>Hotel Epecuen — Reporte de Habitaciones</h1>
+    <h2>Fecha: ${hoy}</h2>
+    <div class="resumen">
+      <span style="background:#eee;">Total: ${habitacionesCache.length}</span>
+      <span style="background:#e8f5e9;">Libres: ${libre}</span>
+      <span style="background:#e8f5e9;">Reservadas: ${reservada}</span>
+      <span style="background:#fff3e0;">Pre-Reserva: ${preRes}</span>
+      <span style="background:#ffebee;">Ocupadas: ${ocupada}</span>
+    </div>
+    <table><thead><tr><th>N°</th><th>Nombre</th><th>Tipo</th><th>Cap.</th><th>Camas Sep.</th><th>Estado</th><th>Huésped</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <br><button class="no-print" onclick="window.print()">Imprimir</button>
+    </body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+}
+window.imprimirReporteHab = imprimirReporteHab;
 
 async function cambiarEstadoHab(id, nuevoEstado) {
   try {
