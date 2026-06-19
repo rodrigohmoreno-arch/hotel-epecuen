@@ -1476,45 +1476,61 @@ function renderMesas() {
 window.renderMesas = renderMesas;
 
 // Abrir modal para nueva comanda
-function abrirMesaModal(mesaId) {
+async function abrirMesaModal(mesaId) {
   mesaAbierta = mesasCache.find(m => m.id === mesaId);
   $('abrirMesaNombre').textContent = mesaAbierta?.nombre || '';
-  onTipoClienteChange();
+  var tipoSel = $('abrirTipoCliente');
+  tipoSel.value = 'EPECUEN_MAP';
+  tipoSel.querySelectorAll('option').forEach(o => o.disabled = false);
+  $('abrirCamposHuesped').style.display = 'block';
+  $('abrirNombreCliente').value = '';
+  $('abrirComensales').value = '1';
+  // Load occupied rooms with pension data from reservas
+  try {
+    var snap = await getDocs(collection(db,'habitaciones'));
+    var habs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var habOcupadas = habs.filter(h => h.estado === 'OCUPADA');
+    var resSnap = await getDocs(collection(db,'reservas'));
+    var reservasMap = {};
+    resSnap.docs.forEach(d => { reservasMap[d.id] = d.data(); });
+    var sel = $('abrirHabitacion');
+    sel.innerHTML = '<option value="">Seleccionar habitación...</option>';
+    habOcupadas.forEach(h => {
+      var pension = (h.reservaId && reservasMap[h.reservaId]) ? (reservasMap[h.reservaId].pension || '') : '';
+      sel.innerHTML += `<option value="${esc(h.numero)}" data-huesped="${esc(h.huespedActual||'')}" data-pension="${esc(pension)}">${h.numero} — ${esc(h.huespedActual||'Sin huésped')}</option>`;
+    });
+    if (!habOcupadas.length) { sel.innerHTML = '<option value="">No hay habitaciones ocupadas</option>'; }
+  } catch(e) {}
   mostrarModal('modalAbrirMesa');
 }
 window.abrirMesaModal = abrirMesaModal;
 
-async function onTipoClienteChange() {
+function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
   var mostrar = tipo !== 'EXTERNO';
   $('abrirCamposHuesped').style.display = mostrar ? 'block' : 'none';
-  if (mostrar) {
-    // Populate habitación select with OCCUPIED rooms + guest names
-    try {
-      var snap = await getDocs(collection(db,'habitaciones'));
-      var habs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      var habOcupadas = habs.filter(h => h.estado === 'OCUPADA');
-      var sel = $('abrirHabitacion');
-      sel.innerHTML = '<option value="">Seleccionar habitación...</option>';
-      habOcupadas.forEach(h => {
-        sel.innerHTML += `<option value="${esc(h.numero)}" data-huesped="${esc(h.huespedActual||'')}">${h.numero} — ${esc(h.huespedActual||'Sin huésped')}</option>`;
-      });
-      if (!habOcupadas.length) {
-        sel.innerHTML = '<option value="">No hay habitaciones ocupadas</option>';
-      }
-    } catch(e) {}
-    $('abrirNombreCliente').value = '';
-  }
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
 function onHabSelectChange() {
   var sel = $('abrirHabitacion');
   var opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.huesped) {
-    $('abrirNombreCliente').value = opt.dataset.huesped;
-  } else {
-    $('abrirNombreCliente').value = '';
+  $('abrirNombreCliente').value = (opt && opt.dataset.huesped) ? opt.dataset.huesped : '';
+  // Auto-set tipo de consumo based on room's contracted pension
+  var pension = (opt && opt.value) ? (opt.dataset.pension || '') : '';
+  var tipoSel = $('abrirTipoCliente');
+  var mapOpt = tipoSel.querySelector('option[value="EPECUEN_MAP"]');
+  var sinMapOpt = tipoSel.querySelector('option[value="EPECUEN_SIN_MAP"]');
+  if (mapOpt) mapOpt.disabled = false;
+  if (sinMapOpt) sinMapOpt.disabled = false;
+  if (!pension) return;
+  var currentTipo = tipoSel.value;
+  if (pension === 'MAP' || pension === 'COMPLETA') {
+    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_MAP';
+    if (sinMapOpt) sinMapOpt.disabled = true;
+  } else if (pension === 'SIN_PENSION') {
+    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
+    if (mapOpt) mapOpt.disabled = true;
   }
 }
 window.onHabSelectChange = onHabSelectChange;
