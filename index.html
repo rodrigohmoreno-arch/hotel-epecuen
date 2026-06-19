@@ -507,6 +507,7 @@
       <button class="tab" onclick="tabAdmin('adminHab',this)">Habitaciones</button>
       <button class="tab" onclick="tabAdmin('adminTarifas',this)">Tarifas</button>
       <button class="tab" onclick="tabAdmin('adminConfig',this)">Config Hotel</button>
+      <button class="tab" onclick="tabAdmin('adminMarketing',this)">Marketing</button>
     </div>
     <!-- Admin Mesas -->
     <div id="tabAdminMesas">
@@ -677,6 +678,21 @@
         </div>
       </div>
     </div>
+    <!-- Admin Marketing -->
+    <div id="tabAdminMarketing" class="hidden">
+      <div class="card">
+        <div class="card-title">Marketing — Emails y Cumpleaños</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn btn-blue btn-sm" onclick="cargarListaMarketing()">Actualizar Lista</button>
+          <button class="btn btn-sm" onclick="exportarEmailsMarketing()">Exportar Emails (copiar)</button>
+          <button class="btn btn-gold btn-sm" onclick="reporteCumpleanos()">Cumpleaños del Mes</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Nombre</th><th>Email</th><th>F.Nacimiento</th><th>Próx. Cumple</th><th>Acompañantes</th></tr></thead>
+          <tbody id="tbodyMarketing"></tbody>
+        </table></div>
+      </div>
+    </div>
   </div>
 
   <!-- PANEL CARHUE -->
@@ -714,7 +730,7 @@
 
   <!-- PANEL RECEPCION (Hotel Management) -->
   <div id="panelRecepcion" class="hidden">
-    <div class="tabs">
+    <div class="tabs" style="flex-wrap:wrap;">
       <button class="tab active" onclick="tabRecepcion('habitaciones',this)">Habitaciones</button>
       <button class="tab" onclick="tabRecepcion('nuevaReserva',this)">Nueva Reserva</button>
       <button class="tab" onclick="tabRecepcion('preReservas',this)">Pre-Reservas</button>
@@ -722,6 +738,7 @@
       <button class="tab" onclick="tabRecepcion('checkin',this)">Check-In/Out</button>
       <button class="tab" onclick="tabRecepcion('huespedes',this)">Huéspedes</button>
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
+      <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
     </div>
     <!-- Tab Habitaciones -->
     <div id="tabRecHabitaciones">
@@ -751,11 +768,38 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Huésped (Nombre Completo) *</label><input type="text" id="resHuesped"></div>
-          <div class="form-group"><label>DNI</label><input type="text" id="resDni"></div>
+          <div class="form-group"><label>DNI *</label><input type="text" id="resDni"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
+          <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Teléfono</label><input type="text" id="resTelefono"></div>
-          <div class="form-group"><label>Email</label><input type="email" id="resEmail"></div>
+          <div class="form-group"><label>Nacionalidad</label>
+            <select id="resNacionalidad">
+              <option value="AR">Argentina</option>
+              <option value="BR">Brasil</option>
+              <option value="CL">Chile</option>
+              <option value="UY">Uruguay</option>
+              <option value="PY">Paraguay</option>
+              <option value="BO">Bolivia</option>
+              <option value="PE">Perú</option>
+              <option value="CO">Colombia</option>
+              <option value="US">Estados Unidos</option>
+              <option value="EU">Europa</option>
+              <option value="OTRO">Otro</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>N° Pasaporte (extranjeros)</label><input type="text" id="resPasaporte" placeholder="Solo si es extranjero"></div>
+        </div>
+        <div style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h4 style="font-size:0.9rem;">Acompañantes</h4>
+            <button class="btn btn-blue btn-xs" type="button" onclick="agregarAcompanante()">+ Agregar</button>
+          </div>
+          <div id="listaAcompanantes"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Habitación *</label><select id="resHabitacion"></select></div>
@@ -858,21 +902,45 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>DNI *</label><input type="text" id="huesDni"></div>
-            <div class="form-group"><label>Teléfono</label><input type="text" id="huesTelefono"></div>
+            <div class="form-group"><label>Fecha de Nacimiento</label><input type="date" id="huesFechaNac"></div>
           </div>
           <div class="form-row">
+            <div class="form-group"><label>Teléfono</label><input type="text" id="huesTelefono"></div>
             <div class="form-group"><label>Email</label><input type="email" id="huesEmail"></div>
-            <div class="form-group"><label>Localidad</label><input type="text" id="huesLocalidad"></div>
           </div>
-          <div class="form-group" style="margin-bottom:12px;"><label>Notas</label><input type="text" id="huesNotas" placeholder="Observaciones"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Localidad</label><input type="text" id="huesLocalidad"></div>
+            <div class="form-group"><label>Nacionalidad</label>
+              <select id="huesNacionalidad">
+                <option value="AR">Argentina</option>
+                <option value="BR">Brasil</option>
+                <option value="CL">Chile</option>
+                <option value="UY">Uruguay</option>
+                <option value="PY">Paraguay</option>
+                <option value="BO">Bolivia</option>
+                <option value="PE">Perú</option>
+                <option value="CO">Colombia</option>
+                <option value="US">Estados Unidos</option>
+                <option value="EU">Europa</option>
+                <option value="OTRO">Otro</option>
+              </select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>N° Pasaporte (extranjeros)</label><input type="text" id="huesPasaporte" placeholder="Solo si es extranjero"></div>
+            <div class="form-group"><label>Notas</label><input type="text" id="huesNotas" placeholder="Observaciones"></div>
+          </div>
           <button class="btn btn-blue btn-sm" onclick="guardarHuesped()">Guardar Huésped</button>
         </div>
         <div class="filtros" style="margin-bottom:16px;">
           <div class="form-group"><label>Buscar por DNI</label><input type="text" id="buscarHuesDni" placeholder="DNI..." onkeyup="filtrarHuespedes()"></div>
           <div class="form-group"><label>Buscar por Nombre</label><input type="text" id="buscarHuesNombre" placeholder="Nombre..." onkeyup="filtrarHuespedes()"></div>
         </div>
+        <div style="margin-bottom:12px;display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="reporteHuespedesAlojados()">Reporte Alojados</button>
+          <button class="btn btn-sm" onclick="reporteExtranjeros()">Reporte Extranjeros</button>
+        </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Localidad</th><th>Última Visita</th><th></th></tr></thead>
+          <thead><tr><th>Nombre</th><th>DNI</th><th>F.Nac.</th><th>Nac.</th><th>Email</th><th>Última Visita</th><th></th></tr></thead>
           <tbody id="tbodyHuespedes"></tbody>
         </table></div>
       </div>
@@ -883,10 +951,42 @@
         <div class="card-title">Consumos por Habitación</div>
         <div class="filtros" style="margin-bottom:16px;">
           <div class="form-group"><label>Habitación</label><select id="filtroConsHab" onchange="cargarConsumosHab()"><option value="">Todas</option></select></div>
+          <button class="btn btn-sm" onclick="imprimirConsumosHab()" style="margin-top:auto;">Imprimir Consumos</button>
         </div>
         <div class="table-wrap"><table>
           <thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
           <tbody id="tbodyConsumosHab"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Tab Caja Recepción -->
+    <div id="tabRecCajaRec" class="hidden">
+      <div class="card">
+        <div class="card-title">Control de Caja — Recepción</div>
+        <div id="cajaRecEstado" style="margin-bottom:16px;"></div>
+        <div style="padding:16px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Apertura / Cierre de Caja</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Turno</label>
+              <select id="cajaRecTurno">
+                <option value="MANANA">Mañana (06:00 - 14:00)</option>
+                <option value="TARDE">Tarde (14:00 - 22:00)</option>
+                <option value="NOCHE">Noche (22:00 - 06:00)</option>
+              </select></div>
+            <div class="form-group"><label>Monto Apertura $</label><input type="number" id="cajaRecMontoApertura" value="0" step="0.01" min="0"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Observaciones</label><input type="text" id="cajaRecObs" placeholder="Notas del turno"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-green btn-sm" onclick="abrirCajaRec()">Abrir Caja</button>
+            <button class="btn btn-red btn-sm" onclick="cerrarCajaRec()">Cerrar Caja</button>
+          </div>
+        </div>
+        <div class="card-title" style="margin-top:16px;">Historial de Cajas</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Turno</th><th>Usuario</th><th>Apertura</th><th>Cierre</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyCajaRec"></tbody>
         </table></div>
       </div>
     </div>
@@ -1303,8 +1403,8 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
@@ -1314,6 +1414,7 @@ function tabAdmin(t, btn) {
   if (t === 'adminHab') cargarHabitaciones();
   if (t === 'adminTarifas') cargarTarifas();
   if (t === 'adminConfig') cargarConfigHotel();
+  if (t === 'adminMarketing') cargarListaMarketing();
 }
 window.tabAdmin = tabAdmin;
 
@@ -2586,8 +2687,8 @@ let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos' };
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
   if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); }
@@ -2596,6 +2697,7 @@ function tabRecepcion(t, btn) {
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
+  if (t === 'cajaRec') { cargarCajaRec(); }
 }
 window.tabRecepcion = tabRecepcion;
 
@@ -2698,7 +2800,7 @@ function abrirPreReservaDesdeHab(hab) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   var btns = document.querySelectorAll('#panelRecepcion .tab');
   btns[1].classList.add('active'); // Nueva Reserva tab
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     // Pre-select the room
@@ -2894,14 +2996,16 @@ async function cargarHuespedes() {
 }
 
 function renderHuespedes(lista) {
+  var nacLabels = { AR:'🇦🇷',BR:'🇧🇷',CL:'🇨🇱',UY:'🇺🇾',PY:'🇵🇾',BO:'🇧🇴',PE:'🇵🇪',CO:'🇨🇴',US:'🇺🇸',EU:'🇪🇺',OTRO:'🌍' };
   $('tbodyHuespedes').innerHTML = lista.map(h => `<tr>
     <td><strong>${esc(h.nombre)} ${esc(h.apellido)}</strong></td>
     <td>${esc(h.dni||'-')}</td>
-    <td>${esc(h.telefono||'-')}</td>
-    <td>${esc(h.localidad||'-')}</td>
+    <td>${h.fechaNac||'-'}</td>
+    <td>${nacLabels[h.nacionalidad]||''} ${esc(h.nacionalidad||'AR')}${h.pasaporte?' (P:'+esc(h.pasaporte)+')':''}</td>
+    <td style="font-size:0.82rem;">${esc(h.email||'-')}</td>
     <td style="font-size:0.8rem;color:var(--muted);">${h.ultimaVisita ? fmtFecha(h.ultimaVisita) : '-'}</td>
     <td><button class="btn btn-red btn-xs" onclick="eliminarHuesped('${h.id}')">Elim.</button></td>
-  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin huéspedes registrados</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin huéspedes registrados</td></tr>';
 }
 
 function filtrarHuespedes() {
@@ -2920,15 +3024,19 @@ async function guardarHuesped() {
   var nombre = $('huesNombre').value.trim();
   var apellido = $('huesApellido').value.trim();
   var dni = $('huesDni').value.trim();
+  var fechaNac = $('huesFechaNac').value;
   var telefono = $('huesTelefono').value.trim();
   var email = $('huesEmail').value.trim();
   var localidad = $('huesLocalidad').value.trim();
+  var nacionalidad = $('huesNacionalidad').value;
+  var pasaporte = $('huesPasaporte').value.trim();
   var notas = $('huesNotas').value.trim();
   if (!nombre || !apellido || !dni) { showToast('Completá nombre, apellido y DNI','warning'); return; }
   try {
-    await addDoc(collection(db,'huespedes'), { nombre, apellido, dni, telefono, email, localidad, notas, ultimaVisita:null });
+    await addDoc(collection(db,'huespedes'), { nombre, apellido, dni, fechaNac, telefono, email, localidad, nacionalidad, pasaporte, notas, ultimaVisita:null });
     showToast('Huésped registrado','success');
-    $('huesNombre').value=''; $('huesApellido').value=''; $('huesDni').value=''; $('huesTelefono').value=''; $('huesEmail').value=''; $('huesLocalidad').value=''; $('huesNotas').value='';
+    $('huesNombre').value=''; $('huesApellido').value=''; $('huesDni').value=''; $('huesFechaNac').value='';
+    $('huesTelefono').value=''; $('huesEmail').value=''; $('huesLocalidad').value=''; $('huesPasaporte').value=''; $('huesNotas').value='';
     await cargarHuespedes();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -2993,11 +3101,30 @@ window.calcularTotalReserva = calcularTotalReserva;
   if (el) el.addEventListener('change', calcularTotalReserva);
 });
 
+function agregarAcompanante() {
+  var cont = $('listaAcompanantes');
+  var idx = cont.querySelectorAll('.acomp-item').length + 1;
+  var div = document.createElement('div');
+  div.className = 'acomp-item';
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;';
+  div.innerHTML = `
+    <input class="acomp-nombre" type="text" placeholder="Nombre completo" style="flex:2;min-width:120px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+    <input class="acomp-fechanac" type="date" style="flex:1;min-width:110px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+    <input class="acomp-email" type="email" placeholder="Email" style="flex:1.5;min-width:120px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;white-space:nowrap;"><input class="acomp-menor" type="checkbox" style="width:16px;height:16px;cursor:pointer;"> Menor</label>
+    <button type="button" class="btn btn-red btn-xs" onclick="this.parentElement.remove()">X</button>`;
+  cont.appendChild(div);
+}
+window.agregarAcompanante = agregarAcompanante;
+
 async function crearReserva() {
   var huesped = $('resHuesped').value.trim();
   var dni = $('resDni').value.trim();
   var tel = $('resTelefono').value.trim();
   var email = $('resEmail').value.trim();
+  var fechaNac = $('resFechaNac').value;
+  var nacionalidad = $('resNacionalidad').value;
+  var pasaporte = $('resPasaporte').value.trim();
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
   if (!huesped) { showToast('Ingresá el nombre del huésped','warning'); return; }
@@ -3024,9 +3151,27 @@ async function crearReserva() {
   var restriccionAlim = $('resRestriccionAlim').value;
   var pedidosEsp = $('resPedidosEsp').value.trim();
 
+  // Recoger acompañantes
+  var acompanantes = [];
+  var acompItems = document.querySelectorAll('.acomp-item');
+  acompItems.forEach(item => {
+    var nombre = item.querySelector('.acomp-nombre').value.trim();
+    var fechaN = item.querySelector('.acomp-fechanac').value;
+    var esmenor = item.querySelector('.acomp-menor').checked;
+    var emailA = item.querySelector('.acomp-email').value.trim();
+    if (nombre) acompanantes.push({ nombre, fechaNac:fechaN, esMenor:esmenor, email:emailA });
+  });
+
   // Determinar si es PRE-RESERVA o CONFIRMADA según seña
   var tieneSeña = sena > 0 && medioPagoSena;
   var estadoReserva = tieneSeña ? 'CONFIRMADA' : 'PRE_RESERVA';
+
+  // Validar campos obligatorios para reserva confirmada
+  if (tieneSeña) {
+    if (!dni) { showToast('DNI del huésped es obligatorio para confirmar reserva','warning'); return; }
+    if (!email) { showToast('Email del huésped es obligatorio para confirmar reserva','warning'); return; }
+    if (!fechaNac) { showToast('Fecha de nacimiento es obligatoria para confirmar reserva','warning'); return; }
+  }
 
   // Calc pricing
   var tarifa = tarifasCache.find(t => t.tipo === tipoHab && t.pension === pension);
@@ -3037,12 +3182,13 @@ async function crearReserva() {
 
   try {
     var reservaData = {
-      huesped, dni, telefono: tel, email,
+      huesped, dni, telefono: tel, email, fechaNac, nacionalidad, pasaporte,
       habitacionId: habId, habitacionNro: habNro, tipoHab, pension,
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
       configCamas, festejo, restriccionAlim, pedidosEsp,
+      acompanantes,
       estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
       fechaReserva: serverTimestamp(),
@@ -3062,16 +3208,20 @@ async function crearReserva() {
     if (dni) {
       var huesExiste = await getDocs(query(collection(db,'huespedes'), where('dni','==',dni)));
       if (huesExiste.empty) {
-        await addDoc(collection(db,'huespedes'), { nombre: huesped.split(' ')[0], apellido: huesped.split(' ').slice(1).join(' '), dni, telefono:tel, email, localidad:'', notas:'', ultimaVisita:serverTimestamp() });
+        await addDoc(collection(db,'huespedes'), { nombre: huesped.split(' ')[0], apellido: huesped.split(' ').slice(1).join(' '), dni, fechaNac, telefono:tel, email, localidad:'', nacionalidad, pasaporte, notas:'', ultimaVisita:serverTimestamp() });
+      } else {
+        await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), { fechaNac:fechaNac||huesExiste.docs[0].data().fechaNac, email:email||huesExiste.docs[0].data().email, nacionalidad:nacionalidad||huesExiste.docs[0].data().nacionalidad, pasaporte:pasaporte||huesExiste.docs[0].data().pasaporte, ultimaVisita:serverTimestamp() });
       }
     }
     var msg = tieneSeña ? 'Reserva CONFIRMADA — Hab. '+habNro : 'PRE-RESERVA creada — Hab. '+habNro+' (pendiente seña)';
     showToast(msg, tieneSeña ? 'success' : 'warning');
     // Reset form
     $('resHuesped').value=''; $('resDni').value=''; $('resTelefono').value=''; $('resEmail').value='';
+    $('resFechaNac').value=''; $('resPasaporte').value=''; $('resNacionalidad').value='AR';
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
     $('resDescuento').value='0'; $('resFestejo').value=''; $('resPedidosEsp').value='';
     $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
+    $('listaAcompanantes').innerHTML='';
     $('resumenReserva').style.display='none';
     await poblarSelectHabReserva();
     await cargarReservasActivas();
@@ -3380,6 +3530,262 @@ async function cargarConsumosHab() {
   } catch(e) { showToast('Error cargando consumos: '+e.message,'error'); }
 }
 window.cargarConsumosHab = cargarConsumosHab;
+
+function imprimirConsumosHab() {
+  var habFiltro = $('filtroConsHab').value;
+  var rows = $('tbodyConsumosHab').innerHTML;
+  var hoy = new Date().toLocaleDateString('es-AR');
+  var titulo = habFiltro ? 'Consumos — Habitación '+habFiltro : 'Consumos — Todas las Habitaciones';
+  var win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
+    h1{font-size:16px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+    th{background:#f5f5f5;font-weight:700;}
+    @media print{body{padding:0;}.no-print{display:none;}}</style></head>
+    <body><h1>${titulo}</h1><h2>Fecha: ${hoy}</h2>
+    <table><thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <br><button class="no-print" onclick="window.print()">Imprimir</button></body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+}
+window.imprimirConsumosHab = imprimirConsumosHab;
+
+// ── CAJA RECEPCIÓN ──
+async function cargarCajaRec() {
+  try {
+    var snap = await getDocs(query(collection(db,'cajaRecepcion'), limit(20)));
+    var cajas = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (b.fechaApertura||'') > (a.fechaApertura||'') ? 1 : -1);
+    var turnoLabels = { MANANA:'Mañana (06-14)', TARDE:'Tarde (14-22)', NOCHE:'Noche (22-06)' };
+    // Check if there's an open caja
+    var abierta = cajas.find(c => c.estado === 'ABIERTA');
+    if (abierta) {
+      $('cajaRecEstado').innerHTML = `<div style="padding:12px;background:rgba(46,204,113,0.1);border-radius:10px;border-left:3px solid var(--green);font-size:0.9rem;">
+        <strong style="color:var(--green);">Caja ABIERTA</strong> — Turno: ${turnoLabels[abierta.turno]||abierta.turno} | Usuario: ${esc(abierta.usuario||'')} | Apertura: $${(abierta.montoApertura||0).toLocaleString('es-AR')}
+      </div>`;
+    } else {
+      $('cajaRecEstado').innerHTML = `<div style="padding:12px;background:rgba(232,69,60,0.1);border-radius:10px;border-left:3px solid var(--red);font-size:0.9rem;">
+        <strong style="color:var(--red);">Caja CERRADA</strong> — No hay caja abierta en este momento
+      </div>`;
+    }
+    $('tbodyCajaRec').innerHTML = cajas.map(c => {
+      var color = c.estado==='ABIERTA' ? 'var(--green)' : 'var(--muted)';
+      return `<tr>
+        <td style="font-size:0.82rem;">${c.fechaApertura||'-'}</td>
+        <td>${turnoLabels[c.turno]||c.turno}</td>
+        <td>${esc(c.usuario||'-')}</td>
+        <td>$${(c.montoApertura||0).toLocaleString('es-AR')}</td>
+        <td>${c.montoCierre!=null?'$'+c.montoCierre.toLocaleString('es-AR'):'-'}</td>
+        <td><span style="color:${color};font-weight:600;">${c.estado}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin registros de caja</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+async function abrirCajaRec() {
+  var turno = $('cajaRecTurno').value;
+  var monto = parseFloat($('cajaRecMontoApertura').value)||0;
+  var obs = $('cajaRecObs').value.trim();
+  // Check if already open
+  var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+  if (!snap.empty) { showToast('Ya hay una caja abierta. Cerrá la actual antes de abrir otra.','warning'); return; }
+  try {
+    await addDoc(collection(db,'cajaRecepcion'), {
+      turno, montoApertura: monto, observaciones: obs,
+      estado: 'ABIERTA', usuario: currentUser.usuario,
+      fechaApertura: new Date().toISOString(), fechaCierre: null, montoCierre: null
+    });
+    showToast('Caja abierta — Turno '+turno,'success');
+    $('cajaRecObs').value=''; $('cajaRecMontoApertura').value='0';
+    await cargarCajaRec();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.abrirCajaRec = abrirCajaRec;
+
+async function cerrarCajaRec() {
+  var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+  if (snap.empty) { showToast('No hay caja abierta para cerrar','warning'); return; }
+  var cajaDoc = snap.docs[0];
+  var cuerpo = `<div style="padding:20px;">
+    <p style="margin-bottom:12px;">Ingresá el monto de cierre de caja:</p>
+    <div class="form-group"><label>Monto Cierre $</label><input type="number" id="cajaRecMontoCierre" step="0.01" min="0" value="0"></div>
+    <div class="form-group" style="margin-top:8px;"><label>Observaciones Cierre</label><input type="text" id="cajaRecObsCierre" placeholder="Novedades del turno"></div>
+  </div>`;
+  confirmarAccion('Cerrar Caja', cuerpo, 'Confirmar Cierre', async (ok) => {
+    if (!ok) return;
+    var montoCierre = parseFloat(document.getElementById('cajaRecMontoCierre').value)||0;
+    var obsCierre = document.getElementById('cajaRecObsCierre').value.trim();
+    try {
+      await updateDoc(doc(db,'cajaRecepcion',cajaDoc.id), {
+        estado: 'CERRADA', montoCierre, obsCierre,
+        fechaCierre: new Date().toISOString()
+      });
+      showToast('Caja cerrada','success');
+      await cargarCajaRec();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cerrarCajaRec = cerrarCajaRec;
+
+// ── REPORTES HUESPEDES ──
+async function reporteHuespedesAlojados() {
+  var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKIN')));
+  var reservas = snap.docs.map(d => d.data());
+  var hoy = new Date().toLocaleDateString('es-AR');
+  var rows = reservas.map(r => `<tr>
+    <td>${esc(r.habitacionNro)}</td>
+    <td>${esc(r.huesped)}</td>
+    <td>${esc(r.dni||'-')}</td>
+    <td>${r.fechaIn}</td>
+    <td>${r.fechaOut}</td>
+    <td>${r.adultos||1} ad. ${r.menores>0?'+ '+r.menores+' men.':''}</td>
+  </tr>`).join('') || '<tr><td colspan="6">Sin huéspedes alojados</td></tr>';
+  var win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Reporte Huéspedes Alojados</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
+    h1{font-size:16px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+    th{background:#f5f5f5;font-weight:700;}
+    @media print{body{padding:0;}.no-print{display:none;}}</style></head>
+    <body><h1>Huéspedes Alojados Actualmente</h1><h2>Fecha: ${hoy} | Total: ${reservas.length}</h2>
+    <table><thead><tr><th>Hab.</th><th>Huésped</th><th>DNI</th><th>Check-In</th><th>Check-Out</th><th>Personas</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <br><button class="no-print" onclick="window.print()">Imprimir</button></body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+}
+window.reporteHuespedesAlojados = reporteHuespedesAlojados;
+
+async function reporteExtranjeros() {
+  var snap = await getDocs(collection(db,'huespedes'));
+  var todos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  var extranjeros = todos.filter(h => h.nacionalidad && h.nacionalidad !== 'AR');
+  var hoy = new Date().toLocaleDateString('es-AR');
+  var nacLabels = { BR:'Brasil',CL:'Chile',UY:'Uruguay',PY:'Paraguay',BO:'Bolivia',PE:'Perú',CO:'Colombia',US:'Estados Unidos',EU:'Europa',OTRO:'Otro' };
+  var rows = extranjeros.map(h => `<tr>
+    <td>${esc(h.nombre||'')} ${esc(h.apellido||'')}</td>
+    <td>${esc(h.dni||'-')}</td>
+    <td>${esc(h.pasaporte||'-')}</td>
+    <td>${nacLabels[h.nacionalidad]||h.nacionalidad}</td>
+    <td>${esc(h.email||'-')}</td>
+    <td>${h.fechaNac||'-'}</td>
+  </tr>`).join('') || '<tr><td colspan="6">Sin extranjeros registrados</td></tr>';
+  var win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Reporte Extranjeros Alojados</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
+    h1{font-size:16px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+    th{background:#f5f5f5;font-weight:700;}
+    @media print{body{padding:0;}.no-print{display:none;}}</style></head>
+    <body><h1>Reporte de Extranjeros</h1><h2>Fecha: ${hoy} | Total: ${extranjeros.length}</h2>
+    <table><thead><tr><th>Nombre</th><th>DNI</th><th>Pasaporte</th><th>Nacionalidad</th><th>Email</th><th>F.Nac.</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <br><button class="no-print" onclick="window.print()">Imprimir</button></body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+}
+window.reporteExtranjeros = reporteExtranjeros;
+
+// ── MARKETING ──
+async function cargarListaMarketing() {
+  try {
+    var snapH = await getDocs(collection(db,'huespedes'));
+    var huespedes = snapH.docs.map(d => ({ id:d.id, ...d.data() })).filter(h => h.email);
+    // Get acompañantes from reservas
+    var snapR = await getDocs(collection(db,'reservas'));
+    var reservas = snapR.docs.map(d => d.data());
+    var acompMap = {};
+    reservas.forEach(r => {
+      if (r.dni && r.acompanantes && r.acompanantes.length) {
+        if (!acompMap[r.dni]) acompMap[r.dni] = [];
+        r.acompanantes.forEach(a => {
+          if (!acompMap[r.dni].find(x => x.nombre === a.nombre)) acompMap[r.dni].push(a);
+        });
+      }
+    });
+    var hoy = new Date();
+    $('tbodyMarketing').innerHTML = huespedes.map(h => {
+      var proxCumple = '-';
+      if (h.fechaNac) {
+        var fn = new Date(h.fechaNac+'T00:00:00');
+        var cumple = new Date(hoy.getFullYear(), fn.getMonth(), fn.getDate());
+        if (cumple < hoy) cumple.setFullYear(cumple.getFullYear()+1);
+        var dias = Math.ceil((cumple - hoy) / 86400000);
+        proxCumple = dias === 0 ? 'HOY' : dias + ' días';
+      }
+      var acomps = acompMap[h.dni] || [];
+      var acompTxt = acomps.map(a => esc(a.nombre)+(a.esMenor?' (menor)':'')+(a.fechaNac?' - '+a.fechaNac:'')).join('<br>') || '-';
+      return `<tr>
+        <td>${esc(h.nombre||'')} ${esc(h.apellido||'')}</td>
+        <td style="font-size:0.82rem;">${esc(h.email)}</td>
+        <td>${h.fechaNac||'-'}</td>
+        <td style="font-weight:600;${proxCumple==='HOY'?'color:var(--gold);':''}">${proxCumple}</td>
+        <td style="font-size:0.8rem;">${acompTxt}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin huéspedes con email</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarListaMarketing = cargarListaMarketing;
+
+function exportarEmailsMarketing() {
+  var rows = $('tbodyMarketing').querySelectorAll('tr');
+  var emails = [];
+  rows.forEach(r => { var td = r.querySelectorAll('td'); if (td[1]) { var e = td[1].textContent.trim(); if (e && e !== '-') emails.push(e); } });
+  if (!emails.length) { showToast('No hay emails para exportar','warning'); return; }
+  var txt = emails.join('; ');
+  navigator.clipboard.writeText(txt).then(() => showToast(emails.length+' emails copiados al portapapeles','success')).catch(() => {
+    prompt('Copiá estos emails:', txt);
+  });
+}
+window.exportarEmailsMarketing = exportarEmailsMarketing;
+
+async function reporteCumpleanos() {
+  var snapH = await getDocs(collection(db,'huespedes'));
+  var huespedes = snapH.docs.map(d => d.data()).filter(h => h.fechaNac);
+  var snapR = await getDocs(collection(db,'reservas'));
+  var reservas = snapR.docs.map(d => d.data());
+  var hoy = new Date();
+  var mesActual = hoy.getMonth();
+  // Collect all people (huéspedes + acompañantes) with birthdays this month
+  var cumples = [];
+  huespedes.forEach(h => {
+    var fn = new Date(h.fechaNac+'T00:00:00');
+    if (fn.getMonth() === mesActual) {
+      cumples.push({ nombre: (h.nombre||'')+' '+(h.apellido||''), fechaNac: h.fechaNac, email: h.email||'-', tipo: 'Huésped' });
+    }
+  });
+  reservas.forEach(r => {
+    if (r.acompanantes) r.acompanantes.forEach(a => {
+      if (a.fechaNac) {
+        var fn = new Date(a.fechaNac+'T00:00:00');
+        if (fn.getMonth() === mesActual) {
+          cumples.push({ nombre: a.nombre, fechaNac: a.fechaNac, email: a.email||'-', tipo: a.esMenor?'Acomp. (menor)':'Acompañante' });
+        }
+      }
+    });
+  });
+  var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var rows = cumples.map(c => `<tr><td>${esc(c.nombre)}</td><td>${c.fechaNac}</td><td>${esc(c.email)}</td><td>${c.tipo}</td></tr>`).join('') || '<tr><td colspan="4">Sin cumpleaños este mes</td></tr>';
+  var win = window.open('','_blank','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Cumpleaños - ${meses[mesActual]}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
+    h1{font-size:16px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+    th{background:#f5f5f5;font-weight:700;}
+    @media print{body{padding:0;}.no-print{display:none;}}</style></head>
+    <body><h1>Cumpleaños del Mes — ${meses[mesActual]}</h1><h2>Total: ${cumples.length}</h2>
+    <table><thead><tr><th>Nombre</th><th>F.Nacimiento</th><th>Email</th><th>Tipo</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <br><button class="no-print" onclick="window.print()">Imprimir</button></body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+}
+window.reporteCumpleanos = reporteCumpleanos;
 
 // ── CALENDARIO DE HABITACIONES ──
 let calendarioInicio = new Date();
