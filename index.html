@@ -650,7 +650,7 @@
               <select id="tarPension">
                 <option value="MAP">Media Pensión (MAP)</option>
                 <option value="COMPLETA">Pensión Completa</option>
-                <option value="SIN_PENSION">Sin Pensión</option>
+                <option value="SIN_PENSION">Sin MAP</option>
               </select></div>
           </div>
           <div class="form-row">
@@ -840,7 +840,7 @@
           <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Teléfono</label><input type="text" id="resTelefono"></div>
+          <div class="form-group"><label>Teléfono *</label><input type="text" id="resTelefono"></div>
         </div>
         <div style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -855,7 +855,7 @@
             <select id="resPension">
               <option value="MAP">Media Pensión (MAP)</option>
               <option value="COMPLETA">Pensión Completa</option>
-              <option value="SIN_PENSION">Sin Pensión</option>
+              <option value="SIN_PENSION">Sin MAP</option>
             </select></div>
         </div>
         <div class="form-row">
@@ -923,7 +923,10 @@
     <!-- Tab Reservas Confirmadas -->
     <div id="tabRecReservas" class="hidden">
       <div class="card">
-        <div class="card-title">Reservas Confirmadas</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="card-title">Reservas Confirmadas</div>
+          <button class="btn btn-blue btn-xs" onclick="imprimirPedidosEspeciales()">Imprimir Pedidos Especiales</button>
+        </div>
         <div id="listaReservas"></div>
       </div>
     </div>
@@ -1026,11 +1029,35 @@
           <div class="form-row">
             <div class="form-group"><label>Observaciones</label><input type="text" id="cajaRecObs" placeholder="Notas del turno"></div>
           </div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-green btn-sm" onclick="abrirCajaRec()">Abrir Caja</button>
             <button class="btn btn-red btn-sm" onclick="cerrarCajaRec()">Cerrar Caja</button>
           </div>
         </div>
+        <div style="padding:16px;background:rgba(232,69,60,0.06);border-radius:10px;border-left:3px solid var(--red);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Movimientos de Caja</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Tipo *</label>
+              <select id="movCajaTipo">
+                <option value="EGRESO">Egreso (Retiro)</option>
+                <option value="INGRESO">Ingreso</option>
+              </select></div>
+            <div class="form-group"><label>Monto $ *</label><input type="number" id="movCajaMonto" step="0.01" min="0.01" placeholder="$"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Concepto *</label>
+              <select id="movCajaConcepto">
+                <option value="PAGO_PROVEEDOR">Pago a Proveedor</option>
+                <option value="PAGO_PRESTADOR">Pago a Prestador de Servicio</option>
+                <option value="CAMBIO">Agregar Cambio</option>
+                <option value="VUELTO_EGRESO">Vuelto de Egreso</option>
+                <option value="OTRO">Otro</option>
+              </select></div>
+            <div class="form-group"><label>Nota / Detalle *</label><input type="text" id="movCajaNota" placeholder="Descripción del movimiento"></div>
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="registrarMovCaja()">Registrar Movimiento</button>
+        </div>
+        <div id="listaMovCaja" style="margin-bottom:20px;"></div>
         <div class="card-title" style="margin-top:16px;">Historial de Cajas</div>
         <div class="table-wrap"><table>
           <thead><tr><th>Fecha</th><th>Turno</th><th>Usuario</th><th>Apertura</th><th>Cierre</th><th>Estado</th></tr></thead>
@@ -1103,6 +1130,7 @@
         <select id="abrirTipoCliente" onchange="onTipoClienteChange()">
           <option value="EPECUEN_MAP">Epecuén Con MAP</option>
           <option value="EPECUEN_SIN_MAP">Epecuén Sin MAP</option>
+          <option value="EPECUEN_PC">Epecuén Pensión Completa (PLAN)</option>
           <option value="CARHUE">Hotel Carhue</option>
           <option value="SERVICIO_HABITACION">Servicio a Habitación</option>
           <option value="EXTERNO">Externo - Consumidor Final</option>
@@ -1512,7 +1540,7 @@ function renderMesas() {
     var infoExtra = '';
     if (est !== 'LIBRE') {
       var tipo = m.tipoCliente || '';
-      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
+      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', EPECUEN_PC:'Hotel Epecuén (PLAN)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
       var tipoLabel = tipoLabels[tipo] || tipo;
       infoExtra += `<div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>`;
       if (tipo !== 'EXTERNO' && m.nroHabitacion) {
@@ -1572,7 +1600,8 @@ function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
   var esCarhue = tipo === 'CARHUE';
   var esExterno = tipo === 'EXTERNO';
-  $('abrirCamposHuesped').style.display = (!esExterno && !esCarhue) ? 'block' : 'none';
+  var necesitaHab = !esExterno && !esCarhue;
+  $('abrirCamposHuesped').style.display = necesitaHab ? 'block' : 'none';
   $('abrirCamposCarhue').style.display = esCarhue ? 'block' : 'none';
 }
 window.onTipoClienteChange = onTipoClienteChange;
@@ -1586,17 +1615,31 @@ function onHabSelectChange() {
   var tipoSel = $('abrirTipoCliente');
   var mapOpt = tipoSel.querySelector('option[value="EPECUEN_MAP"]');
   var sinMapOpt = tipoSel.querySelector('option[value="EPECUEN_SIN_MAP"]');
+  var pcOpt = tipoSel.querySelector('option[value="EPECUEN_PC"]');
+  var carhueOpt = tipoSel.querySelector('option[value="CARHUE"]');
   if (mapOpt) mapOpt.disabled = false;
   if (sinMapOpt) sinMapOpt.disabled = false;
+  if (pcOpt) pcOpt.disabled = false;
+  if (carhueOpt) carhueOpt.disabled = false;
   if (!pension) return;
   var currentTipo = tipoSel.value;
-  if (pension === 'MAP' || pension === 'COMPLETA') {
+  if (pension === 'MAP') {
     if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_MAP';
     if (sinMapOpt) sinMapOpt.disabled = true;
+    if (pcOpt) pcOpt.disabled = true;
+    if (carhueOpt) carhueOpt.disabled = true;
+  } else if (pension === 'COMPLETA') {
+    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_PC';
+    if (mapOpt) mapOpt.disabled = true;
+    if (sinMapOpt) sinMapOpt.disabled = true;
+    if (carhueOpt) carhueOpt.disabled = true;
   } else if (pension === 'SIN_PENSION') {
     if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
     if (mapOpt) mapOpt.disabled = true;
+    if (pcOpt) pcOpt.disabled = true;
+    if (carhueOpt) carhueOpt.disabled = true;
   }
+  onTipoClienteChange();
 }
 window.onHabSelectChange = onHabSelectChange;
 
@@ -1675,7 +1718,7 @@ async function abrirComanda(mesaId) {
 
   $('comandaMesaTitulo').textContent = 'Comanda — ' + (mesa.nombre||'');
   var tipo = mesa.tipoCliente || '';
-  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Cons. Final' };
+  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', EPECUEN_PC:'Epecuén P.Completa', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Cons. Final' };
   $('comandaClienteInfo').textContent = (labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '');
 
   // Cargar items
@@ -1802,17 +1845,23 @@ function cerrarMesa() {
   var totalBeb = comandaActual.filter(i => i.sector==='MOSTRADOR').reduce((a,i) => a + (i.cantidad*i.precio),0);
   var totalCom = total - totalBeb;
 
-  var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
-  var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', CARHUE:'var(--green)', SERVICIO_HABITACION:'var(--blue)', EXTERNO:'var(--red)' };
+  var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', EPECUEN_PC:'Huésped P.Completa (PLAN)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
+  var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', EPECUEN_PC:'var(--purple)', CARHUE:'var(--green)', SERVICIO_HABITACION:'var(--blue)', EXTERNO:'var(--red)' };
 
   // CARHUE: MAP → solo bebidas a cobrar en caja, SIN_MAP → todo a cobrar
+  // EPECUEN_PC (Pensión Completa) → solo bebidas a cobrar
   var esCarhueMAP = tipo === 'CARHUE' && (mesa?.voucherPension === 'MAP');
-  var totalACobrar = esCarhueMAP ? totalBeb : total;
+  var esPC = tipo === 'EPECUEN_PC';
+  var soloBebidas = esCarhueMAP || esPC;
+  var totalACobrar = soloBebidas ? totalBeb : total;
   var infoCarhue = '';
   if (tipo === 'CARHUE') {
     var vId = mesa?.voucherId || '-';
     var pensLabel = esCarhueMAP ? 'MAP (solo bebidas a cobrar)' : 'Sin MAP (cobro completo)';
     infoCarhue = `<div style="margin-bottom:8px;font-size:0.85rem;"><span style="color:var(--muted);">Voucher:</span> <strong>${esc(vId)}</strong> — ${pensLabel}</div>`;
+  }
+  if (esPC) {
+    infoCarhue = `<div style="margin-bottom:8px;font-size:0.85rem;color:var(--purple);font-weight:600;">Pensión Completa (PLAN) — solo se cobran bebidas</div>`;
   }
 
   var cuerpo = `<div style="padding:20px;">
@@ -1820,7 +1869,7 @@ function cerrarMesa() {
     ${infoCarhue}
     <div style="background:var(--card);border-radius:10px;padding:14px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Bebidas</span><span>$${totalBeb.toFixed(2)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--muted);">Comidas${esCarhueMAP?' (cubierto por MAP)':''}</span><span${esCarhueMAP?' style="text-decoration:line-through;color:var(--muted);"':''}>$${totalCom.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--muted);">Comidas${soloBebidas?' (cubierto por pensión)':''}</span><span${soloBebidas?' style="text-decoration:line-through;color:var(--muted);"':''}>$${totalCom.toFixed(2)}</span></div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;"><span style="font-weight:700;">Total a Cobrar</span><span style="font-weight:700;font-size:1.1rem;color:var(--green);">$${totalACobrar.toFixed(2)}</span></div>
     </div>
     ${(tipo==='CARHUE'||tipo==='EXTERNO') ? '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--gold);">FACTURACIÓN</strong> para que Caja realice el cobro.</p>'
@@ -1868,7 +1917,7 @@ async function cerrarMesaHuesped(mesa, total, totalBeb, totalCom) {
     // Liberar mesa
     await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0, voucherId:'', voucherPension:'' });
     // Registrar consumo a la habitación (integración hotel)
-    if (mesa.nroHabitacion && (mesa.tipoCliente === 'EPECUEN_MAP' || mesa.tipoCliente === 'EPECUEN_SIN_MAP' || mesa.tipoCliente === 'SERVICIO_HABITACION')) {
+    if (mesa.nroHabitacion && (mesa.tipoCliente === 'EPECUEN_MAP' || mesa.tipoCliente === 'EPECUEN_SIN_MAP' || mesa.tipoCliente === 'EPECUEN_PC' || mesa.tipoCliente === 'SERVICIO_HABITACION')) {
       await registrarConsumoHabitacion(mesa, comandaActual, total);
     }
     // Imprimir ticket
@@ -1893,7 +1942,7 @@ function imprimirTicketConsumo(mesa, total) {
   var fecha = new Date().toLocaleString('es-AR');
   var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
   var comensales = mesa.cantidadComensales || 1;
-  var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
+  var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', EPECUEN_PC:'Hotel Epecuén (P.Completa)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
   var tipoLabel = tipoLabels[mesa.tipoCliente] || mesa.tipoCliente || '';
   var html = `<!DOCTYPE html><html><head><style>
     @page{size:80mm auto;margin:4mm}
@@ -2007,7 +2056,7 @@ async function cargarMesasCobro() {
     var mesas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     var grid = $('mesasCobroGrid');
     if (!mesas.length) { grid.innerHTML = '<p style="color:var(--muted);padding:20px;">No hay mesas para cobrar</p>'; return; }
-    var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
+    var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', EPECUEN_PC:'Hotel Epecuén (P.Completa)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
     grid.innerHTML = mesas.map(m => {
       var tipoLabel = tipoLabels[m.tipoCliente] || 'Externo - Consumidor Final';
       return `
@@ -2754,7 +2803,7 @@ async function cargarCierresDia() {
 
     var tbody = $('tbodyCierres');
     tbody.innerHTML = cierres.map(c => {
-      var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',CARHUE:'Carhue',SERVICIO_HABITACION:'Serv.Hab.',EXTERNO:'Ext.CF'};
+      var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',EPECUEN_PC:'P.Comp',CARHUE:'Carhue',SERVICIO_HABITACION:'Serv.Hab.',EXTERNO:'Ext.CF'};
       return `<tr>
         <td>${fmtHora(c.fechaCierre)}</td>
         <td><strong>${esc(c.mesaNombre)}</strong></td>
@@ -3035,7 +3084,7 @@ function tabRecepcion(t, btn) {
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
-  if (t === 'cajaRec') { cargarCajaRec(); }
+  if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
 }
 window.tabRecepcion = tabRecepcion;
 
@@ -3456,6 +3505,7 @@ function agregarAcompanante() {
     <input class="acomp-dni" type="text" placeholder="DNI" style="flex:1;min-width:80px;${inputStyle}">
     <input class="acomp-pasaporte hidden" type="text" placeholder="Pasaporte/Cédula" style="flex:1;min-width:80px;${inputStyle}">
     <input class="acomp-fechanac" type="date" style="flex:1;min-width:110px;${inputStyle}">
+    <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;color:var(--muted);cursor:pointer;white-space:nowrap;"><input type="checkbox" class="acomp-menor"> Menor</label>
     <button type="button" class="btn btn-red btn-xs" onclick="this.parentElement.remove()">X</button>`;
   cont.appendChild(div);
 }
@@ -3506,6 +3556,7 @@ async function crearReserva() {
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
   if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
+  if (!tel) { showToast('Completá el teléfono del huésped','warning'); return; }
   if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
@@ -3539,7 +3590,8 @@ async function crearReserva() {
     var dniA = item.querySelector('.acomp-dni').value.trim();
     var pasA = item.querySelector('.acomp-pasaporte').value.trim();
     var fechaN = item.querySelector('.acomp-fechanac').value;
-    if (apellido || nombre) acompanantes.push({ apellido, nombre, nacionalidad:nacA, dni:nacA==='AR'?dniA:'', pasaporte:nacA!=='AR'?pasA:'', fechaNac:fechaN });
+    var esMenor = item.querySelector('.acomp-menor')?.checked || false;
+    if (apellido || nombre) acompanantes.push({ apellido, nombre, nacionalidad:nacA, dni:nacA==='AR'?dniA:'', pasaporte:nacA!=='AR'?pasA:'', fechaNac:fechaN, esMenor });
   });
 
   // Determinar si es PRE-RESERVA o CONFIRMADA según seña
@@ -3674,7 +3726,7 @@ async function confirmarPreReserva(resId, habId) {
     <div class="form-row">
       <div class="form-group"><label>Monto Seña *</label><input type="number" id="confirmarSenaMonto" step="0.01" min="1" placeholder="$"></div>
       <div class="form-group"><label>Medio de Pago *</label>
-        <select id="confirmarSenaMedio">
+        <select id="confirmarSenaMedio" onchange="var n=$('confirmarSenaNota');if(n)n.style.display=this.value==='EFECTIVO'?'block':'none';">
           <option value="EFECTIVO">Efectivo</option>
           <option value="TRANSFERENCIA">Transferencia</option>
           <option value="DEBITO">Tarjeta Débito</option>
@@ -3682,10 +3734,14 @@ async function confirmarPreReserva(resId, habId) {
         </select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>N° Comprobante / ID Transacción</label><input type="text" id="confirmarSenaComprobante" placeholder="Ej: CBU, N° operación, cupón"></div>
+      <div class="form-group"><label>N° Cupón / ID Transacción *</label><input type="text" id="confirmarSenaComprobante" placeholder="Ej: CBU, N° operación, cupón"></div>
       <div class="form-group"><label>Fecha de Pago</label><input type="date" id="confirmarSenaFecha" value="${new Date().toISOString().split('T')[0]}"></div>
     </div>
-    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">El medio de pago y comprobante quedan registrados para conciliaciones bancarias.</p>
+    <div class="form-row">
+      <div class="form-group"><label>N° Factura (vinculada a reserva)</label><input type="text" id="confirmarSenaFactura" placeholder="Ej: A-0001-00012345"></div>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">El medio de pago, comprobante y factura quedan registrados para conciliaciones bancarias.</p>
+    <p id="confirmarSenaNota" style="font-size:0.78rem;color:var(--gold);margin-top:4px;display:none;">Si el pago es en efectivo, el N° cupón y factura son opcionales.</p>
   </div>`;
   confirmarAccion('Confirmar Seña', cuerpo, 'Confirmar Reserva', async (ok) => {
     if (!ok) return;
@@ -3693,13 +3749,16 @@ async function confirmarPreReserva(resId, habId) {
     var medio = $('confirmarSenaMedio')?.value||'EFECTIVO';
     var comprobante = $('confirmarSenaComprobante')?.value?.trim()||'';
     var fechaPago = $('confirmarSenaFecha')?.value||new Date().toISOString().split('T')[0];
+    var factura = $('confirmarSenaFactura')?.value?.trim()||'';
     if (monto <= 0) { showToast('Ingresá el monto de la seña','warning'); return; }
+    if (medio !== 'EFECTIVO' && !comprobante) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
     try {
       await updateDoc(doc(db,'reservas',resId), {
         estado:'CONFIRMADA',
         sena:monto,
         medioPagoSena:medio,
         comprobanteSena:comprobante,
+        facturaSena:factura,
         fechaPagoSena:fechaPago,
         fechaConfirmacion:new Date().toISOString()
       });
@@ -3715,15 +3774,15 @@ window.confirmarPreReserva = confirmarPreReserva;
 
 async function cargarReservasActivas() {
   try {
-    var snap = await getDocs(query(collection(db,'reservas'), where('estado','in',['CONFIRMADA','CHECKIN'])));
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CONFIRMADA')));
     reservasCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     var cont = $('listaReservas');
-    if (!reservasCache.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay reservas activas</p>'; return; }
+    if (!reservasCache.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay reservas confirmadas pendientes de check-in</p>'; return; }
     var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
     cont.innerHTML = reservasCache.map(r => {
-      var estColor = r.estado==='CONFIRMADA' ? 'rgba(245,183,49,0.2)' : 'rgba(46,204,113,0.2)';
-      var estTxt = r.estado==='CONFIRMADA' ? 'var(--gold)' : 'var(--green)';
-      var pensionLabels = { MAP:'Media Pensión', COMPLETA:'Pensión Completa', SIN_PENSION:'Sin Pensión' };
+      var estColor = 'rgba(46,204,113,0.2)';
+      var estTxt = 'var(--green)';
+      var pensionLabels = { MAP:'Media Pensión', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
       var extras = [];
       if (r.configCamas) extras.push('🛏️ '+(configCamasLabels[r.configCamas]||r.configCamas));
       if (r.festejo) extras.push('🎉 '+esc(r.festejo));
@@ -3745,6 +3804,7 @@ async function cargarReservasActivas() {
         ${extras.length?`<div style="margin-top:6px;font-size:0.8rem;color:var(--text);display:flex;flex-wrap:wrap;gap:8px;">${extras.join(' | ')}</div>`:''}
         ${r.notas ? `<p style="font-size:0.8rem;color:var(--muted);margin-top:6px;">📝 ${esc(r.notas)}</p>` : ''}
         <div style="margin-top:10px;display:flex;gap:8px;">
+          ${r.estado==='CONFIRMADA' ? `<button class="btn btn-blue btn-xs" onclick="editarReserva('${r.id}')">Editar</button>` : ''}
           ${r.estado==='CONFIRMADA' ? `<button class="btn btn-green btn-xs" onclick="realizarCheckIn('${r.id}')">Check-In</button>` : ''}
           <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
         </div>
@@ -3752,6 +3812,110 @@ async function cargarReservasActivas() {
     }).join('');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
+
+async function editarReserva(resId) {
+  var reserva;
+  try {
+    var docSnap = await getDoc(doc(db,'reservas',resId));
+    if (!docSnap.exists()) { showToast('Reserva no encontrada','error'); return; }
+    reserva = { id: docSnap.id, ...docSnap.data() };
+  } catch(e) { showToast('Error: '+e.message,'error'); return; }
+  var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
+  var pensionLabels = { MAP:'Media Pensión', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
+  var configOpts = Object.entries(configCamasLabels).map(([k,v]) => `<option value="${k}" ${reserva.configCamas===k?'selected':''}>${v}</option>`).join('');
+  var restriccionOpts = ['','CELIACO','VEGANO','VEGETARIANO','ALERGICO','OTRO'].map(v => `<option value="${v}" ${reserva.restriccionAlim===v?'selected':''}>${v||'Ninguna'}</option>`).join('');
+  var cuerpo = `<div style="padding:16px;max-height:60vh;overflow:auto;">
+    <div class="form-row">
+      <div class="form-group"><label>Apellido</label><input type="text" id="editResApellido" value="${esc((reserva.huesped||'').split(' ')[0])}"></div>
+      <div class="form-group"><label>Nombre</label><input type="text" id="editResNombre" value="${esc((reserva.huesped||'').split(' ').slice(1).join(' '))}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Teléfono</label><input type="text" id="editResTelefono" value="${esc(reserva.telefono||'')}"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="editResEmail" value="${esc(reserva.email||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha Check-in</label><input type="date" id="editResFechaIn" value="${reserva.fechaIn||''}"></div>
+      <div class="form-group"><label>Fecha Check-out</label><input type="date" id="editResFechaOut" value="${reserva.fechaOut||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Adultos</label><input type="number" id="editResAdultos" value="${reserva.adultos||1}" min="1"></div>
+      <div class="form-group"><label>Menores</label><input type="number" id="editResMenores" value="${reserva.menores||0}" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Config. Camas</label><select id="editResConfigCamas">${configOpts}</select></div>
+      <div class="form-group"><label>Restricción Alimentaria</label><select id="editResRestriccion">${restriccionOpts}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="editResFestejo" value="${esc(reserva.festejo||'')}"></div>
+      <div class="form-group"><label>Pedidos Especiales</label><input type="text" id="editResPedidosEsp" value="${esc(reserva.pedidosEsp||'')}"></div>
+    </div>
+    <div class="form-group"><label>Notas</label><textarea id="editResNotas" rows="2" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;">${esc(reserva.notas||'')}</textarea></div>
+  </div>`;
+  confirmarAccion('Editar Reserva — '+esc(reserva.huesped), cuerpo, 'Guardar Cambios', async (ok) => {
+    if (!ok) return;
+    var apel = $('editResApellido')?.value?.trim()||'';
+    var nom = $('editResNombre')?.value?.trim()||'';
+    var huesped = (apel+' '+nom).trim();
+    try {
+      await updateDoc(doc(db,'reservas',resId), {
+        huesped: huesped || reserva.huesped,
+        telefono: $('editResTelefono')?.value?.trim()||reserva.telefono||'',
+        email: $('editResEmail')?.value?.trim()||reserva.email||'',
+        fechaIn: $('editResFechaIn')?.value||reserva.fechaIn,
+        fechaOut: $('editResFechaOut')?.value||reserva.fechaOut,
+        adultos: parseInt($('editResAdultos')?.value)||reserva.adultos||1,
+        menores: parseInt($('editResMenores')?.value)||0,
+        configCamas: $('editResConfigCamas')?.value||reserva.configCamas||'MATRIMONIAL',
+        restriccionAlim: $('editResRestriccion')?.value||'',
+        festejo: $('editResFestejo')?.value?.trim()||'',
+        pedidosEsp: $('editResPedidosEsp')?.value?.trim()||'',
+        notas: $('editResNotas')?.value?.trim()||''
+      });
+      showToast('Reserva actualizada','success');
+      await cargarReservasActivas();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.editarReserva = editarReserva;
+
+async function imprimirPedidosEspeciales() {
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CONFIRMADA')));
+    var reservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (!reservas.length) { showToast('No hay reservas confirmadas','warning'); return; }
+    var conPedidos = reservas.filter(r => r.festejo || r.restriccionAlim || r.pedidosEsp || r.notas);
+    var fecha = new Date().toLocaleDateString('es-AR');
+    var html = `<!DOCTYPE html><html><head><style>
+      @page{size:A4;margin:15mm}
+      body{font-family:Arial,sans-serif;font-size:12px;color:#333;}
+      h2{text-align:center;margin-bottom:20px;}
+      table{width:100%;border-collapse:collapse;margin-top:10px;}
+      th,td{border:1px solid #ccc;padding:8px;text-align:left;vertical-align:top;}
+      th{background:#f5f5f5;font-weight:700;}
+      .no-pedidos{color:#999;font-style:italic;}
+    </style></head><body>
+    <h2>Pedidos Especiales — Reservas para Check-In</h2>
+    <p>Fecha: ${fecha} | Total reservas: ${reservas.length} | Con pedidos especiales: ${conPedidos.length}</p>
+    <table>
+      <thead><tr><th>Hab.</th><th>Huésped</th><th>Check-In</th><th>Festejo/Día Especial</th><th>Restricción Alimentaria</th><th>Pedidos Especiales</th><th>Notas</th></tr></thead>
+      <tbody>`;
+    reservas.forEach(r => {
+      html += `<tr>
+        <td><strong>${esc(r.habitacionNro||'-')}</strong></td>
+        <td>${esc(r.huesped||'-')}</td>
+        <td>${r.fechaIn||'-'}</td>
+        <td>${r.festejo ? esc(r.festejo) : '<span class="no-pedidos">—</span>'}</td>
+        <td>${r.restriccionAlim ? esc(r.restriccionAlim) : '<span class="no-pedidos">—</span>'}</td>
+        <td>${r.pedidosEsp ? esc(r.pedidosEsp) : '<span class="no-pedidos">—</span>'}</td>
+        <td>${r.notas ? esc(r.notas) : '<span class="no-pedidos">—</span>'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></body></html>';
+    var w = window.open('','_blank','width=800,height=600');
+    w.document.write(html); w.document.close(); w.print();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.imprimirPedidosEspeciales = imprimirPedidosEspeciales;
 
 async function cancelarReserva(resId, habId) {
   confirmarAccion('Cancelar Reserva','<p style="padding:16px;">¿Cancelar esta reserva/pre-reserva? La habitación volverá a LIBRE.</p>','Cancelar Reserva', async (ok) => {
@@ -3807,6 +3971,7 @@ async function realizarCheckIn(resId) {
       showToast('Check-In realizado — Hab. '+res.habitacionNro,'success');
       await cargarListaCheckIn();
       await cargarListaCheckOut();
+      await cargarReservasActivas();
       await cargarHabitaciones();
     } catch(e) { showToast('Error: '+e.message,'error'); }
   });
@@ -3990,6 +4155,7 @@ async function abrirCajaRec() {
   var turno = $('cajaRecTurno').value;
   var monto = parseFloat($('cajaRecMontoApertura').value)||0;
   var obs = $('cajaRecObs').value.trim();
+  if (monto <= 0) { showToast('El monto de apertura no puede ser $0. Ingresá el monto inicial de caja.','warning'); return; }
   // Check if already open
   var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
   if (!snap.empty) { showToast('Ya hay una caja abierta. Cerrá la actual antes de abrir otra.','warning'); return; }
@@ -4006,11 +4172,69 @@ async function abrirCajaRec() {
 }
 window.abrirCajaRec = abrirCajaRec;
 
+async function registrarMovCaja() {
+  var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+  if (cajaSnap.empty) { showToast('Debés abrir la caja antes de registrar movimientos','warning'); return; }
+  var tipoMov = $('movCajaTipo').value;
+  var monto = parseFloat($('movCajaMonto').value)||0;
+  var concepto = $('movCajaConcepto').value;
+  var nota = $('movCajaNota').value.trim();
+  if (monto <= 0) { showToast('Ingresá un monto válido','warning'); return; }
+  if (!nota) { showToast('Completá la nota/detalle del movimiento','warning'); return; }
+  var conceptoLabels = { PAGO_PROVEEDOR:'Pago a Proveedor', PAGO_PRESTADOR:'Pago a Prestador', CAMBIO:'Agregar Cambio', VUELTO_EGRESO:'Vuelto de Egreso', OTRO:'Otro' };
+  try {
+    await addDoc(collection(db,'movimientosCaja'), {
+      cajaId: cajaSnap.docs[0].id,
+      tipo: tipoMov,
+      monto: monto,
+      concepto: concepto,
+      conceptoLabel: conceptoLabels[concepto] || concepto,
+      nota: nota,
+      usuario: currentUser.usuario,
+      fecha: serverTimestamp()
+    });
+    showToast((tipoMov==='EGRESO'?'Egreso':'Ingreso')+' registrado: $'+monto.toLocaleString('es-AR'),'success');
+    $('movCajaMonto').value=''; $('movCajaNota').value='';
+    await cargarMovCaja();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarMovCaja = registrarMovCaja;
+
+async function cargarMovCaja() {
+  var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+  var cont = $('listaMovCaja');
+  if (!cont) return;
+  if (cajaSnap.empty) { cont.innerHTML = ''; return; }
+  try {
+    var movSnap = await getDocs(query(collection(db,'movimientosCaja'), where('cajaId','==',cajaSnap.docs[0].id)));
+    var movs = movSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (!movs.length) { cont.innerHTML = '<p style="font-size:0.82rem;color:var(--muted);padding:8px;">Sin movimientos de caja registrados</p>'; return; }
+    var totalEgr = movs.filter(m => m.tipo==='EGRESO').reduce((a,m) => a+m.monto, 0);
+    var totalIng = movs.filter(m => m.tipo==='INGRESO').reduce((a,m) => a+m.monto, 0);
+    cont.innerHTML = '<div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;">Movimientos del Turno</div>' +
+      movs.map(m => {
+        var color = m.tipo==='EGRESO' ? 'var(--red)' : 'var(--green)';
+        var signo = m.tipo==='EGRESO' ? '-' : '+';
+        var fStr = m.fecha?.toDate ? m.fecha.toDate().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--card);border-radius:8px;margin-bottom:4px;font-size:0.82rem;">
+          <div><strong style="color:${color};">${signo}$${m.monto.toLocaleString('es-AR')}</strong> — ${esc(m.conceptoLabel||m.concepto)} ${fStr?'('+fStr+')':''}</div>
+          <div style="color:var(--muted);">${esc(m.nota||'')}</div>
+        </div>`;
+      }).join('') +
+      `<div style="display:flex;gap:16px;margin-top:8px;font-size:0.82rem;font-weight:600;">
+        <span style="color:var(--red);">Egresos: -$${totalEgr.toLocaleString('es-AR')}</span>
+        <span style="color:var(--green);">Ingresos: +$${totalIng.toLocaleString('es-AR')}</span>
+      </div>`;
+  } catch(e) {}
+}
+window.cargarMovCaja = cargarMovCaja;
+
 async function cerrarCajaRec() {
   var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
   if (snap.empty) { showToast('No hay caja abierta para cerrar','warning'); return; }
   var cajaDoc = snap.docs[0];
   var cajaData = cajaDoc.data();
+  var montoApertura = cajaData.montoApertura || 0;
   // Buscar checkouts realizados durante la caja abierta
   var desdeAp = new Date(cajaData.fechaApertura);
   var checkSnap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKOUT')));
@@ -4026,38 +4250,93 @@ async function cerrarCajaRec() {
   var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desdeAp))));
   var cierresData = cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO');
   cierresData.forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.totalGeneral||0); });
-  var totalSistema = Object.values(detalleMp).reduce((a,b)=>a+b,0);
+  var totalCobros = Object.values(detalleMp).reduce((a,b)=>a+b,0);
+  // Movimientos de caja (egresos e ingresos)
+  var movSnap = await getDocs(query(collection(db,'movimientosCaja'), where('cajaId','==',cajaDoc.id)));
+  var movimientos = movSnap.docs.map(d => d.data());
+  var totalEgresos = movimientos.filter(m => m.tipo==='EGRESO').reduce((a,m) => a+m.monto, 0);
+  var totalIngresos = movimientos.filter(m => m.tipo==='INGRESO').reduce((a,m) => a+m.monto, 0);
+  var totalSistema = totalCobros + totalIngresos - totalEgresos;
+  var efectivoEsperado = montoApertura + detalleMp.EFECTIVO + totalIngresos - totalEgresos;
+  var movsHTML = movimientos.length ? movimientos.map(m => {
+    var signo = m.tipo==='EGRESO' ? '-' : '+';
+    var color = m.tipo==='EGRESO' ? '#e8453c' : '#2ecc71';
+    return `<div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:${color};">${signo}$${m.monto.toLocaleString('es-AR')} — ${esc(m.conceptoLabel||m.concepto)}</span><span style="color:#999;">${esc(m.nota||'')}</span></div>`;
+  }).join('') : '<div style="font-size:0.82rem;color:var(--muted);">Sin movimientos</div>';
   var detalleHTML = `<div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
-    <div style="font-weight:600;margin-bottom:6px;">Detalle por Medio de Pago (sistema):</div>
+    <div style="font-weight:600;margin-bottom:6px;">Cobros por Medio de Pago:</div>
     <div style="display:flex;justify-content:space-between;"><span>Efectivo</span><span>$ ${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
     <div style="display:flex;justify-content:space-between;"><span>Tarjeta Débito</span><span>$ ${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
     <div style="display:flex;justify-content:space-between;"><span>Tarjeta Crédito</span><span>$ ${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
     <div style="display:flex;justify-content:space-between;"><span>Transferencia</span><span>$ ${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
-    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;font-weight:700;"><span>Total Sistema</span><span>$ ${totalSistema.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;font-weight:700;"><span>Total Cobros</span><span>$ ${totalCobros.toLocaleString('es-AR')}</span></div>
+  </div>
+  <div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
+    <div style="font-weight:600;margin-bottom:6px;">Movimientos de Caja:</div>
+    ${movsHTML}
+    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;">
+      <span>Ingresos: +$${totalIngresos.toLocaleString('es-AR')}</span>
+      <span>Egresos: -$${totalEgresos.toLocaleString('es-AR')}</span>
+    </div>
+  </div>
+  <div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
+    <div style="display:flex;justify-content:space-between;"><span>Apertura</span><span>$ ${montoApertura.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--green);"><span>Efectivo esperado en caja</span><span>$ ${efectivoEsperado.toLocaleString('es-AR')}</span></div>
   </div>`;
   var cuerpo = `<div style="padding:20px;">
     <p style="margin-bottom:12px;">Ingresá el monto de cierre de caja:</p>
     ${detalleHTML}
-    <div class="form-group"><label>Monto Cierre Real $</label><input type="number" id="cajaRecMontoCierre" step="0.01" min="0" value="${totalSistema}"></div>
+    <div class="form-group"><label>Monto Cierre Real (efectivo en caja) $</label><input type="number" id="cajaRecMontoCierre" step="0.01" min="0" value="${efectivoEsperado}"></div>
     <div class="form-group" style="margin-top:8px;"><label>Observaciones Cierre</label><input type="text" id="cajaRecObsCierre" placeholder="Novedades del turno"></div>
   </div>`;
   confirmarAccion('Cerrar Caja', cuerpo, 'Confirmar Cierre', async (ok) => {
     if (!ok) return;
     var montoCierre = parseFloat(document.getElementById('cajaRecMontoCierre').value)||0;
+    if (montoCierre <= 0) { showToast('El monto de cierre no puede ser $0','warning'); return; }
     var obsCierre = document.getElementById('cajaRecObsCierre').value.trim();
-    var diferencia = montoCierre - totalSistema;
+    var diferencia = montoCierre - efectivoEsperado;
     try {
       await updateDoc(doc(db,'cajaRecepcion',cajaDoc.id), {
         estado: 'CERRADA', montoCierre, obsCierre,
-        totalSistema, diferencia,
+        totalSistema: totalCobros, diferencia,
+        totalEgresos, totalIngresos, efectivoEsperado,
         detalleEfectivo: detalleMp.EFECTIVO,
         detalleDebito: detalleMp.TARJETA_DEBITO,
         detalleCredito: detalleMp.TARJETA_CREDITO,
         detalleTransferencia: detalleMp.TRANSFERENCIA,
         fechaCierre: new Date().toISOString()
       });
+      // Imprimir ticket de cierre
+      var turnoLabels = { MANANA:'Mañana', TARDE:'Tarde', NOCHE:'Noche' };
+      var ticketHTML = `<!DOCTYPE html><html><head><style>
+        @page{size:80mm auto;margin:4mm}body{font-family:'Courier New',monospace;font-size:11px;width:72mm;}
+        h3{text-align:center;margin:4px 0;}hr{border:0;border-top:1px dashed #333;margin:6px 0;}
+        .row{display:flex;justify-content:space-between;margin:2px 0;}.bold{font-weight:700;}
+      </style></head><body>
+        <h3>CIERRE DE CAJA</h3>
+        <div style="text-align:center;font-size:10px;">${new Date().toLocaleString('es-AR')}</div>
+        <hr><div class="row"><span>Turno:</span><span>${turnoLabels[cajaData.turno]||cajaData.turno}</span></div>
+        <div class="row"><span>Usuario:</span><span>${esc(cajaData.usuario||'')}</span></div>
+        <div class="row"><span>Apertura:</span><span>$${montoApertura.toLocaleString('es-AR')}</span></div>
+        <hr><div class="bold">COBROS</div>
+        <div class="row"><span>Efectivo:</span><span>$${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Débito:</span><span>$${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Crédito:</span><span>$${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Transf.:</span><span>$${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
+        <div class="row bold"><span>Total Cobros:</span><span>$${totalCobros.toLocaleString('es-AR')}</span></div>
+        <hr><div class="bold">MOVIMIENTOS</div>
+        <div class="row"><span>Ingresos:</span><span>+$${totalIngresos.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Egresos:</span><span>-$${totalEgresos.toLocaleString('es-AR')}</span></div>
+        <hr><div class="row bold"><span>Efectivo esperado:</span><span>$${efectivoEsperado.toLocaleString('es-AR')}</span></div>
+        <div class="row bold"><span>Cierre real:</span><span>$${montoCierre.toLocaleString('es-AR')}</span></div>
+        <div class="row bold" style="font-size:13px;"><span>DIFERENCIA:</span><span style="color:${diferencia===0?'#333':diferencia>0?'green':'red'};">$${diferencia.toLocaleString('es-AR')}</span></div>
+        ${obsCierre?'<hr><div style="font-size:10px;">Obs: '+esc(obsCierre)+'</div>':''}
+      </body></html>`;
+      var w = window.open('','_blank','width=400,height=600');
+      w.document.write(ticketHTML); w.document.close(); w.print();
       showToast('Caja cerrada — Diferencia: $'+diferencia.toLocaleString('es-AR'),'success');
       await cargarCajaRec();
+      await cargarMovCaja();
     } catch(e) { showToast('Error: '+e.message,'error'); }
   });
 }
@@ -4269,20 +4548,33 @@ async function renderCalendarioHab() {
       var fStr = f.toISOString().split('T')[0];
       // Check if any reservation covers this date for this room
       var res = allRes.find(r => r.habitacionNro === hab.numero && r.fechaIn <= fStr && r.fechaOut > fStr);
-      var bgColor = '';
+      var bgColor = '#fff';
       var content = '';
       var draggable = '';
+      var tooltip = '';
+      var borderCircle = '';
       if (res) {
-        if (res.estado === 'CHECKIN') { bgColor = 'rgba(232,69,60,0.2)'; content = esc(res.huesped.split(' ')[0]); }
-        else if (res.estado === 'CONFIRMADA') { bgColor = 'rgba(245,183,49,0.2)'; content = esc(res.huesped.split(' ')[0]); }
-        else { bgColor = 'rgba(139,92,246,0.15)'; content = '(pre)'; }
+        var nomCorto = esc((res.huesped||'').split(' ').slice(0,2).join(' '));
+        var personas = (res.adultos||1) + (res.menores||0);
+        tooltip = ` title="${esc(res.huesped||'')} — ${personas} persona(s)"`;
+        if (res.estado === 'CHECKIN') { bgColor = '#e8453c'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
+        else if (res.estado === 'CONFIRMADA') { bgColor = '#2ecc71'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
+        else { bgColor = '#f5b731'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
         draggable = ` draggable="true" ondragstart="dragReserva(event,'${res.id}','${hab.numero}')"`;
+      } else {
+        borderCircle = '';
       }
-      html += `<td style="padding:2px 4px;border:1px solid var(--border);text-align:center;background:${bgColor};cursor:${res?'grab':'default'};"${draggable} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+      html += `<td style="padding:2px 4px;border:1px solid var(--border);text-align:center;background:${bgColor};cursor:${res?'grab':'default'};min-height:28px;"${draggable}${tooltip} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
     });
     html += '</tr>';
   });
   html += '</tbody></table>';
+  html += '<div style="display:flex;gap:16px;margin-top:8px;font-size:0.75rem;align-items:center;flex-wrap:wrap;">';
+  html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#e8453c;display:inline-block;"></span> Ocupada</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#f5b731;display:inline-block;"></span> Pre-Reserva</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#2ecc71;display:inline-block;"></span> Confirmada</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid var(--border);display:inline-block;"></span> Libre</span>';
+  html += '</div>';
   $('calendarioHab').innerHTML = html;
 }
 window.renderCalendarioHab = renderCalendarioHab;
