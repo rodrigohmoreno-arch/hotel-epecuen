@@ -508,6 +508,8 @@
       <button class="tab" onclick="tabAdmin('adminTarifas',this)">Tarifas</button>
       <button class="tab" onclick="tabAdmin('adminConfig',this)">Config Hotel</button>
       <button class="tab" onclick="tabAdmin('adminMarketing',this)">Marketing</button>
+      <button class="tab" onclick="tabAdmin('adminVouchers',this)">Vouchers</button>
+      <button class="tab" onclick="tabAdmin('adminReporteCarhue',this)">Reporte Carhue</button>
     </div>
     <!-- Admin Mesas -->
     <div id="tabAdminMesas">
@@ -693,6 +695,40 @@
         </table></div>
       </div>
     </div>
+    <!-- Admin Vouchers -->
+    <div id="tabAdminVouchers" class="hidden">
+      <div class="card">
+        <div class="card-title">Vouchers Creados</div>
+        <div class="form-row" style="margin-bottom:16px;">
+          <div class="form-group"><label>Fecha</label><input type="date" id="filtroVouchersFecha" onchange="cargarVouchersAdmin()"></div>
+          <button class="btn btn-gold btn-sm" style="align-self:flex-end;" onclick="cargarVouchersAdmin()">Buscar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Fecha</th><th>Nombre</th><th>Hab.</th><th>Pensión</th><th>Día</th><th>Válido</th><th>Estado</th><th>Creado por</th></tr></thead>
+          <tbody id="tbodyVouchersAdmin"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Admin Reporte Carhue -->
+    <div id="tabAdminReporteCarhue" class="hidden">
+      <div class="card">
+        <div class="card-title">Reporte Consumos Hotel Carhue</div>
+        <div class="form-row" style="margin-bottom:16px;">
+          <div class="form-group"><label>Período</label>
+            <select id="reporteCarhuePerido" onchange="cargarReporteCarhue()">
+              <option value="dia">Hoy</option>
+              <option value="semana">Última Semana</option>
+              <option value="mes">Último Mes</option>
+            </select></div>
+          <button class="btn btn-gold btn-sm" style="align-self:flex-end;" onclick="cargarReporteCarhue()">Generar</button>
+        </div>
+        <div id="resumenReporteCarhue" class="stats-row" style="margin-bottom:16px;"></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Mesa</th><th>Voucher</th><th>Hab.</th><th>Nombre</th><th>Pensión</th><th>Bebidas</th><th>Comidas</th><th>Total</th></tr></thead>
+          <tbody id="tbodyReporteCarhue"></tbody>
+        </table></div>
+      </div>
+    </div>
   </div>
 
   <!-- PANEL CARHUE -->
@@ -713,7 +749,18 @@
           <div class="form-group"><label>Tipo Pensión</label>
             <select id="vPension"><option value="MAP">Media Pensión (MAP)</option><option value="SIN_MAP">Sin MAP</option></select></div>
         </div>
-        <div class="form-group" style="margin-bottom:16px;"><label>Comensales</label><input type="number" id="vComensales" min="1" value="1"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Comensales</label><input type="number" id="vComensales" min="1" value="1"></div>
+          <div class="form-group"><label>Días de Voucher</label>
+            <select id="vDias" onchange="toggleFechasVoucher()">
+              <option value="1">1 Día</option>
+              <option value="2">2 Días</option>
+            </select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha Día 1 *</label><input type="date" id="vFechaDia1"></div>
+          <div class="form-group hidden" id="grupoFechaDia2"><label>Fecha Día 2</label><input type="date" id="vFechaDia2"></div>
+        </div>
         <button class="btn btn-green btn-sm" onclick="crearVoucher()">Crear Voucher</button>
       </div>
     </div>
@@ -721,7 +768,7 @@
       <div class="card">
         <div class="card-title">Vouchers de Hoy</div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Hora</th><th>Nombre</th><th>Hab.</th><th>Pensión</th><th>Comensales</th></tr></thead>
+          <thead><tr><th>ID</th><th>Hora</th><th>Nombre</th><th>Hab.</th><th>Pensión</th><th>Día</th><th>Válido</th><th>Estado</th><th></th></tr></thead>
           <tbody id="tbodyVouchers"></tbody>
         </table></div>
       </div>
@@ -1067,6 +1114,16 @@
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente" readonly style="background:var(--surface);"></div>
         </div>
       </div>
+      <div id="abrirCamposCarhue" class="hidden">
+        <div class="form-row">
+          <div class="form-group"><label>N° Habitación Carhue *</label><input type="text" id="abrirHabCarhue"></div>
+          <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCarhue"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>ID Voucher *</label><input type="text" id="abrirVoucherId" placeholder="Ej: A1B" style="text-transform:uppercase;"></div>
+          <div class="form-group"><label>Pensión Voucher</label><input type="text" id="abrirVoucherPension" readonly style="background:var(--surface);"></div>
+        </div>
+      </div>
       <div class="form-group">
         <label>Cantidad Comensales</label>
         <input type="number" id="abrirComensales" min="1" value="1">
@@ -1357,6 +1414,7 @@ function mostrarPanel(rol) {
     $('filtroAuditFecha').valueAsDate = new Date();
   } else if (rol === 'CARHUE_RECEPCION') {
     $('panelCarhue').classList.remove('hidden');
+    $('vFechaDia1').valueAsDate = new Date();
     cargarVouchers();
   } else if (rol === 'RECEPCION') {
     $('panelRecepcion').classList.remove('hidden');
@@ -1404,8 +1462,8 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminVouchers','tabAdminReporteCarhue'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
@@ -1416,6 +1474,8 @@ function tabAdmin(t, btn) {
   if (t === 'adminTarifas') cargarTarifas();
   if (t === 'adminConfig') cargarConfigHotel();
   if (t === 'adminMarketing') cargarListaMarketing();
+  if (t === 'adminVouchers') cargarVouchersAdmin();
+  if (t === 'adminReporteCarhue') cargarReporteCarhue();
 }
 window.tabAdmin = tabAdmin;
 
@@ -1457,6 +1517,9 @@ function renderMesas() {
       infoExtra += `<div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>`;
       if (tipo !== 'EXTERNO' && m.nroHabitacion) {
         infoExtra += `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">Hab. ${esc(m.nroHabitacion)}</div>`;
+      }
+      if (m.voucherId) {
+        infoExtra += `<div style="font-size:0.7rem;color:var(--green);margin-top:2px;">Voucher: ${esc(m.voucherId)}</div>`;
       }
       if (m.nombreCliente) {
         infoExtra += `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>`;
@@ -1507,8 +1570,10 @@ window.abrirMesaModal = abrirMesaModal;
 
 function onTipoClienteChange() {
   var tipo = $('abrirTipoCliente').value;
-  var mostrar = tipo !== 'EXTERNO';
-  $('abrirCamposHuesped').style.display = mostrar ? 'block' : 'none';
+  var esCarhue = tipo === 'CARHUE';
+  var esExterno = tipo === 'EXTERNO';
+  $('abrirCamposHuesped').style.display = (!esExterno && !esCarhue) ? 'block' : 'none';
+  $('abrirCamposCarhue').style.display = esCarhue ? 'block' : 'none';
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
@@ -1538,12 +1603,25 @@ window.onHabSelectChange = onHabSelectChange;
 async function confirmarAbrirMesa() {
   if (!mesaAbierta) return;
   var tipo = $('abrirTipoCliente').value;
-  var hab  = $('abrirHabitacion').value.trim();
-  var nombre = $('abrirNombreCliente').value.trim();
+  var hab = '', nombre = '', voucherId = '', voucherPension = '';
   var com  = parseInt($('abrirComensales').value) || 0;
 
-  // Validar campos obligatorios para tipos no externos
-  if (tipo !== 'EXTERNO') {
+  if (tipo === 'CARHUE') {
+    hab = $('abrirHabCarhue').value.trim();
+    nombre = $('abrirNombreCarhue').value.trim();
+    voucherId = $('abrirVoucherId').value.trim().toUpperCase();
+    voucherPension = $('abrirVoucherPension').value.trim();
+    if (!hab) { showToast('Completá el N° de Habitación Carhue','warning'); return; }
+    if (!nombre) { showToast('Completá el Nombre del Cliente','warning'); return; }
+    if (!voucherId) { showToast('Completá el ID del Voucher','warning'); return; }
+    // Validar que el voucher existe y está activo
+    var vSnap = await getDocs(query(collection(db,'vouchers'), where('voucherId','==',voucherId), where('estado','==','ACTIVO')));
+    if (vSnap.empty) { showToast('Voucher '+voucherId+' no encontrado o no está activo','error'); return; }
+    var vData = vSnap.docs[0].data();
+    voucherPension = vData.tipoPension;
+  } else if (tipo !== 'EXTERNO') {
+    hab = $('abrirHabitacion').value.trim();
+    nombre = $('abrirNombreCliente').value.trim();
     if (!hab) { showToast('Completá el N° de Habitación','warning'); $('abrirHabitacion').focus(); return; }
     if (!nombre) { showToast('Completá el Nombre del Cliente','warning'); $('abrirNombreCliente').focus(); return; }
   }
@@ -1556,6 +1634,8 @@ async function confirmarAbrirMesa() {
       nroHabitacion: hab,
       nombreCliente: nombre,
       cantidadComensales: com,
+      voucherId: voucherId || '',
+      voucherPension: voucherPension || '',
       estado: 'ABIERTA',
       total: 0,
       usuario: currentUser.usuario,
@@ -1568,10 +1648,13 @@ async function confirmarAbrirMesa() {
       tipoCliente: tipo,
       nombreCliente: nombre,
       nroHabitacion: hab,
-      cantidadComensales: com
+      cantidadComensales: com,
+      voucherId: voucherId || '',
+      voucherPension: voucherPension || ''
     });
     cerrarModal('modalAbrirMesa');
     $('abrirHabitacion').value=''; $('abrirNombreCliente').value=''; $('abrirComensales').value='1';
+    $('abrirHabCarhue').value=''; $('abrirNombreCarhue').value=''; $('abrirVoucherId').value=''; $('abrirVoucherPension').value='';
     await cargarMesas();
     // Abrir comanda directamente
     await abrirComanda(mesaAbierta.id);
@@ -1722,22 +1805,35 @@ function cerrarMesa() {
   var labels = { EPECUEN_MAP:'Huésped Con MAP', EPECUEN_SIN_MAP:'Huésped Sin MAP', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
   var colors = { EPECUEN_MAP:'var(--blue)', EPECUEN_SIN_MAP:'var(--gold)', CARHUE:'var(--green)', SERVICIO_HABITACION:'var(--blue)', EXTERNO:'var(--red)' };
 
+  // CARHUE: MAP → solo bebidas a cobrar en caja, SIN_MAP → todo a cobrar
+  var esCarhueMAP = tipo === 'CARHUE' && (mesa?.voucherPension === 'MAP');
+  var totalACobrar = esCarhueMAP ? totalBeb : total;
+  var infoCarhue = '';
+  if (tipo === 'CARHUE') {
+    var vId = mesa?.voucherId || '-';
+    var pensLabel = esCarhueMAP ? 'MAP (solo bebidas a cobrar)' : 'Sin MAP (cobro completo)';
+    infoCarhue = `<div style="margin-bottom:8px;font-size:0.85rem;"><span style="color:var(--muted);">Voucher:</span> <strong>${esc(vId)}</strong> — ${pensLabel}</div>`;
+  }
+
   var cuerpo = `<div style="padding:20px;">
     <div style="margin-bottom:12px;"><span style="background:${colors[tipo]||'var(--muted)'};color:#fff;padding:3px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;">${labels[tipo]||tipo}</span></div>
+    ${infoCarhue}
     <div style="background:var(--card);border-radius:10px;padding:14px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Bebidas</span><span>$${totalBeb.toFixed(2)}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--muted);">Comidas</span><span>$${totalCom.toFixed(2)}</span></div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;"><span style="font-weight:700;">Total</span><span style="font-weight:700;font-size:1.1rem;color:var(--green);">$${total.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--muted);">Comidas${esCarhueMAP?' (cubierto por MAP)':''}</span><span${esCarhueMAP?' style="text-decoration:line-through;color:var(--muted);"':''}>$${totalCom.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;"><span style="font-weight:700;">Total a Cobrar</span><span style="font-weight:700;font-size:1.1rem;color:var(--green);">$${totalACobrar.toFixed(2)}</span></div>
     </div>
-    ${tipo!=='EXTERNO' ? '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--text);">LIBRE</strong> automáticamente.</p>'
-      : '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--gold);">FACTURACIÓN</strong> para que Caja realice el cobro.</p>'}
+    ${(tipo==='CARHUE'||tipo==='EXTERNO') ? '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--gold);">FACTURACIÓN</strong> para que Caja realice el cobro.</p>'
+      : '<p style="font-size:0.82rem;color:var(--muted);">La mesa pasará a <strong style="color:var(--text);">LIBRE</strong> automáticamente.</p>'}
   </div>`;
 
-  var textoBtn = tipo !== 'EXTERNO' ? 'Cerrar Mesa' : 'Enviar a Caja';
+  var textoBtn = (tipo === 'CARHUE' || tipo === 'EXTERNO') ? 'Enviar a Caja' : 'Cerrar Mesa';
 
   confirmarAccion('Cerrar Mesa', cuerpo, textoBtn, async (ok) => {
     if (!ok) return;
-    if (tipo !== 'EXTERNO') {
+    if (tipo === 'CARHUE') {
+      await pasarAFacturacion(mesa, totalACobrar);
+    } else if (tipo !== 'EXTERNO') {
       await cerrarMesaHuesped(mesa, total, totalBeb, totalCom);
     } else {
       await pasarAFacturacion(mesa, total);
@@ -1757,6 +1853,8 @@ async function cerrarMesaHuesped(mesa, total, totalBeb, totalCom) {
       tipoCliente: mesa?.tipoCliente || '',
       nombreCliente: mesa?.nombreCliente || '',
       nroHabitacion: mesa?.nroHabitacion || '',
+      voucherId: mesa?.voucherId || '',
+      voucherPension: mesa?.voucherPension || '',
       totalBebidas: totalBeb,
       totalComidas: totalCom,
       totalGeneral: total,
@@ -1768,7 +1866,7 @@ async function cerrarMesaHuesped(mesa, total, totalBeb, totalCom) {
     // Actualizar comanda
     await updateDoc(doc(db,'comandas',comandaActivaId), { estado:'CERRADA_SIN_COBRO', fechaCierre: ahora });
     // Liberar mesa
-    await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0 });
+    await updateDoc(doc(db,'mesas',mesa.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0, voucherId:'', voucherPension:'' });
     // Registrar consumo a la habitación (integración hotel)
     if (mesa.nroHabitacion && (mesa.tipoCliente === 'EPECUEN_MAP' || mesa.tipoCliente === 'EPECUEN_SIN_MAP' || mesa.tipoCliente === 'SERVICIO_HABITACION')) {
       await registrarConsumoHabitacion(mesa, comandaActual, total);
@@ -1909,15 +2007,20 @@ async function cargarMesasCobro() {
     var mesas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     var grid = $('mesasCobroGrid');
     if (!mesas.length) { grid.innerHTML = '<p style="color:var(--muted);padding:20px;">No hay mesas para cobrar</p>'; return; }
-    grid.innerHTML = mesas.map(m => `
+    var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Consumidor Final' };
+    grid.innerHTML = mesas.map(m => {
+      var tipoLabel = tipoLabels[m.tipoCliente] || 'Externo - Consumidor Final';
+      return `
       <div class="mesa-card facturacion" onclick="abrirFacturacion('${m.id}','${esc(m.nombre)}','${m.comandaId}')">
         <div class="mesa-nombre">${esc(m.nombre)}</div>
         <div class="mesa-ubicacion">${esc(m.ubicacion||'')}</div>
         <div class="mesa-estado estado-facturacion">PARA COBRAR</div>
-        <div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">Externo - Consumidor Final</div>
+        <div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>
+        ${m.voucherId ? `<div style="font-size:0.7rem;color:var(--green);margin-top:2px;">Voucher: ${esc(m.voucherId)}</div>` : ''}
         ${m.nombreCliente ? `<div class="mesa-cliente">${esc(m.nombreCliente)}</div>` : ''}
         ${m.cantidadComensales ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">🍽 ${m.cantidadComensales} comensal${m.cantidadComensales>1?'es':''}</div>` : ''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
@@ -1987,6 +2090,11 @@ async function confirmarFacturacion() {
       comandaId: mesaParaFacturar.comandaId,
       mesaId: mesaParaFacturar.id,
       mesaNombre: mesaParaFacturar.nombre,
+      tipoCliente: mesaData.tipoCliente || 'EXTERNO',
+      nombreCliente: mesaData.nombreCliente || '',
+      nroHabitacion: mesaData.nroHabitacion || '',
+      voucherId: mesaData.voucherId || '',
+      voucherPension: mesaData.voucherPension || '',
       totalBebidas: totalBeb,
       totalComidas: totalCom,
       totalGeneral: totalFinal,
@@ -2005,7 +2113,7 @@ async function confirmarFacturacion() {
     });
     // Actualizar comanda y mesa
     await updateDoc(doc(db,'comandas',mesaParaFacturar.comandaId), { estado:'CERRADA', fechaCierre: ahora });
-    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0 });
+    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0, voucherId:'', voucherPension:'' });
 
     // Guardar datos para ticket y mostrar modal de datos de facturación
     ticketNoFiscalPendiente = {
@@ -2686,23 +2794,81 @@ window.cargarAuditoria = cargarAuditoria;
 // ══════════════════════════════════════
 // CARHUE — VOUCHERS
 // ══════════════════════════════════════
+function generarVoucherId() {
+  var letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  var nums = '0123456789';
+  return letras[Math.floor(Math.random()*letras.length)] + nums[Math.floor(Math.random()*nums.length)] + letras[Math.floor(Math.random()*letras.length)];
+}
+
+function toggleFechasVoucher() {
+  var dias = parseInt($('vDias').value)||1;
+  $('grupoFechaDia2').classList.toggle('hidden', dias < 2);
+}
+window.toggleFechasVoucher = toggleFechasVoucher;
+
 async function crearVoucher() {
   var nombre = $('vNombre').value.trim();
   var apellido = $('vApellido').value.trim();
   var hab = $('vHabitacion').value.trim();
   var pension = $('vPension').value;
   var com = parseInt($('vComensales').value)||1;
+  var dias = parseInt($('vDias').value)||1;
+  var fecha1 = $('vFechaDia1').value;
+  var fecha2 = $('vFechaDia2').value;
   if (!nombre||!apellido||!hab) { showToast('Completá los campos requeridos','warning'); return; }
+  if (!fecha1) { showToast('Completá la fecha del día 1','warning'); return; }
+  if (dias === 2 && !fecha2) { showToast('Completá la fecha del día 2','warning'); return; }
+  var voucherId = generarVoucherId();
   try {
+    // Crear voucher día 1
     await addDoc(collection(db,'vouchers'), {
-      nombre, apellido, nroHabitacion:hab, tipoPension:pension,
-      cantidadComensales:com, usuario:currentUser.usuario, fecha:serverTimestamp()
+      voucherId, nombre, apellido, nroHabitacion:hab, tipoPension:pension,
+      cantidadComensales:com, dia:1, totalDias:dias, fechaValidez:fecha1,
+      estado:'ACTIVO', usuario:currentUser.usuario, fecha:serverTimestamp()
     });
-    showToast('Voucher creado para '+nombre+' '+apellido,'success');
+    imprimirTicketVoucher(voucherId, nombre, apellido, hab, pension, com, 1, fecha1);
+    // Crear voucher día 2 si corresponde
+    if (dias === 2) {
+      await addDoc(collection(db,'vouchers'), {
+        voucherId, nombre, apellido, nroHabitacion:hab, tipoPension:pension,
+        cantidadComensales:com, dia:2, totalDias:dias, fechaValidez:fecha2,
+        estado:'ACTIVO', usuario:currentUser.usuario, fecha:serverTimestamp()
+      });
+      setTimeout(() => imprimirTicketVoucher(voucherId, nombre, apellido, hab, pension, com, 2, fecha2), 1500);
+    }
+    showToast('Voucher '+voucherId+' creado ('+dias+' día'+(dias>1?'s':'')+')','success');
     $('vNombre').value=''; $('vApellido').value=''; $('vHabitacion').value=''; $('vComensales').value='1';
+    $('vFechaDia1').value=''; $('vFechaDia2').value=''; $('vDias').value='1'; toggleFechasVoucher();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.crearVoucher = crearVoucher;
+
+function imprimirTicketVoucher(vId, nombre, apellido, hab, pension, com, dia, fecha) {
+  var pensionLabel = pension === 'MAP' ? 'Media Pensión (MAP)' : 'Sin MAP';
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:6px 0;}
+    .id{text-align:center;font-size:20px;font-weight:bold;letter-spacing:4px;margin:8px 0;border:2px solid #000;padding:8px;border-radius:8px;}
+  </style></head><body>
+    <h2>Hotel Carhue</h2>
+    <h3 style="font-size:11px;">VOUCHER DE CONSUMO</h3>
+    <hr>
+    <div class="id">${esc(vId)}</div>
+    <hr>
+    <p><b>Huésped:</b> ${esc(apellido)}, ${esc(nombre)}</p>
+    <p><b>Hab. Carhue:</b> ${esc(hab)}</p>
+    <p><b>Pensión:</b> ${esc(pensionLabel)}</p>
+    <p><b>Comensales:</b> ${com}</p>
+    <hr>
+    <p style="font-size:14px;font-weight:bold;text-align:center;">DÍA ${dia} — ${fecha}</p>
+    <hr>
+    <p style="text-align:center;font-size:10px;color:#666;">Válido solo para la fecha indicada</p>
+    <p style="text-align:center;font-size:10px;color:#666;">Presentar en Hotel Epecuén al consumir</p>
+  </body></html>`;
+  imprimirHTML(html);
+}
 
 async function cargarVouchers() {
   try {
@@ -2713,16 +2879,139 @@ async function cargarVouchers() {
     var tbody = $('tbodyVouchers');
     tbody.innerHTML = snap.docs.map(d => {
       var v = d.data();
+      var estadoColor = v.estado==='ACTIVO' ? 'var(--green)' : v.estado==='USADO' ? 'var(--muted)' : 'var(--red)';
       return `<tr>
+        <td><strong style="letter-spacing:2px;">${esc(v.voucherId||'-')}</strong></td>
         <td>${fmtHora(v.fecha)}</td>
-        <td><strong>${esc(v.nombre)} ${esc(v.apellido)}</strong></td>
+        <td><strong>${esc(v.apellido||'')} ${esc(v.nombre||'')}</strong></td>
         <td>${esc(v.nroHabitacion)}</td>
         <td><span class="badge" style="background:rgba(46,204,113,0.15);color:var(--green);">${esc(v.tipoPension)}</span></td>
-        <td>${v.cantidadComensales}</td>
+        <td>${v.dia||1}/${v.totalDias||1}</td>
+        <td>${esc(v.fechaValidez||'-')}</td>
+        <td><span style="color:${estadoColor};font-weight:600;">${esc(v.estado||'ACTIVO')}</span></td>
+        <td><button class="btn btn-xs btn-ghost" onclick="imprimirTicketVoucher('${esc(v.voucherId)}','${esc(v.nombre)}','${esc(v.apellido)}','${esc(v.nroHabitacion)}','${esc(v.tipoPension)}',${v.cantidadComensales||1},${v.dia||1},'${esc(v.fechaValidez||'')}')">🖨</button></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin vouchers hoy</td></tr>';
+    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Sin vouchers hoy</td></tr>';
   } catch(e) {}
 }
+
+// ── Toggle checkout ID transacción ──
+function toggleCheckoutIdTx() {
+  var mp = $('checkoutMedioPago')?.value;
+  var campo = $('checkoutCampoIdTx');
+  if (campo) campo.style.display = (mp && mp !== 'EFECTIVO') ? 'block' : 'none';
+}
+window.toggleCheckoutIdTx = toggleCheckoutIdTx;
+
+// ── Ticket no fiscal de checkout ──
+function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx) {
+  var fecha = new Date().toLocaleString('es-AR');
+  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
+  var consumosHTML = consumos.map(c => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(c.concepto||'Consumo')}</span><span>$${(c.total||0).toLocaleString('es-AR')}</span></div>`).join('') || '<p style="font-size:11px;color:#666;">Sin consumos</p>';
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:2px solid #000;padding-top:6px;margin-top:6px;}
+  </style></head><body>
+    <h2>Hotel Epecuén</h2>
+    <h3 style="font-size:11px;">TICKET NO FISCAL — CHECK-OUT</h3>
+    <p style="text-align:center;font-size:10px;">${fecha}</p>
+    <hr>
+    <p><b>Huésped:</b> ${esc(res.huesped)}</p>
+    <p><b>Hab:</b> ${esc(res.habitacionNro)}</p>
+    <p><b>Estadía:</b> ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
+    <hr>
+    <p style="font-weight:bold;">ESTADÍA</p>
+    <div style="display:flex;justify-content:space-between;"><span>${res.noches} noches (${esc(res.pension||'')})</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}</span></div>
+    ${res.sena ? '<div style="display:flex;justify-content:space-between;color:#666;"><span>Seña abonada</span><span>-$ '+(res.sena||0).toLocaleString('es-AR')+'</span></div>' : ''}
+    <hr>
+    <p style="font-weight:bold;">CONSUMOS</p>
+    ${consumosHTML}
+    <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Subtotal consumos</span><span>$ ${totalConsumos.toLocaleString('es-AR')}</span></div>
+    <hr>
+    <div class="total"><span>TOTAL</span><span>$ ${totalGeneral.toLocaleString('es-AR')}</span></div>
+    <hr>
+    <p><b>Medio de Pago:</b> ${medioLabels[medioPago]||medioPago}</p>
+    ${idTx ? '<p><b>ID Transacción:</b> '+esc(idTx)+'</p>' : ''}
+    <hr>
+    <p style="text-align:center;font-size:10px;color:#666;">Documento no fiscal — Hotel Epecuén</p>
+    <p style="text-align:center;font-size:10px;color:#666;">Gracias por su estadía</p>
+  </body></html>`;
+  imprimirHTML(html);
+}
+
+// ── Admin: Vouchers por día ──
+async function cargarVouchersAdmin() {
+  var fechaStr = $('filtroVouchersFecha').value;
+  if (!fechaStr) { $('filtroVouchersFecha').value = new Date().toISOString().split('T')[0]; fechaStr = $('filtroVouchersFecha').value; }
+  var desde = new Date(fechaStr + 'T00:00:00');
+  var hasta = new Date(fechaStr + 'T23:59:59');
+  try {
+    var snap = await getDocs(query(collection(db,'vouchers'),
+      where('fecha','>=', Timestamp.fromDate(desde)),
+      where('fecha','<=', Timestamp.fromDate(hasta)),
+      orderBy('fecha','desc')
+    ));
+    var tbody = $('tbodyVouchersAdmin');
+    tbody.innerHTML = snap.docs.map(d => {
+      var v = d.data();
+      var estadoColor = v.estado==='ACTIVO' ? 'var(--green)' : v.estado==='USADO' ? 'var(--muted)' : 'var(--red)';
+      return `<tr>
+        <td><strong style="letter-spacing:2px;">${esc(v.voucherId||'-')}</strong></td>
+        <td>${fmtHora(v.fecha)}</td>
+        <td><strong>${esc(v.apellido||'')} ${esc(v.nombre||'')}</strong></td>
+        <td>${esc(v.nroHabitacion)}</td>
+        <td>${esc(v.tipoPension)}</td>
+        <td>${v.dia||1}/${v.totalDias||1}</td>
+        <td>${esc(v.fechaValidez||'-')}</td>
+        <td><span style="color:${estadoColor};font-weight:600;">${esc(v.estado||'ACTIVO')}</span></td>
+        <td>${esc(v.usuario||'-')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Sin vouchers en esta fecha</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarVouchersAdmin = cargarVouchersAdmin;
+
+// ── Admin: Reporte Carhue ──
+async function cargarReporteCarhue() {
+  var periodo = $('reporteCarhuePerido').value;
+  var ahora = new Date();
+  var desde;
+  if (periodo === 'dia') { desde = hoy(); }
+  else if (periodo === 'semana') { desde = new Date(ahora); desde.setDate(desde.getDate()-7); desde.setHours(0,0,0,0); }
+  else { desde = new Date(ahora); desde.setDate(desde.getDate()-30); desde.setHours(0,0,0,0); }
+  try {
+    var snap = await getDocs(query(collection(db,'cierres'),
+      where('tipoCliente','==','CARHUE'),
+      where('fechaCierre','>=', Timestamp.fromDate(desde)),
+      orderBy('fechaCierre','desc')
+    ));
+    var cierres = snap.docs.map(d => d.data());
+    var totalBeb = cierres.reduce((a,c) => a + (c.totalBebidas||0), 0);
+    var totalCom = cierres.reduce((a,c) => a + (c.totalComidas||0), 0);
+    var totalGen = cierres.reduce((a,c) => a + (c.totalGeneral||0), 0);
+    $('resumenReporteCarhue').innerHTML = [
+      ['Consumos', cierres.length, 'var(--blue)'],
+      ['Bebidas', '$'+totalBeb.toLocaleString('es-AR'), 'var(--gold)'],
+      ['Comidas', '$'+totalCom.toLocaleString('es-AR'), 'var(--green)'],
+      ['Total', '$'+totalGen.toLocaleString('es-AR'), 'var(--purple)']
+    ].map(([l,v,c]) => `<div class="stat-card"><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+    $('tbodyReporteCarhue').innerHTML = cierres.map(c => `<tr>
+      <td>${fmtFecha(c.fechaCierre)}</td>
+      <td>${esc(c.mesaNombre||'-')}</td>
+      <td><strong>${esc(c.voucherId||'-')}</strong></td>
+      <td>${esc(c.nroHabitacion||'-')}</td>
+      <td>${esc(c.nombreCliente||'-')}</td>
+      <td>${esc(c.voucherPension||'-')}</td>
+      <td>$${(c.totalBebidas||0).toLocaleString('es-AR')}</td>
+      <td>$${(c.totalComidas||0).toLocaleString('es-AR')}</td>
+      <td><strong>$${(c.totalGeneral||0).toLocaleString('es-AR')}</strong></td>
+    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Sin datos de Carhue para el período</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarReporteCarhue = cargarReporteCarhue;
 
 // ══════════════════════════════════════
 // RECEPCION — HOTEL MANAGEMENT
@@ -3579,22 +3868,34 @@ async function iniciarCheckOut(resId) {
       </div>
       <div style="margin-top:16px;">
         <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px;">Medio de Pago Final</label>
-        <select id="checkoutMedioPago" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+        <select id="checkoutMedioPago" onchange="toggleCheckoutIdTx()" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
           <option value="EFECTIVO">Efectivo</option>
           <option value="TARJETA_DEBITO">Tarjeta Débito</option>
           <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
           <option value="TRANSFERENCIA">Transferencia</option>
         </select>
       </div>
+      <div id="checkoutCampoIdTx" style="margin-top:12px;display:none;">
+        <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px;">N° Cupón / ID Transacción *</label>
+        <input type="text" id="checkoutIdTransaccion" placeholder="Ingresá N° cupón o ID" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+      </div>
     </div>`;
 
     confirmarAccion('Check-Out', cuerpo, 'Confirmar Check-Out', async (ok) => {
       if (!ok) return;
       var medioPago = $('checkoutMedioPago')?.value || 'EFECTIVO';
+      var idTx = $('checkoutIdTransaccion')?.value?.trim() || '';
+      // Validar ID transacción para medios no efectivo
+      if (medioPago !== 'EFECTIVO' && !idTx) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
+      // Verificar caja abierta
+      var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+      if (cajaSnap.empty) { showToast('Debés abrir la caja antes de hacer check-out','warning'); return; }
       try {
-        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, totalConsumos, totalGeneral });
+        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTx, totalConsumos, totalGeneral });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         showToast('Check-Out completado — Total: $'+totalGeneral.toLocaleString('es-AR'),'success');
+        // Imprimir ticket no fiscal de checkout
+        imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx);
         await cargarListaCheckOut();
         await cargarHabitaciones();
       } catch(e) { showToast('Error: '+e.message,'error'); }
@@ -3709,21 +4010,53 @@ async function cerrarCajaRec() {
   var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
   if (snap.empty) { showToast('No hay caja abierta para cerrar','warning'); return; }
   var cajaDoc = snap.docs[0];
+  var cajaData = cajaDoc.data();
+  // Buscar checkouts realizados durante la caja abierta
+  var desdeAp = new Date(cajaData.fechaApertura);
+  var checkSnap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKOUT')));
+  var checkouts = checkSnap.docs.map(d => d.data()).filter(r => {
+    if (!r.fechaCheckOutReal) return false;
+    var fco = r.fechaCheckOutReal.toDate ? r.fechaCheckOutReal.toDate() : new Date(r.fechaCheckOutReal);
+    return fco >= desdeAp;
+  });
+  // Calcular detalle por medio de pago
+  var detalleMp = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
+  checkouts.forEach(r => { detalleMp[r.medioPagoFinal||'EFECTIVO'] = (detalleMp[r.medioPagoFinal||'EFECTIVO']||0) + (r.totalGeneral||0); });
+  // También cierres del restaurante (cobro en caja) durante este período
+  var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desdeAp))));
+  var cierresData = cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO');
+  cierresData.forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.totalGeneral||0); });
+  var totalSistema = Object.values(detalleMp).reduce((a,b)=>a+b,0);
+  var detalleHTML = `<div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
+    <div style="font-weight:600;margin-bottom:6px;">Detalle por Medio de Pago (sistema):</div>
+    <div style="display:flex;justify-content:space-between;"><span>Efectivo</span><span>$ ${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Débito</span><span>$ ${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Crédito</span><span>$ ${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Transferencia</span><span>$ ${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;font-weight:700;"><span>Total Sistema</span><span>$ ${totalSistema.toLocaleString('es-AR')}</span></div>
+  </div>`;
   var cuerpo = `<div style="padding:20px;">
     <p style="margin-bottom:12px;">Ingresá el monto de cierre de caja:</p>
-    <div class="form-group"><label>Monto Cierre $</label><input type="number" id="cajaRecMontoCierre" step="0.01" min="0" value="0"></div>
+    ${detalleHTML}
+    <div class="form-group"><label>Monto Cierre Real $</label><input type="number" id="cajaRecMontoCierre" step="0.01" min="0" value="${totalSistema}"></div>
     <div class="form-group" style="margin-top:8px;"><label>Observaciones Cierre</label><input type="text" id="cajaRecObsCierre" placeholder="Novedades del turno"></div>
   </div>`;
   confirmarAccion('Cerrar Caja', cuerpo, 'Confirmar Cierre', async (ok) => {
     if (!ok) return;
     var montoCierre = parseFloat(document.getElementById('cajaRecMontoCierre').value)||0;
     var obsCierre = document.getElementById('cajaRecObsCierre').value.trim();
+    var diferencia = montoCierre - totalSistema;
     try {
       await updateDoc(doc(db,'cajaRecepcion',cajaDoc.id), {
         estado: 'CERRADA', montoCierre, obsCierre,
+        totalSistema, diferencia,
+        detalleEfectivo: detalleMp.EFECTIVO,
+        detalleDebito: detalleMp.TARJETA_DEBITO,
+        detalleCredito: detalleMp.TARJETA_CREDITO,
+        detalleTransferencia: detalleMp.TRANSFERENCIA,
         fechaCierre: new Date().toISOString()
       });
-      showToast('Caja cerrada','success');
+      showToast('Caja cerrada — Diferencia: $'+diferencia.toLocaleString('es-AR'),'success');
       await cargarCajaRec();
     } catch(e) { showToast('Error: '+e.message,'error'); }
   });
@@ -4059,6 +4392,7 @@ async function registrarConsumoHabitacion(mesa, items, total) {
       precioUnit: total,
       total: total,
       tipo: 'RESTAURANTE',
+      voucherId: mesa.voucherId || '',
       usuario: currentUser.usuario,
       fecha: serverTimestamp(),
       mesaNombre: mesa.nombre || ''
