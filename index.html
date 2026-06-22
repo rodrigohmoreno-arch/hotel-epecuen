@@ -510,6 +510,7 @@
       <button class="tab" onclick="tabAdmin('adminMarketing',this)">Marketing</button>
       <button class="tab" onclick="tabAdmin('adminVouchers',this)">Vouchers</button>
       <button class="tab" onclick="tabAdmin('adminReporteCarhue',this)">Reporte Carhue</button>
+      <button class="tab" onclick="tabAdmin('adminHistorial',this)">Historial Huéspedes</button>
     </div>
     <!-- Admin Mesas -->
     <div id="tabAdminMesas">
@@ -575,13 +576,22 @@
       <div class="filtros">
         <div class="form-group"><label>Fecha</label><input type="date" id="filtroCierresFecha" onchange="cargarCierresDia()"></div>
         <button class="btn btn-gold btn-sm" onclick="cargarCierresDia()">Buscar</button>
+        <button class="btn btn-sm" onclick="imprimirCierreDia()" style="margin-left:auto;">Imprimir</button>
       </div>
       <div id="resumenCierres" class="stats-row"></div>
+      <div id="desgloseCierres" style="margin:12px 0;"></div>
       <div class="card">
-        <div class="card-title">Cierres del Día</div>
+        <div class="card-title">Consumos del Restaurante</div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Hora</th><th>Mesa</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Cobro</th></tr></thead>
+          <thead><tr><th>Hora</th><th>Mesa</th><th>Cliente</th><th>Tipo</th><th>Bebidas</th><th>Comidas</th><th>Total</th><th>Cobro</th></tr></thead>
           <tbody id="tbodyCierres"></tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Checkouts del Día</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Hora</th><th>Huésped</th><th>Hab.</th><th>Consumos Rest.</th><th>Estadía</th><th>Total Cobrado</th><th>Medio Pago</th><th>ID Tx.</th></tr></thead>
+          <tbody id="tbodyCierresCheckouts"></tbody>
         </table></div>
       </div>
     </div>
@@ -727,6 +737,34 @@
           <thead><tr><th>Fecha</th><th>Mesa</th><th>Voucher</th><th>Hab.</th><th>Nombre</th><th>Pensión</th><th>Bebidas</th><th>Comidas</th><th>Total</th></tr></thead>
           <tbody id="tbodyReporteCarhue"></tbody>
         </table></div>
+      </div>
+    </div>
+    <!-- Admin Historial Huéspedes -->
+    <div id="tabAdminHistorial" class="hidden">
+      <div class="card">
+        <div class="card-title">Historial de Huéspedes y Estadísticas</div>
+        <div class="filtros" style="margin-bottom:16px;">
+          <div class="form-group"><label>Período</label>
+            <select id="historialPeriodo" onchange="cargarHistorialHuespedes()">
+              <option value="mes">Este Mes</option>
+              <option value="anio">Este Año</option>
+              <option value="mesAnterior">Mes Anterior</option>
+              <option value="custom">Fecha específica</option>
+            </select></div>
+          <div class="form-group" id="historialCustomFecha" style="display:none;"><label>Mes/Año</label><input type="month" id="historialMesAnio" onchange="cargarHistorialHuespedes()"></div>
+          <button class="btn btn-gold btn-sm" style="align-self:flex-end;" onclick="cargarHistorialHuespedes()">Buscar</button>
+          <button class="btn btn-sm" style="align-self:flex-end;" onclick="imprimirHistorial()">Imprimir</button>
+        </div>
+        <div id="resumenHistorial" class="stats-row" style="margin-bottom:16px;"></div>
+        <div class="card-title" style="font-size:0.9rem;margin-top:16px;">Detalle de Checkouts</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Checkout</th><th>Huésped</th><th>Hab.</th><th>Estadía</th><th>Tipo Consumo</th><th>Consumos Rest.</th><th>Total Cobrado</th><th>Medio Pago</th></tr></thead>
+          <tbody id="tbodyHistorial"></tbody>
+        </table></div>
+        <div class="card-title" style="font-size:0.9rem;margin-top:20px;">Huésped Más Alojado</div>
+        <div id="historialTopHuesped" style="padding:12px;color:var(--muted);">—</div>
+        <div class="card-title" style="font-size:0.9rem;margin-top:20px;">Comensales Restaurante</div>
+        <div id="historialComensales" class="stats-row" style="margin-top:8px;"></div>
       </div>
     </div>
   </div>
@@ -999,9 +1037,10 @@
     <!-- Tab Consumos -->
     <div id="tabRecConsumos" class="hidden">
       <div class="card">
-        <div class="card-title">Consumos por Habitación</div>
+        <div class="card-title">Consumos por Habitación <span style="font-size:0.8rem;color:var(--muted);font-weight:400;">(mostrando solo los del día)</span></div>
         <div class="filtros" style="margin-bottom:16px;">
           <div class="form-group"><label>Habitación</label><select id="filtroConsHab" onchange="cargarConsumosHab()"><option value="">Todas</option></select></div>
+          <div class="form-group"><label>Fecha</label><input type="date" id="filtroConsHabFecha" onchange="cargarConsumosHab()"></div>
           <button class="btn btn-sm" onclick="imprimirConsumosHab()" style="margin-top:auto;">Imprimir Consumos</button>
         </div>
         <div class="table-wrap"><table>
@@ -1447,6 +1486,7 @@ function mostrarPanel(rol) {
   } else if (rol === 'RECEPCION') {
     $('panelRecepcion').classList.remove('hidden');
     cargarHabitaciones();
+    verificarReservasPendientes();
   }
 }
 
@@ -1490,8 +1530,8 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminVouchers','tabAdminReporteCarhue'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminVouchers','tabAdminReporteCarhue','tabAdminHistorial'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue', adminHistorial:'tabAdminHistorial' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
@@ -1504,6 +1544,7 @@ function tabAdmin(t, btn) {
   if (t === 'adminMarketing') cargarListaMarketing();
   if (t === 'adminVouchers') cargarVouchersAdmin();
   if (t === 'adminReporteCarhue') cargarReporteCarhue();
+  if (t === 'adminHistorial') cargarHistorialHuespedes();
 }
 window.tabAdmin = tabAdmin;
 
@@ -2786,21 +2827,50 @@ async function cargarCierresDia() {
       orderBy('fechaCierre','desc')
     ));
     var cierres = snap.docs.map(d => d.data());
-    // Resumen
+
+    // Desglose por medio de pago
     var totBeb=0, totCom=0, totGen=0, sinCobro=0, conCobro=0;
+    var mpDesglose = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0, SIN_COBRO:0 };
     cierres.forEach(c => {
       totBeb += c.totalBebidas||0; totCom += c.totalComidas||0; totGen += c.totalGeneral||0;
-      c.medioPago === 'SIN_COBRO' ? sinCobro++ : conCobro++;
+      if (c.medioPago === 'SIN_COBRO') { sinCobro++; mpDesglose.SIN_COBRO += c.totalGeneral||0; }
+      else { conCobro++; mpDesglose[c.medioPago] = (mpDesglose[c.medioPago]||0) + (c.totalGeneral||0); }
     });
+
+    // Checkouts del día
+    var coSnap = await getDocs(query(collection(db,'reservas'),
+      where('estado','==','CHECKOUT'),
+      where('fechaCheckOutReal','>=',Timestamp.fromDate(desde)),
+      where('fechaCheckOutReal','<=',Timestamp.fromDate(hasta))
+    ));
+    var checkouts = coSnap.docs.map(d => d.data());
+    var totalCheckouts = checkouts.reduce((a,r) => a + (r.totalGeneral||0), 0);
+    var mpCheckout = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
+    checkouts.forEach(r => { mpCheckout[r.medioPagoFinal] = (mpCheckout[r.medioPagoFinal]||0) + (r.totalGeneral||0); });
+
     $('resumenCierres').innerHTML = [
-      ['Mesas', cierres.length, 'var(--blue)'],
-      ['Total General', '$'+totGen.toFixed(2), 'var(--green)'],
+      ['Mesas Rest.', cierres.length, 'var(--blue)'],
+      ['Total Rest.', '$'+totGen.toFixed(2), 'var(--green)'],
       ['Bebidas', '$'+totBeb.toFixed(2), 'var(--gold)'],
       ['Comidas', '$'+totCom.toFixed(2), 'var(--red)'],
-      ['Con Cobro', conCobro, 'var(--green)'],
-      ['Sin Cobro', sinCobro, 'var(--purple)']
+      ['Checkouts', checkouts.length, 'var(--purple)'],
+      ['Cobro Checkouts', '$'+totalCheckouts.toLocaleString('es-AR'), 'var(--blue)']
     ].map(([l,v,c]) => `<div class="stat-card"><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
 
+    // Desglose de cobros
+    var mpLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'T. Débito', TARJETA_CREDITO:'T. Crédito', TRANSFERENCIA:'Transferencia', SIN_COBRO:'Cta. Huésped' };
+    var desgloseHTML = '<div class="card" style="margin-bottom:12px;"><div class="card-title" style="font-size:0.9rem;">Desglose por Medio de Pago</div>';
+    desgloseHTML += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding:10px;">';
+    Object.entries(mpDesglose).forEach(([k,v]) => {
+      if (v > 0) desgloseHTML += `<div style="background:var(--surface);padding:10px;border-radius:8px;text-align:center;"><div style="font-weight:700;font-size:1rem;color:var(--green);">$${v.toLocaleString('es-AR',{minimumFractionDigits:2})}</div><div style="font-size:0.8rem;color:var(--muted);">${mpLabels[k]||k} (Rest.)</div></div>`;
+    });
+    Object.entries(mpCheckout).forEach(([k,v]) => {
+      if (v > 0) desgloseHTML += `<div style="background:var(--surface);padding:10px;border-radius:8px;text-align:center;"><div style="font-weight:700;font-size:1rem;color:var(--purple);">$${v.toLocaleString('es-AR',{minimumFractionDigits:2})}</div><div style="font-size:0.8rem;color:var(--muted);">${mpLabels[k]||k} (Checkout)</div></div>`;
+    });
+    desgloseHTML += '</div></div>';
+    $('desgloseCierres').innerHTML = desgloseHTML;
+
+    // Tabla consumos restaurante
     var tbody = $('tbodyCierres');
     tbody.innerHTML = cierres.map(c => {
       var labels = {EPECUEN_MAP:'MAP',EPECUEN_SIN_MAP:'S/MAP',EPECUEN_PC:'P.Comp',CARHUE:'Carhue',SERVICIO_HABITACION:'Serv.Hab.',EXTERNO:'Ext.CF'};
@@ -2809,13 +2879,53 @@ async function cargarCierresDia() {
         <td><strong>${esc(c.mesaNombre)}</strong></td>
         <td>${esc(c.nombreCliente||'-')}</td>
         <td><span style="font-size:0.8rem;color:var(--muted);">${labels[c.tipoCliente]||'-'}</span></td>
+        <td>$${(c.totalBebidas||0).toFixed(2)}</td>
+        <td>$${(c.totalComidas||0).toFixed(2)}</td>
         <td><strong>$${(c.totalGeneral||0).toFixed(2)}</strong></td>
         <td><span class="badge" style="background:${c.medioPago==='SIN_COBRO'?'rgba(139,92,246,0.2)':'rgba(46,204,113,0.2)'};color:${c.medioPago==='SIN_COBRO'?'var(--purple)':'var(--green)'};">${c.medioPago==='SIN_COBRO'?'Huésped':esc(c.medioPago)}</span></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin cierres para esta fecha</td></tr>';
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin cierres para esta fecha</td></tr>';
+
+    // Tabla checkouts
+    var mpLabelsFull = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Débito', TARJETA_CREDITO:'Crédito', TRANSFERENCIA:'Transfer.' };
+    $('tbodyCierresCheckouts').innerHTML = checkouts.map(r => {
+      var consumosDet = (r.consumosDetalle||[]).map(c => esc(c.concepto)).join(', ') || '-';
+      return `<tr>
+        <td>${fmtFecha(r.fechaCheckOutReal)}</td>
+        <td><strong>${esc(r.huesped)}</strong></td>
+        <td>${esc(r.habitacionNro)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${consumosDet}">${consumosDet}</td>
+        <td>$${(r.totalPagar||0).toLocaleString('es-AR')}</td>
+        <td><strong>$${(r.totalGeneral||0).toLocaleString('es-AR')}</strong></td>
+        <td>${mpLabelsFull[r.medioPagoFinal]||r.medioPagoFinal||'-'}</td>
+        <td style="font-size:0.78rem;color:var(--muted);">${esc(r.idTransaccion||'-')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin checkouts para esta fecha</td></tr>';
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.cargarCierresDia = cargarCierresDia;
+
+function imprimirCierreDia() {
+  var fecha = $('filtroCierresFecha').value || new Date().toISOString().split('T')[0];
+  var resumen = $('resumenCierres').innerText;
+  var desglose = $('desgloseCierres').innerHTML;
+  var rowsRest = $('tbodyCierres').innerHTML;
+  var rowsCO = $('tbodyCierresCheckouts').innerHTML;
+  var win = window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><title>Cierre del Día — ${fecha}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}table{width:100%;border-collapse:collapse;margin:12px 0;}th,td{border:1px solid #ccc;padding:5px 8px;font-size:11px;text-align:left;}th{background:#f5f5f5;}.titulo{font-size:16px;font-weight:700;margin-bottom:8px;}.badge{padding:2px 8px;border-radius:8px;font-size:10px;}</style></head><body>
+    <div class="titulo">Cierre del Día — ${fecha}</div>
+    <p style="color:#666;">${new Date().toLocaleString('es-AR')}</p>
+    <p>${resumen}</p>
+    ${desglose}
+    <h3 style="margin-top:16px;">Consumos Restaurante</h3>
+    <table><thead><tr><th>Hora</th><th>Mesa</th><th>Cliente</th><th>Tipo</th><th>Bebidas</th><th>Comidas</th><th>Total</th><th>Cobro</th></tr></thead><tbody>${rowsRest}</tbody></table>
+    <h3 style="margin-top:16px;">Checkouts</h3>
+    <table><thead><tr><th>Hora</th><th>Huésped</th><th>Hab.</th><th>Consumos</th><th>Estadía</th><th>Total</th><th>M.Pago</th><th>ID Tx.</th></tr></thead><tbody>${rowsCO}</tbody></table>
+    </body></html>`);
+  win.document.close(); win.print();
+}
+window.imprimirCierreDia = imprimirCierreDia;
 
 // ══════════════════════════════════════
 // ADMIN — AUDITORÍA
@@ -3061,6 +3171,130 @@ async function cargarReporteCarhue() {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.cargarReporteCarhue = cargarReporteCarhue;
+
+// ══════════════════════════════════════
+// ADMIN — HISTORIAL HUÉSPEDES
+// ══════════════════════════════════════
+async function cargarHistorialHuespedes() {
+  var periodo = $('historialPeriodo').value;
+  var ahora = new Date();
+  var desde, hasta;
+  if (periodo === 'custom') {
+    $('historialCustomFecha').style.display = '';
+    var mesAnio = $('historialMesAnio')?.value;
+    if (!mesAnio) return;
+    desde = new Date(mesAnio+'-01T00:00:00');
+    hasta = new Date(desde.getFullYear(), desde.getMonth()+1, 0, 23, 59, 59);
+  } else {
+    $('historialCustomFecha').style.display = 'none';
+    if (periodo === 'mes') {
+      desde = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      hasta = new Date(ahora.getFullYear(), ahora.getMonth()+1, 0, 23, 59, 59);
+    } else if (periodo === 'anio') {
+      desde = new Date(ahora.getFullYear(), 0, 1);
+      hasta = new Date(ahora.getFullYear(), 11, 31, 23, 59, 59);
+    } else { // mesAnterior
+      desde = new Date(ahora.getFullYear(), ahora.getMonth()-1, 1);
+      hasta = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59);
+    }
+  }
+  try {
+    // Obtener checkouts del período
+    var snap = await getDocs(query(collection(db,'reservas'),
+      where('estado','==','CHECKOUT'),
+      where('fechaCheckOutReal','>=',Timestamp.fromDate(desde)),
+      where('fechaCheckOutReal','<=',Timestamp.fromDate(hasta))
+    ));
+    var checkouts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+    // Obtener cierres de restaurante del período
+    var cierresSnap = await getDocs(query(collection(db,'cierres'),
+      where('fechaCierre','>=',Timestamp.fromDate(desde)),
+      where('fechaCierre','<=',Timestamp.fromDate(hasta))
+    ));
+    var cierres = cierresSnap.docs.map(d => d.data());
+
+    // Estadísticas
+    var totalCheckouts = checkouts.length;
+    var totalCobrado = checkouts.reduce((a,r) => a + (r.totalGeneral||0), 0);
+    var totalConsumos = checkouts.reduce((a,r) => a + (r.totalConsumos||0), 0);
+    var totalEstadias = checkouts.reduce((a,r) => a + (r.totalPagar||0), 0);
+
+    // Comensales restaurante
+    var cierresMAP = cierres.filter(c => c.tipoCliente === 'EPECUEN_MAP');
+    var cierresSinMAP = cierres.filter(c => c.tipoCliente === 'EPECUEN_SIN_MAP');
+    var cierresPC = cierres.filter(c => c.tipoCliente === 'EPECUEN_PC');
+    var cierresExt = cierres.filter(c => c.tipoCliente === 'EXTERNO');
+    var cierresCarhue = cierres.filter(c => c.tipoCliente === 'CARHUE');
+    var totalCierresRest = cierres.reduce((a,c) => a + (c.totalGeneral||0), 0);
+
+    // Huésped más alojado
+    var frecuencia = {};
+    checkouts.forEach(r => {
+      var key = r.huesped || 'Desconocido';
+      frecuencia[key] = (frecuencia[key]||0) + 1;
+    });
+    var topHuesped = Object.entries(frecuencia).sort((a,b) => b[1]-a[1])[0];
+
+    $('resumenHistorial').innerHTML = [
+      ['Checkouts', totalCheckouts, 'var(--blue)'],
+      ['Estadías', '$'+totalEstadias.toLocaleString('es-AR'), 'var(--green)'],
+      ['Consumos Hab.', '$'+totalConsumos.toLocaleString('es-AR'), 'var(--gold)'],
+      ['Total Cobrado', '$'+totalCobrado.toLocaleString('es-AR'), 'var(--purple)']
+    ].map(([l,v,c]) => `<div class="stat-card"><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+
+    // Tabla detalle
+    var mpLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Débito', TARJETA_CREDITO:'Crédito', TRANSFERENCIA:'Transfer.' };
+    $('tbodyHistorial').innerHTML = checkouts.map(r => {
+      var consumosDet = (r.consumosDetalle||[]).map(c => esc(c.concepto)).join(', ') || '-';
+      return `<tr>
+        <td>${fmtFecha(r.fechaCheckOutReal)}</td>
+        <td><strong>${esc(r.huesped)}</strong></td>
+        <td>${esc(r.habitacionNro)}</td>
+        <td>${r.fechaIn} → ${r.fechaOut} (${r.noches}n)</td>
+        <td>${esc(r.pension||'-')}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${consumosDet}">${consumosDet}</td>
+        <td><strong>$${(r.totalGeneral||0).toLocaleString('es-AR')}</strong></td>
+        <td>${mpLabels[r.medioPagoFinal]||r.medioPagoFinal||'-'} ${r.idTransaccion?'<br><span style="font-size:0.7rem;color:var(--muted);">'+esc(r.idTransaccion)+'</span>':''}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin checkouts en este período</td></tr>';
+
+    $('historialTopHuesped').innerHTML = topHuesped ?
+      `<div style="font-size:1.1rem;font-weight:700;color:var(--gold);">${esc(topHuesped[0])}</div><div style="color:var(--muted);font-size:0.85rem;">${topHuesped[1]} estadía(s) en el período</div>` :
+      '<span style="color:var(--muted);">Sin datos</span>';
+
+    $('historialComensales').innerHTML = [
+      ['Con MAP', cierresMAP.length, 'var(--green)'],
+      ['Sin MAP', cierresSinMAP.length, 'var(--gold)'],
+      ['P. Completa', cierresPC.length, 'var(--blue)'],
+      ['Ext./CF', cierresExt.length, 'var(--muted)'],
+      ['Carhue', cierresCarhue.length, 'var(--purple)'],
+      ['Total Mesas', cierres.length, 'var(--red)'],
+      ['Facturado Rest.', '$'+totalCierresRest.toLocaleString('es-AR'), 'var(--green)']
+    ].map(([l,v,c]) => `<div class="stat-card"><div class="stat-val" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join('');
+
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarHistorialHuespedes = cargarHistorialHuespedes;
+
+function imprimirHistorial() {
+  var rows = $('tbodyHistorial').innerHTML;
+  var resumen = $('resumenHistorial').innerText;
+  var topH = $('historialTopHuesped').innerText;
+  var comensales = $('historialComensales').innerText;
+  var win = window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><title>Historial Huéspedes</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}table{width:100%;border-collapse:collapse;margin:16px 0;}th,td{border:1px solid #ccc;padding:6px 8px;font-size:12px;text-align:left;}th{background:#f5f5f5;}.titulo{font-size:18px;font-weight:700;margin-bottom:8px;}</style></head><body>
+    <div class="titulo">Historial de Huéspedes — Hotel Epecuén</div>
+    <p style="color:#666;">${new Date().toLocaleString('es-AR')}</p>
+    <p style="margin:8px 0;">${resumen}</p>
+    <table><thead><tr><th>Checkout</th><th>Huésped</th><th>Hab.</th><th>Estadía</th><th>Tipo</th><th>Consumos</th><th>Total</th><th>M.Pago</th></tr></thead><tbody>${rows}</tbody></table>
+    <p style="margin-top:16px;"><strong>Top Huésped:</strong> ${topH}</p>
+    <p><strong>Comensales:</strong> ${comensales}</p>
+    </body></html>`);
+  win.document.close(); win.print();
+}
+window.imprimirHistorial = imprimirHistorial;
 
 // ══════════════════════════════════════
 // RECEPCION — HOTEL MANAGEMENT
@@ -3779,6 +4013,7 @@ async function cargarReservasActivas() {
     var cont = $('listaReservas');
     if (!reservasCache.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay reservas confirmadas pendientes de check-in</p>'; return; }
     var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
+    var hoyStr = new Date().toISOString().split('T')[0];
     cont.innerHTML = reservasCache.map(r => {
       var estColor = 'rgba(46,204,113,0.2)';
       var estTxt = 'var(--green)';
@@ -3788,11 +4023,16 @@ async function cargarReservasActivas() {
       if (r.festejo) extras.push('🎉 '+esc(r.festejo));
       if (r.restriccionAlim) extras.push('⚠️ '+esc(r.restriccionAlim));
       if (r.pedidosEsp) extras.push('📋 '+esc(r.pedidosEsp));
-      return `<div class="reserva-card">
+      var vencida = r.fechaIn < hoyStr;
+      var totalPersonas = (r.adultos||1) + (r.menores||0);
+      var sinAcomp = totalPersonas > 1 && (!r.acompanantes || r.acompanantes.length === 0);
+      return `<div class="reserva-card" style="${vencida?'border-left:3px solid var(--red);':''}">
         <div class="reserva-header">
           <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''}</div>
-          <span class="reserva-estado" style="background:${estColor};color:${estTxt};">${r.estado}</span>
+          <span class="reserva-estado" style="background:${vencida?'rgba(232,69,60,0.2)':estColor};color:${vencida?'var(--red)':estTxt};">${vencida?'VENCIDA':r.estado}</span>
         </div>
+        ${vencida?'<div style="margin:4px 0;font-size:0.8rem;color:var(--red);font-weight:600;">La fecha de ingreso ya pasó — anulá la reserva o editá la fecha</div>':''}
+        ${sinAcomp?'<div style="margin:4px 0;font-size:0.8rem;color:var(--gold);font-weight:600;">Faltan acompañantes ('+totalPersonas+' personas, sin acompañantes cargados)</div>':''}
         <div class="reserva-info">
           <span>Hab. ${esc(r.habitacionNro)} (${esc(r.tipoHab)})</span>
           <span>${esc(pensionLabels[r.pension]||r.pension)}</span>
@@ -3805,7 +4045,8 @@ async function cargarReservasActivas() {
         ${r.notas ? `<p style="font-size:0.8rem;color:var(--muted);margin-top:6px;">📝 ${esc(r.notas)}</p>` : ''}
         <div style="margin-top:10px;display:flex;gap:8px;">
           ${r.estado==='CONFIRMADA' ? `<button class="btn btn-blue btn-xs" onclick="editarReserva('${r.id}')">Editar</button>` : ''}
-          ${r.estado==='CONFIRMADA' ? `<button class="btn btn-green btn-xs" onclick="realizarCheckIn('${r.id}')">Check-In</button>` : ''}
+          ${!vencida && r.estado==='CONFIRMADA' ? `<button class="btn btn-green btn-xs" onclick="realizarCheckIn('${r.id}')">Check-In</button>` : ''}
+          ${vencida ? `<button class="btn btn-red btn-xs" onclick="anularReservaVencida('${r.id}','${r.habitacionId}')">Anular (Vencida)</button>` : ''}
           <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
         </div>
       </div>`;
@@ -3956,27 +4197,76 @@ async function cargarListaCheckIn() {
 }
 
 async function realizarCheckIn(resId) {
-  confirmarAccion('Confirmar Check-In','<p style="padding:16px;">¿Confirmar el check-in? La habitación pasará a OCUPADA.</p>','Confirmar Check-In', async (ok) => {
+  try {
+    var resSnap = await getDoc(doc(db,'reservas',resId));
+    var res = resSnap.data();
+    // Validar fecha: no se puede hacer check-in con fecha anterior al día de ingreso
+    var hoy = new Date(); hoy.setHours(0,0,0,0);
+    var fechaIn = new Date(res.fechaIn+'T00:00:00');
+    if (hoy < fechaIn) { showToast('No se puede hacer check-in antes de la fecha de ingreso ('+res.fechaIn+')','warning'); return; }
+    // Validar acompañantes obligatorios si más de 1 huésped
+    var totalPersonas = (res.adultos||1) + (res.menores||0);
+    if (totalPersonas > 1 && (!res.acompanantes || res.acompanantes.length === 0)) {
+      showToast('Debés cargar los acompañantes antes del check-in ('+totalPersonas+' personas en la reserva). Editá la reserva primero.','warning');
+      return;
+    }
+    confirmarAccion('Confirmar Check-In','<p style="padding:16px;">¿Confirmar el check-in para <strong>'+esc(res.huesped)+'</strong> — Hab. '+esc(res.habitacionNro)+'?<br>La habitación pasará a OCUPADA.</p>','Confirmar Check-In', async (ok) => {
+      if (!ok) return;
+      try {
+        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() });
+        await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'OCUPADA', huespedActual:res.huesped, reservaId:resId });
+        if (res.dni) {
+          var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
+          if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp() });
+        }
+        showToast('Check-In realizado — Hab. '+res.habitacionNro,'success');
+        await cargarListaCheckIn();
+        await cargarListaCheckOut();
+        await cargarReservasActivas();
+        await cargarHabitaciones();
+      } catch(e) { showToast('Error: '+e.message,'error'); }
+    });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.realizarCheckIn = realizarCheckIn;
+
+// ── ANULACIÓN DE RESERVA VENCIDA ──
+async function anularReservaVencida(resId, habId) {
+  confirmarAccion('Anular Reserva Vencida','<p style="padding:16px;">Esta reserva está vencida (la fecha de ingreso ya pasó). ¿Anular y liberar la habitación?</p>','Anular y Liberar', async (ok) => {
     if (!ok) return;
     try {
-      var resSnap = await getDoc(doc(db,'reservas',resId));
-      var res = resSnap.data();
-      await updateDoc(doc(db,'reservas',resId), { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() });
-      await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'OCUPADA', huespedActual:res.huesped, reservaId:resId });
-      // Actualizar última visita del huésped
-      if (res.dni) {
-        var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
-        if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp() });
-      }
-      showToast('Check-In realizado — Hab. '+res.habitacionNro,'success');
-      await cargarListaCheckIn();
-      await cargarListaCheckOut();
+      await updateDoc(doc(db,'reservas',resId), { estado:'ANULADA', fechaAnulacion:serverTimestamp(), motivoAnulacion:'Fecha de ingreso vencida' });
+      await updateDoc(doc(db,'habitaciones',habId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+      showToast('Reserva anulada y habitación liberada','success');
       await cargarReservasActivas();
+      await cargarPreReservas();
+      await cargarListaCheckIn();
       await cargarHabitaciones();
     } catch(e) { showToast('Error: '+e.message,'error'); }
   });
 }
-window.realizarCheckIn = realizarCheckIn;
+window.anularReservaVencida = anularReservaVencida;
+
+// ── ALERTA RESERVAS PENDIENTES DE CHECK-IN ──
+async function verificarReservasPendientes() {
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CONFIRMADA')));
+    var ahora = new Date();
+    var alertas = [];
+    snap.docs.forEach(d => {
+      var r = d.data();
+      var fechaIn = new Date(r.fechaIn+'T00:00:00');
+      var limiteCheckIn = new Date(fechaIn.getTime() + 86400000); // día siguiente
+      limiteCheckIn.setHours(20,0,0,0); // 20:00 del día siguiente
+      if (ahora > limiteCheckIn) {
+        alertas.push(r.huesped + ' — Hab. ' + r.habitacionNro + ' (Ingreso: ' + r.fechaIn + ')');
+      }
+    });
+    if (alertas.length > 0) {
+      showToast('⚠️ ALERTA: ' + alertas.length + ' reserva(s) pendiente(s) sin check-in pasadas las 20hs: ' + alertas.join('; '), 'warning');
+    }
+  } catch(e) {}
+}
 
 // ── CHECK-OUT ──
 async function cargarListaCheckOut() {
@@ -4056,10 +4346,15 @@ async function iniciarCheckOut(resId) {
       var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
       if (cajaSnap.empty) { showToast('Debés abrir la caja antes de hacer check-out','warning'); return; }
       try {
-        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTx, totalConsumos, totalGeneral });
+        // Guardar consumos detallados en la reserva para estadísticas admin
+        var consumosDetalle = consumos.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, items:c.items||[], voucherId:c.voucherId||'', fecha:c.fecha }));
+        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTx, totalConsumos, totalGeneral, consumosDetalle });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+        // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
+        for (var cDoc of consSnap.docs) {
+          try { await deleteDoc(doc(db,'consumosHabitacion',cDoc.id)); } catch(ee) {}
+        }
         showToast('Check-Out completado — Total: $'+totalGeneral.toLocaleString('es-AR'),'success');
-        // Imprimir ticket no fiscal de checkout
         imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx);
         await cargarListaCheckOut();
         await cargarHabitaciones();
@@ -4079,11 +4374,23 @@ function poblarFiltroConsHab() {
 async function cargarConsumosHab() {
   try {
     var habFiltro = $('filtroConsHab').value;
-    var q2 = habFiltro ? query(collection(db,'consumosHabitacion'), where('habitacionNro','==',habFiltro)) : query(collection(db,'consumosHabitacion'), limit(100));
+    var fechaFiltro = $('filtroConsHabFecha')?.value || '';
+    // Por defecto filtrar por fecha del día
+    if (!fechaFiltro) {
+      fechaFiltro = new Date().toISOString().split('T')[0];
+      if ($('filtroConsHabFecha')) $('filtroConsHabFecha').value = fechaFiltro;
+    }
+    var desde = Timestamp.fromDate(new Date(fechaFiltro+'T00:00:00'));
+    var hasta = Timestamp.fromDate(new Date(fechaFiltro+'T23:59:59'));
+    var constraints = [where('fecha','>=',desde), where('fecha','<=',hasta)];
+    if (habFiltro) constraints.push(where('habitacionNro','==',habFiltro));
+    var q2 = query(collection(db,'consumosHabitacion'), ...constraints);
     var snap = await getDocs(q2);
     var tbody = $('tbodyConsumosHab');
+    var totalDia = 0;
     tbody.innerHTML = snap.docs.map(d => {
       var c = d.data();
+      totalDia += c.total||0;
       var tipoLabels = { RESTAURANTE:'Restaurante', SPA:'Spa', BAR:'Bar', EXTRA:'Extra' };
       return `<tr>
         <td>${fmtFecha(c.fecha)}</td>
@@ -4093,7 +4400,10 @@ async function cargarConsumosHab() {
         <td>$${(c.precioUnit||0).toFixed(2)}</td>
         <td><strong>$${(c.total||0).toFixed(2)}</strong></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin consumos registrados</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin consumos para esta fecha</td></tr>';
+    if (snap.docs.length > 0) {
+      tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="5" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
+    }
   } catch(e) { showToast('Error cargando consumos: '+e.message,'error'); }
 }
 window.cargarConsumosHab = cargarConsumosHab;
@@ -4533,17 +4843,17 @@ async function renderCalendarioHab() {
     fechas.push(d);
   }
 
-  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;min-width:'+(120+dias*60)+'px;">';
-  html += '<thead><tr><th style="padding:6px 8px;border:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:1;">Hab.</th>';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;min-width:'+(120+dias*60)+'px;border:2px solid #000;">';
+  html += '<thead><tr><th style="padding:6px 8px;border:2px solid #000;position:sticky;left:0;background:var(--surface);z-index:1;">Hab.</th>';
   fechas.forEach(f => {
     var dow = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][f.getDay()];
     var isWeekend = f.getDay()===0||f.getDay()===6;
-    html += `<th style="padding:4px 2px;border:1px solid var(--border);min-width:56px;text-align:center;${isWeekend?'background:rgba(139,92,246,0.05);':''}">${dow}<br>${f.getDate()}/${f.getMonth()+1}</th>`;
+    html += `<th style="padding:4px 2px;border:2px solid #000;min-width:56px;text-align:center;${isWeekend?'background:rgba(139,92,246,0.05);':''}">${dow}<br>${f.getDate()}/${f.getMonth()+1}</th>`;
   });
   html += '</tr></thead><tbody>';
 
   habitacionesCache.forEach(hab => {
-    html += `<tr><td style="padding:6px 8px;border:1px solid var(--border);font-weight:600;position:sticky;left:0;background:var(--surface);z-index:1;" data-hab-id="${hab.id}" data-hab-nro="${hab.numero}">${hab.numero}<br><span style="font-weight:400;color:var(--muted);">${hab.tipo}</span></td>`;
+    html += `<tr><td style="padding:6px 8px;border:2px solid #000;font-weight:600;position:sticky;left:0;background:var(--surface);z-index:1;" data-hab-id="${hab.id}" data-hab-nro="${hab.numero}">${hab.numero}<br><span style="font-weight:400;color:var(--muted);">${hab.tipo}</span></td>`;
     fechas.forEach(f => {
       var fStr = f.toISOString().split('T')[0];
       // Check if any reservation covers this date for this room
@@ -4564,7 +4874,7 @@ async function renderCalendarioHab() {
       } else {
         borderCircle = '';
       }
-      html += `<td style="padding:2px 4px;border:1px solid var(--border);text-align:center;background:${bgColor};cursor:${res?'grab':'default'};min-height:28px;"${draggable}${tooltip} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'default'};min-height:28px;"${draggable}${tooltip} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
     });
     html += '</tr>';
   });
