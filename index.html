@@ -888,7 +888,9 @@
           <div id="listaAcompanantes"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Habitación *</label><select id="resHabitacion"></select></div>
+          <div class="form-group"><label>Habitación *</label>
+            <input type="text" id="buscarHabReserva" placeholder="Buscar habitación..." oninput="filtrarHabReserva()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+            <select id="resHabitacion" style="width:100%;"></select></div>
           <div class="form-group"><label>Pensión *</label>
             <select id="resPension">
               <option value="MAP">Media Pensión (MAP)</option>
@@ -948,7 +950,7 @@
         </div>
         <div class="form-group" style="margin-bottom:16px;"><label>Notas</label><textarea id="resNotas" rows="2" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;resize:vertical;"></textarea></div>
         <div id="resumenReserva" style="padding:14px;background:var(--card);border-radius:10px;margin-bottom:16px;display:none;"></div>
-        <button class="btn btn-gold btn-sm" onclick="crearReserva()">Crear Reserva</button>
+        <button class="btn btn-gold btn-sm" onclick="crearReserva()">Crear Reserva / Pre-Reserva</button>
       </div>
     </div>
     <!-- Tab Pre-Reservas -->
@@ -1177,7 +1179,9 @@
       </div>
       <div id="abrirCamposHuesped">
         <div class="form-row">
-          <div class="form-group"><label>N° Habitación *</label><select id="abrirHabitacion" onchange="onHabSelectChange()"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>N° Habitación *</label>
+            <input type="text" id="buscarHabMesa" placeholder="Buscar habitación..." oninput="filtrarHabMesa()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+            <select id="abrirHabitacion" onchange="onHabSelectChange()" style="width:100%;"><option value="">Seleccionar...</option></select></div>
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente" readonly style="background:var(--surface);"></div>
         </div>
       </div>
@@ -1187,7 +1191,7 @@
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCarhue"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>ID Voucher *</label><input type="text" id="abrirVoucherId" placeholder="Ej: A1B" style="text-transform:uppercase;"></div>
+          <div class="form-group"><label>ID Voucher *</label><input type="text" id="abrirVoucherId" placeholder="Ej: A1B" style="text-transform:uppercase;" onblur="buscarVoucherCarhue()"></div>
           <div class="form-group"><label>Pensión Voucher</label><input type="text" id="abrirVoucherPension" readonly style="background:var(--surface);"></div>
         </div>
       </div>
@@ -1650,6 +1654,22 @@ function onTipoClienteChange() {
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
+async function buscarVoucherCarhue() {
+  var vid = $('abrirVoucherId').value.trim().toUpperCase();
+  if (!vid) return;
+  try {
+    var vSnap = await getDocs(query(collection(db,'vouchers'), where('voucherId','==',vid), where('estado','==','ACTIVO')));
+    if (vSnap.empty) { showToast('Voucher '+vid+' no encontrado o no está activo','warning'); return; }
+    var v = vSnap.docs[0].data();
+    $('abrirHabCarhue').value = v.nroHabitacion || '';
+    $('abrirNombreCarhue').value = ((v.apellido||'') + ' ' + (v.nombre||'')).trim();
+    $('abrirComensales').value = v.cantidadComensales || v.comensales || 1;
+    $('abrirVoucherPension').value = v.tipoPension || '';
+    showToast('Voucher '+vid+' encontrado — datos cargados','success');
+  } catch(e) { showToast('Error buscando voucher: '+e.message,'error'); }
+}
+window.buscarVoucherCarhue = buscarVoucherCarhue;
+
 function onHabSelectChange() {
   var sel = $('abrirHabitacion');
   var opt = sel.options[sel.selectedIndex];
@@ -1661,10 +1681,12 @@ function onHabSelectChange() {
   var sinMapOpt = tipoSel.querySelector('option[value="EPECUEN_SIN_MAP"]');
   var pcOpt = tipoSel.querySelector('option[value="EPECUEN_PC"]');
   var carhueOpt = tipoSel.querySelector('option[value="CARHUE"]');
+  var externoOpt = tipoSel.querySelector('option[value="EXTERNO"]');
   if (mapOpt) mapOpt.disabled = false;
   if (sinMapOpt) sinMapOpt.disabled = false;
   if (pcOpt) pcOpt.disabled = false;
   if (carhueOpt) carhueOpt.disabled = false;
+  if (externoOpt) externoOpt.disabled = false;
   if (!pension) return;
   var currentTipo = tipoSel.value;
   if (pension === 'MAP') {
@@ -1672,20 +1694,45 @@ function onHabSelectChange() {
     if (sinMapOpt) sinMapOpt.disabled = true;
     if (pcOpt) pcOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
+    if (externoOpt) externoOpt.disabled = true;
   } else if (pension === 'COMPLETA') {
     if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_PC';
     if (mapOpt) mapOpt.disabled = true;
     if (sinMapOpt) sinMapOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
+    if (externoOpt) externoOpt.disabled = true;
   } else if (pension === 'SIN_PENSION') {
     if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
     if (mapOpt) mapOpt.disabled = true;
     if (pcOpt) pcOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
+    if (externoOpt) externoOpt.disabled = true;
   }
   onTipoClienteChange();
 }
 window.onHabSelectChange = onHabSelectChange;
+
+function filtrarHabMesa() {
+  var q = ($('buscarHabMesa')?.value || '').toLowerCase();
+  var sel = $('abrirHabitacion');
+  for (var i = 0; i < sel.options.length; i++) {
+    var o = sel.options[i];
+    if (!o.value) { o.style.display = ''; continue; }
+    o.style.display = (o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) ? '' : 'none';
+  }
+}
+window.filtrarHabMesa = filtrarHabMesa;
+
+function filtrarHabReserva() {
+  var q = ($('buscarHabReserva')?.value || '').toLowerCase();
+  var sel = $('resHabitacion');
+  for (var i = 0; i < sel.options.length; i++) {
+    var o = sel.options[i];
+    if (!o.value) { o.style.display = ''; continue; }
+    o.style.display = (o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) ? '' : 'none';
+  }
+}
+window.filtrarHabReserva = filtrarHabReserva;
 
 async function confirmarAbrirMesa() {
   if (!mesaAbierta) return;
@@ -3066,10 +3113,19 @@ function toggleCheckoutIdTx() {
 window.toggleCheckoutIdTx = toggleCheckoutIdTx;
 
 // ── Ticket no fiscal de checkout ──
-function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx) {
+function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx, pagos, saldoFavor) {
   var fecha = new Date().toLocaleString('es-AR');
-  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
+  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia', MULTIPLE:'Múltiple' };
   var consumosHTML = consumos.map(c => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(c.concepto||'Consumo')}</span><span>$${(c.total||0).toLocaleString('es-AR')}</span></div>`).join('') || '<p style="font-size:11px;color:#666;">Sin consumos</p>';
+  var estadiaPagada = res.estadiaPagadaEnCheckin || false;
+  var pagosHTML = '';
+  if (pagos && pagos.length > 1) {
+    pagosHTML = '<p style="font-weight:bold;font-size:11px;margin-top:4px;">DETALLE PAGOS:</p>' + pagos.map(p => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${medioLabels[p.medio]||p.medio}${p.idTx?' ('+esc(p.idTx)+')':''}</span><span>$ ${p.monto.toLocaleString('es-AR')}</span></div>`).join('');
+  } else if (pagos && pagos.length === 1) {
+    pagosHTML = `<p><b>Medio de Pago:</b> ${medioLabels[pagos[0].medio]||pagos[0].medio}</p>${pagos[0].idTx?'<p><b>ID Transacción:</b> '+esc(pagos[0].idTx)+'</p>':''}`;
+  } else {
+    pagosHTML = `<p><b>Medio de Pago:</b> ${medioLabels[medioPago]||medioPago}</p>${idTx ? '<p><b>ID Transacción:</b> '+esc(idTx)+'</p>' : ''}`;
+  }
   var html = `<!DOCTYPE html><html><head><style>
     @page{size:80mm auto;margin:4mm}
     body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
@@ -3088,6 +3144,8 @@ function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medi
     <p style="font-weight:bold;">ESTADÍA</p>
     <div style="display:flex;justify-content:space-between;"><span>${res.noches} noches (${esc(res.pension||'')})</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}</span></div>
     ${res.sena ? '<div style="display:flex;justify-content:space-between;color:#666;"><span>Seña abonada</span><span>-$ '+(res.sena||0).toLocaleString('es-AR')+'</span></div>' : ''}
+    ${estadiaPagada ? '<div style="display:flex;justify-content:space-between;color:#090;font-weight:bold;"><span>Estadía pagada en check-in</span><span>✓</span></div>' : ''}
+    ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;color:#090;"><span>Saldo a favor</span><span>-$ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
     <hr>
     <p style="font-weight:bold;">CONSUMOS</p>
     ${consumosHTML}
@@ -3095,8 +3153,7 @@ function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medi
     <hr>
     <div class="total"><span>TOTAL</span><span>$ ${totalGeneral.toLocaleString('es-AR')}</span></div>
     <hr>
-    <p><b>Medio de Pago:</b> ${medioLabels[medioPago]||medioPago}</p>
-    ${idTx ? '<p><b>ID Transacción:</b> '+esc(idTx)+'</p>' : ''}
+    ${pagosHTML}
     <hr>
     <p style="text-align:center;font-size:10px;color:#666;">Documento no fiscal — Hotel Epecuén</p>
     <p style="text-align:center;font-size:10px;color:#666;">Gracias por su estadía</p>
@@ -3742,6 +3799,7 @@ function agregarAcompanante() {
     <input class="acomp-dni" type="text" placeholder="DNI" style="flex:1;min-width:80px;${inputStyle}">
     <input class="acomp-pasaporte hidden" type="text" placeholder="Pasaporte/Cédula" style="flex:1;min-width:80px;${inputStyle}">
     <input class="acomp-fechanac" type="date" style="flex:1;min-width:110px;${inputStyle}">
+    <input class="acomp-telefono" type="text" placeholder="Teléfono" style="flex:1;min-width:90px;${inputStyle}">
     <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;color:var(--muted);cursor:pointer;white-space:nowrap;"><input type="checkbox" class="acomp-menor"> Menor</label>
     <button type="button" class="btn btn-red btn-xs" onclick="this.parentElement.remove()">X</button>`;
   cont.appendChild(div);
@@ -3827,8 +3885,9 @@ async function crearReserva() {
     var dniA = item.querySelector('.acomp-dni').value.trim();
     var pasA = item.querySelector('.acomp-pasaporte').value.trim();
     var fechaN = item.querySelector('.acomp-fechanac').value;
+    var telA = item.querySelector('.acomp-telefono')?.value?.trim()||'';
     var esMenor = item.querySelector('.acomp-menor')?.checked || false;
-    if (apellido || nombre) acompanantes.push({ apellido, nombre, nacionalidad:nacA, dni:nacA==='AR'?dniA:'', pasaporte:nacA!=='AR'?pasA:'', fechaNac:fechaN, esMenor });
+    if (apellido || nombre) acompanantes.push({ apellido, nombre, nacionalidad:nacA, dni:nacA==='AR'?dniA:'', pasaporte:nacA!=='AR'?pasA:'', fechaNac:fechaN, telefono:telA, esMenor });
   });
 
   // Determinar si es PRE-RESERVA o CONFIRMADA según seña
@@ -4079,6 +4138,7 @@ async function editarReserva(resId) {
       <div class="form-group" style="flex:0.8;"><label>Nacionalidad</label><input type="text" class="editAcompNac" value="${esc(a.nacionalidad||'Argentina')}"></div>
       <div class="form-group" style="flex:0.8;"><label>DNI/Pasaporte</label><input type="text" class="editAcompDni" value="${esc(a.dni||a.pasaporte||'')}"></div>
       <div class="form-group" style="flex:0.8;"><label>Fecha Nac.</label><input type="date" class="editAcompFechaNac" value="${a.fechaNacimiento||''}"></div>
+      <div class="form-group" style="flex:0.8;"><label>Teléfono</label><input type="text" class="editAcompTelefono" value="${esc(a.telefono||'')}"></div>
       <div class="form-group" style="flex:0.4;"><label>Menor</label><input type="checkbox" class="editAcompMenor" ${a.esMenor?'checked':''}></div>
       <button class="btn btn-red btn-xs" style="margin-bottom:8px;" onclick="this.parentElement.remove()">X</button>
     </div>`;
@@ -4131,9 +4191,10 @@ async function editarReserva(resId) {
         var nacionalidad = row.querySelector('.editAcompNac')?.value?.trim()||'Argentina';
         var dniVal = row.querySelector('.editAcompDni')?.value?.trim()||'';
         var fechaNacimiento = row.querySelector('.editAcompFechaNac')?.value||'';
+        var telefonoA = row.querySelector('.editAcompTelefono')?.value?.trim()||'';
         var esMenor = row.querySelector('.editAcompMenor')?.checked||false;
         if (apellido || nombre) {
-          var acomp = { apellido, nombre, nacionalidad, fechaNacimiento, esMenor };
+          var acomp = { apellido, nombre, nacionalidad, fechaNacimiento, telefono:telefonoA, esMenor };
           if (nacionalidad.toLowerCase() === 'argentina') { acomp.dni = dniVal; } else { acomp.pasaporte = dniVal; }
           acompanantes.push(acomp);
         }
@@ -4176,6 +4237,7 @@ function agregarAcompEdit() {
     <div class="form-group" style="flex:0.8;"><label>Nacionalidad</label><input type="text" class="editAcompNac" value="Argentina"></div>
     <div class="form-group" style="flex:0.8;"><label>DNI/Pasaporte</label><input type="text" class="editAcompDni"></div>
     <div class="form-group" style="flex:0.8;"><label>Fecha Nac.</label><input type="date" class="editAcompFechaNac"></div>
+    <div class="form-group" style="flex:0.8;"><label>Teléfono</label><input type="text" class="editAcompTelefono"></div>
     <div class="form-group" style="flex:0.4;"><label>Menor</label><input type="checkbox" class="editAcompMenor"></div>
     <button class="btn btn-red btn-xs" style="margin-bottom:8px;" onclick="this.parentElement.remove()">X</button>`;
   container.appendChild(row);
@@ -4273,10 +4335,83 @@ async function realizarCheckIn(resId) {
       showToast('Debés cargar los acompañantes antes del check-in ('+totalPersonas+' personas en la reserva). Editá la reserva primero.','warning');
       return;
     }
-    confirmarAccion('Confirmar Check-In','<p style="padding:16px;">¿Confirmar el check-in para <strong>'+esc(res.huesped)+'</strong> — Hab. '+esc(res.habitacionNro)+'?<br>La habitación pasará a OCUPADA.</p>','Confirmar Check-In', async (ok) => {
+    var totalEstadia = res.totalPagar || 0;
+    var senaAbonada = res.sena || 0;
+    var restante = totalEstadia;
+    var monedaLabel = res.moneda === 'USD' ? 'U$D' : '$';
+    var cuerpoCheckIn = `<div style="padding:16px;">
+      <p>¿Confirmar check-in para <strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}?</p>
+      <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
+      <div style="background:var(--surface);border-radius:10px;padding:14px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Total Estadía</span><span>${monedaLabel} ${(totalEstadia+senaAbonada).toLocaleString('es-AR')}</span></div>
+        ${senaAbonada ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green);"><span>Seña abonada</span><span>- '+monedaLabel+' '+senaAbonada.toLocaleString('es-AR')+'</span></div>' : ''}
+        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:6px;"><span>Restante a cobrar</span><span>${monedaLabel} ${restante.toLocaleString('es-AR')}</span></div>
+      </div>
+      <div style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.92rem;">
+          <input type="checkbox" id="checkInPagarEstadia" onchange="togglePagoCheckIn()">
+          <span>Pagar estadía completa ahora</span>
+        </label>
+      </div>
+      <div id="checkInPagoSection" style="display:none;margin-top:12px;padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);">
+        <div id="checkInPagosContainer">
+          <div class="checkin-pago-row" style="margin-bottom:10px;padding:8px;background:var(--card);border-radius:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Medio de Pago</label>
+                <select class="checkinMedioPago" onchange="toggleCheckinIdTx(this)" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                  <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                </select></div>
+              <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Monto (${monedaLabel})</label>
+                <input type="number" class="checkinMonto" value="${restante}" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+            </div>
+            <div class="checkinIdTxWrap" style="display:none;">
+              <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+                <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-blue btn-xs" type="button" onclick="agregarPagoCheckIn(${restante},'${monedaLabel}')">+ Agregar otro medio de pago</button>
+        ${res.moneda === 'USD' ? '<div style="margin-top:10px;"><div class="form-group"><label style="font-size:0.8rem;">Cotización Dólar al momento *</label><input type="number" id="checkInCotizDolar" value="'+(configHotel.cotizacionDolar||0)+'" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div></div>' : ''}
+        <div style="margin-top:10px;">
+          <div class="form-group"><label style="font-size:0.8rem;">Saldo a favor del huésped ($)</label>
+            <input type="number" id="checkInSaldoFavor" value="0" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+            <span style="font-size:0.75rem;color:var(--muted);">Si el huésped entregó más dinero del costo de estadía (ej: pago en USD con diferencia). Se descontará en el checkout.</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    confirmarAccion('Confirmar Check-In', cuerpoCheckIn, 'Confirmar Check-In', async (ok) => {
       if (!ok) return;
       try {
-        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() });
+        var updateData = { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() };
+        var pagarAhora = $('checkInPagarEstadia')?.checked;
+        if (pagarAhora) {
+          var pagosRows = document.querySelectorAll('.checkin-pago-row');
+          var pagos = [];
+          var totalPagado = 0;
+          for (var pr of pagosRows) {
+            var medio = pr.querySelector('.checkinMedioPago').value;
+            var monto = parseFloat(pr.querySelector('.checkinMonto').value)||0;
+            var idTx = pr.querySelector('.checkinIdTx')?.value?.trim()||'';
+            if (medio !== 'EFECTIVO' && !idTx && monto > 0) { showToast('Completá el N° cupón / ID transacción para pagos no efectivo','warning'); return; }
+            if (monto > 0) { pagos.push({ medio, monto, idTx }); totalPagado += monto; }
+          }
+          if (!pagos.length) { showToast('Agregá al menos un pago','warning'); return; }
+          updateData.estadiaPagadaEnCheckin = true;
+          updateData.pagosEstadia = pagos;
+          updateData.totalPagadoCheckin = totalPagado;
+          if (res.moneda === 'USD') {
+            var cotiz = parseFloat($('checkInCotizDolar')?.value)||0;
+            if (!cotiz) { showToast('Completá la cotización del dólar','warning'); return; }
+            updateData.cotizacionCheckin = cotiz;
+          }
+          var saldoFavor = parseFloat($('checkInSaldoFavor')?.value)||0;
+          if (saldoFavor > 0) { updateData.saldoFavor = saldoFavor; }
+        }
+        await updateDoc(doc(db,'reservas',resId), updateData);
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'OCUPADA', huespedActual:res.huesped, reservaId:resId });
         if (res.dni) {
           var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
@@ -4292,6 +4427,44 @@ async function realizarCheckIn(resId) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.realizarCheckIn = realizarCheckIn;
+
+function togglePagoCheckIn() {
+  var sec = $('checkInPagoSection');
+  if (sec) sec.style.display = $('checkInPagarEstadia')?.checked ? 'block' : 'none';
+}
+window.togglePagoCheckIn = togglePagoCheckIn;
+
+function toggleCheckinIdTx(sel) {
+  var wrap = sel.closest('.checkin-pago-row').querySelector('.checkinIdTxWrap');
+  if (wrap) wrap.style.display = (sel.value !== 'EFECTIVO') ? 'block' : 'none';
+}
+window.toggleCheckinIdTx = toggleCheckinIdTx;
+
+function agregarPagoCheckIn(restante, monedaLabel) {
+  var container = $('checkInPagosContainer');
+  var row = document.createElement('div');
+  row.className = 'checkin-pago-row';
+  row.style.cssText = 'margin-bottom:10px;padding:8px;background:var(--card);border-radius:8px;position:relative;';
+  row.innerHTML = `
+    <button class="btn btn-red btn-xs" style="position:absolute;top:4px;right:4px;" onclick="this.parentElement.remove()">X</button>
+    <div class="form-row" style="margin-bottom:6px;">
+      <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Medio de Pago</label>
+        <select class="checkinMedioPago" onchange="toggleCheckinIdTx(this)" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+          <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select></div>
+      <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Monto (${monedaLabel})</label>
+        <input type="number" class="checkinMonto" value="0" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+    </div>
+    <div class="checkinIdTxWrap" style="display:none;">
+      <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+        <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+    </div>`;
+  container.appendChild(row);
+}
+window.agregarPagoCheckIn = agregarPagoCheckIn;
 
 // ── ANULACIÓN DE RESERVA VENCIDA ──
 async function anularReservaVencida(resId, habId) {
@@ -4362,7 +4535,11 @@ async function iniciarCheckOut(resId) {
     var consSnap = await getDocs(query(collection(db,'consumosHabitacion'), where('habitacionNro','==',res.habitacionNro), where('reservaId','==',resId)));
     var consumos = consSnap.docs.map(d => d.data());
     var totalConsumos = consumos.reduce((a,c) => a + (c.total||0), 0);
-    var totalGeneral = (res.totalPagar||0) + totalConsumos;
+    var estadiaPagada = res.estadiaPagadaEnCheckin || false;
+    var saldoFavor = res.saldoFavor || 0;
+    var costoEstadia = estadiaPagada ? 0 : (res.totalPagar||0);
+    var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
+    if (totalGeneral < 0) totalGeneral = 0;
 
     var consumosHTML = consumos.length ? consumos.map(c => {
       var tipoLabels = { RESTAURANTE:'🍽 Restaurante', SPA:'💆 Spa', BAR:'🍸 Bar', EXTRA:'➕ Extra' };
@@ -4374,7 +4551,8 @@ async function iniciarCheckOut(resId) {
       <p style="color:var(--muted);margin-bottom:4px;">Huésped: <strong>${esc(res.huesped)}</strong></p>
       <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
+        ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);"><span>Saldo a favor del huésped</span><span>- $ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
         <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;margin-bottom:4px;font-weight:600;font-size:0.85rem;">Consumos:</div>
         ${consumosHTML}
         <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:space-between;">
@@ -4385,40 +4563,60 @@ async function iniciarCheckOut(resId) {
         <span>TOTAL A COBRAR</span><span style="color:var(--green);">$ ${totalGeneral.toLocaleString('es-AR')}</span>
       </div>
       <div style="margin-top:16px;">
-        <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px;">Medio de Pago Final</label>
-        <select id="checkoutMedioPago" onchange="toggleCheckoutIdTx()" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TARJETA_DEBITO">Tarjeta Débito</option>
-          <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
-          <option value="TRANSFERENCIA">Transferencia</option>
-        </select>
-      </div>
-      <div id="checkoutCampoIdTx" style="margin-top:12px;display:none;">
-        <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:6px;">N° Cupón / ID Transacción *</label>
-        <input type="text" id="checkoutIdTransaccion" placeholder="Ingresá N° cupón o ID" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+        <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:8px;font-weight:600;">Medios de Pago</label>
+        <div id="checkoutPagosContainer">
+          <div class="checkout-pago-row" style="margin-bottom:10px;padding:10px;background:var(--card);border-radius:8px;">
+            <div class="form-row" style="margin-bottom:6px;">
+              <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Medio de Pago</label>
+                <select class="checkoutMedioPago" onchange="toggleCheckoutRowIdTx(this)" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                  <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                </select></div>
+              <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Monto ($)</label>
+                <input type="number" class="checkoutMonto" value="${totalGeneral}" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+            </div>
+            <div class="checkoutIdTxWrap" style="display:none;">
+              <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+                <input type="text" class="checkoutIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-blue btn-xs" type="button" onclick="agregarPagoCheckout(${totalGeneral})">+ Agregar otro medio de pago</button>
       </div>
     </div>`;
 
     confirmarAccion('Check-Out', cuerpo, 'Confirmar Check-Out', async (ok) => {
       if (!ok) return;
-      var medioPago = $('checkoutMedioPago')?.value || 'EFECTIVO';
-      var idTx = $('checkoutIdTransaccion')?.value?.trim() || '';
-      // Validar ID transacción para medios no efectivo
-      if (medioPago !== 'EFECTIVO' && !idTx) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
+      // Collect multiple payments
+      var pagosRows = document.querySelectorAll('.checkout-pago-row');
+      var pagos = [];
+      var totalPagado = 0;
+      for (var pr of pagosRows) {
+        var medio = pr.querySelector('.checkoutMedioPago').value;
+        var monto = parseFloat(pr.querySelector('.checkoutMonto').value)||0;
+        var idTx = pr.querySelector('.checkoutIdTx')?.value?.trim()||'';
+        if (medio !== 'EFECTIVO' && !idTx && monto > 0) { showToast('Completá el N° cupón / ID transacción para pagos no efectivo','warning'); return; }
+        if (monto > 0) { pagos.push({ medio, monto, idTx }); totalPagado += monto; }
+      }
+      if (!pagos.length && totalGeneral > 0) { showToast('Agregá al menos un pago','warning'); return; }
+      var medioPago = pagos.length === 1 ? pagos[0].medio : 'MULTIPLE';
+      var idTxPrimero = pagos.length === 1 ? (pagos[0].idTx||'') : pagos.map(p=>p.medio+':'+p.monto+(p.idTx?'('+p.idTx+')':'')).join(', ');
       // Verificar caja abierta
       var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
       if (cajaSnap.empty) { showToast('Debés abrir la caja antes de hacer check-out','warning'); return; }
       try {
         // Guardar consumos detallados en la reserva para estadísticas admin
         var consumosDetalle = consumos.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, items:c.items||[], voucherId:c.voucherId||'', fecha:c.fecha }));
-        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTx, totalConsumos, totalGeneral, consumosDetalle });
+        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTxPrimero, pagosCheckout:pagos, totalConsumos, totalGeneral, consumosDetalle, saldoFavorUsado: saldoFavor });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
         for (var cDoc of consSnap.docs) {
           try { await deleteDoc(doc(db,'consumosHabitacion',cDoc.id)); } catch(ee) {}
         }
         showToast('Check-Out completado — Total: $'+totalGeneral.toLocaleString('es-AR'),'success');
-        imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTx);
+        imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTxPrimero, pagos, saldoFavor);
         await cargarListaCheckOut();
         await cargarHabitaciones();
       } catch(e) { showToast('Error: '+e.message,'error'); }
@@ -4426,6 +4624,38 @@ async function iniciarCheckOut(resId) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.iniciarCheckOut = iniciarCheckOut;
+
+function toggleCheckoutRowIdTx(sel) {
+  var wrap = sel.closest('.checkout-pago-row').querySelector('.checkoutIdTxWrap');
+  if (wrap) wrap.style.display = (sel.value !== 'EFECTIVO') ? 'block' : 'none';
+}
+window.toggleCheckoutRowIdTx = toggleCheckoutRowIdTx;
+
+function agregarPagoCheckout(total) {
+  var container = $('checkoutPagosContainer');
+  var row = document.createElement('div');
+  row.className = 'checkout-pago-row';
+  row.style.cssText = 'margin-bottom:10px;padding:10px;background:var(--card);border-radius:8px;position:relative;';
+  row.innerHTML = `
+    <button class="btn btn-red btn-xs" style="position:absolute;top:4px;right:4px;" onclick="this.parentElement.remove()">X</button>
+    <div class="form-row" style="margin-bottom:6px;">
+      <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Medio de Pago</label>
+        <select class="checkoutMedioPago" onchange="toggleCheckoutRowIdTx(this)" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+          <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select></div>
+      <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">Monto ($)</label>
+        <input type="number" class="checkoutMonto" value="0" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+    </div>
+    <div class="checkoutIdTxWrap" style="display:none;">
+      <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+        <input type="text" class="checkoutIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+    </div>`;
+  container.appendChild(row);
+}
+window.agregarPagoCheckout = agregarPagoCheckout;
 
 // ── CONSUMOS HABITACION ──
 function poblarFiltroConsHab() {
