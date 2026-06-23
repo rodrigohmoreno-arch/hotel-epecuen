@@ -1615,6 +1615,8 @@ async function abrirMesaModal(mesaId) {
   tipoSel.value = 'EPECUEN_MAP';
   tipoSel.querySelectorAll('option').forEach(o => o.disabled = false);
   $('abrirCamposHuesped').style.display = 'block';
+  $('abrirCamposCarhue').classList.add('hidden'); $('abrirCamposCarhue').style.display = 'none';
+  $('abrirHabCarhue').value = ''; $('abrirNombreCarhue').value = ''; $('abrirVoucherId').value = ''; $('abrirVoucherPension').value = '';
   $('abrirNombreCliente').value = '';
   $('abrirComensales').value = '1';
   // Load occupied rooms with pension data from reservas
@@ -1643,7 +1645,8 @@ function onTipoClienteChange() {
   var esExterno = tipo === 'EXTERNO';
   var necesitaHab = !esExterno && !esCarhue;
   $('abrirCamposHuesped').style.display = necesitaHab ? 'block' : 'none';
-  $('abrirCamposCarhue').style.display = esCarhue ? 'block' : 'none';
+  if (esCarhue) { $('abrirCamposCarhue').classList.remove('hidden'); $('abrirCamposCarhue').style.display = 'block'; }
+  else { $('abrirCamposCarhue').classList.add('hidden'); $('abrirCamposCarhue').style.display = 'none'; }
 }
 window.onTipoClienteChange = onTipoClienteChange;
 
@@ -3947,6 +3950,7 @@ async function cargarPreReservas() {
       ${extras.length?`<div style="margin-top:6px;font-size:0.8rem;color:var(--text);display:flex;flex-wrap:wrap;gap:8px;">${extras.join(' | ')}</div>`:''}
       <div style="margin-top:6px;font-size:0.78rem;color:${horasRestantes<=12?'var(--red)':'var(--muted)'};">⏱ Vence en ${horasRestantes}hs — sin seña se libera automáticamente</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-blue btn-xs" onclick="editarReserva('${r.id}')">Editar</button>
         <button class="btn btn-green btn-xs" onclick="confirmarPreReserva('${r.id}','${r.habitacionId}')">Confirmar Seña</button>
         <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
       </div>
@@ -4065,7 +4069,21 @@ async function editarReserva(resId) {
   var pensionLabels = { MAP:'Media Pensión', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
   var configOpts = Object.entries(configCamasLabels).map(([k,v]) => `<option value="${k}" ${reserva.configCamas===k?'selected':''}>${v}</option>`).join('');
   var restriccionOpts = ['','CELIACO','VEGANO','VEGETARIANO','ALERGICO','OTRO'].map(v => `<option value="${v}" ${reserva.restriccionAlim===v?'selected':''}>${v||'Ninguna'}</option>`).join('');
-  var cuerpo = `<div style="padding:16px;max-height:60vh;overflow:auto;">
+  // Build acompañantes rows
+  var acompExistentes = reserva.acompanantes || [];
+  var acompHtml = '';
+  acompExistentes.forEach((a,i) => {
+    acompHtml += `<div class="form-row" id="editAcomp_${i}" style="align-items:flex-end;gap:6px;margin-bottom:8px;">
+      <div class="form-group" style="flex:1;"><label>Apellido</label><input type="text" class="editAcompApellido" value="${esc(a.apellido||'')}"></div>
+      <div class="form-group" style="flex:1;"><label>Nombre</label><input type="text" class="editAcompNombre" value="${esc(a.nombre||'')}"></div>
+      <div class="form-group" style="flex:0.8;"><label>Nacionalidad</label><input type="text" class="editAcompNac" value="${esc(a.nacionalidad||'Argentina')}"></div>
+      <div class="form-group" style="flex:0.8;"><label>DNI/Pasaporte</label><input type="text" class="editAcompDni" value="${esc(a.dni||a.pasaporte||'')}"></div>
+      <div class="form-group" style="flex:0.8;"><label>Fecha Nac.</label><input type="date" class="editAcompFechaNac" value="${a.fechaNacimiento||''}"></div>
+      <div class="form-group" style="flex:0.4;"><label>Menor</label><input type="checkbox" class="editAcompMenor" ${a.esMenor?'checked':''}></div>
+      <button class="btn btn-red btn-xs" style="margin-bottom:8px;" onclick="this.parentElement.remove()">X</button>
+    </div>`;
+  });
+  var cuerpo = `<div style="padding:16px;max-height:65vh;overflow:auto;">
     <div class="form-row">
       <div class="form-group"><label>Apellido</label><input type="text" id="editResApellido" value="${esc((reserva.huesped||'').split(' ')[0])}"></div>
       <div class="form-group"><label>Nombre</label><input type="text" id="editResNombre" value="${esc((reserva.huesped||'').split(' ').slice(1).join(' '))}"></div>
@@ -4091,12 +4109,36 @@ async function editarReserva(resId) {
       <div class="form-group"><label>Pedidos Especiales</label><input type="text" id="editResPedidosEsp" value="${esc(reserva.pedidosEsp||'')}"></div>
     </div>
     <div class="form-group"><label>Notas</label><textarea id="editResNotas" rows="2" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;">${esc(reserva.notas||'')}</textarea></div>
+    <hr style="border-color:var(--border);margin:16px 0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <strong style="font-size:0.9rem;">Acompañantes</strong>
+      <button class="btn btn-gold btn-xs" onclick="agregarAcompEdit()">+ Agregar</button>
+    </div>
+    <div id="editAcompContainer">${acompHtml}</div>
   </div>`;
   confirmarAccion('Editar Reserva — '+esc(reserva.huesped), cuerpo, 'Guardar Cambios', async (ok) => {
     if (!ok) return;
     var apel = $('editResApellido')?.value?.trim()||'';
     var nom = $('editResNombre')?.value?.trim()||'';
     var huesped = (apel+' '+nom).trim();
+    // Collect acompañantes
+    var acompanantes = [];
+    var container = $('editAcompContainer');
+    if (container) {
+      container.querySelectorAll('.form-row').forEach(row => {
+        var apellido = row.querySelector('.editAcompApellido')?.value?.trim()||'';
+        var nombre = row.querySelector('.editAcompNombre')?.value?.trim()||'';
+        var nacionalidad = row.querySelector('.editAcompNac')?.value?.trim()||'Argentina';
+        var dniVal = row.querySelector('.editAcompDni')?.value?.trim()||'';
+        var fechaNacimiento = row.querySelector('.editAcompFechaNac')?.value||'';
+        var esMenor = row.querySelector('.editAcompMenor')?.checked||false;
+        if (apellido || nombre) {
+          var acomp = { apellido, nombre, nacionalidad, fechaNacimiento, esMenor };
+          if (nacionalidad.toLowerCase() === 'argentina') { acomp.dni = dniVal; } else { acomp.pasaporte = dniVal; }
+          acompanantes.push(acomp);
+        }
+      });
+    }
     try {
       await updateDoc(doc(db,'reservas',resId), {
         huesped: huesped || reserva.huesped,
@@ -4110,14 +4152,35 @@ async function editarReserva(resId) {
         restriccionAlim: $('editResRestriccion')?.value||'',
         festejo: $('editResFestejo')?.value?.trim()||'',
         pedidosEsp: $('editResPedidosEsp')?.value?.trim()||'',
-        notas: $('editResNotas')?.value?.trim()||''
+        notas: $('editResNotas')?.value?.trim()||'',
+        acompanantes: acompanantes
       });
       showToast('Reserva actualizada','success');
       await cargarReservasActivas();
+      await cargarPreReservas();
     } catch(e) { showToast('Error: '+e.message,'error'); }
   });
 }
 window.editarReserva = editarReserva;
+
+function agregarAcompEdit() {
+  var container = $('editAcompContainer');
+  if (!container) return;
+  var idx = container.querySelectorAll('.form-row').length;
+  var row = document.createElement('div');
+  row.className = 'form-row';
+  row.style.cssText = 'align-items:flex-end;gap:6px;margin-bottom:8px;';
+  row.innerHTML = `
+    <div class="form-group" style="flex:1;"><label>Apellido</label><input type="text" class="editAcompApellido"></div>
+    <div class="form-group" style="flex:1;"><label>Nombre</label><input type="text" class="editAcompNombre"></div>
+    <div class="form-group" style="flex:0.8;"><label>Nacionalidad</label><input type="text" class="editAcompNac" value="Argentina"></div>
+    <div class="form-group" style="flex:0.8;"><label>DNI/Pasaporte</label><input type="text" class="editAcompDni"></div>
+    <div class="form-group" style="flex:0.8;"><label>Fecha Nac.</label><input type="date" class="editAcompFechaNac"></div>
+    <div class="form-group" style="flex:0.4;"><label>Menor</label><input type="checkbox" class="editAcompMenor"></div>
+    <button class="btn btn-red btn-xs" style="margin-bottom:8px;" onclick="this.parentElement.remove()">X</button>`;
+  container.appendChild(row);
+}
+window.agregarAcompEdit = agregarAcompEdit;
 
 async function imprimirPedidosEspeciales() {
   try {
