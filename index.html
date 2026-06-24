@@ -511,6 +511,7 @@
       <button class="tab" onclick="tabAdmin('adminTarifas',this)">Tarifas</button>
       <button class="tab" onclick="tabAdmin('adminConfig',this)">Config Hotel</button>
       <button class="tab" onclick="tabAdmin('adminMarketing',this)">Marketing</button>
+      <button class="tab" onclick="tabAdmin('adminPromociones',this)">Promociones</button>
       <button class="tab" onclick="tabAdmin('adminVouchers',this)">Vouchers</button>
       <button class="tab" onclick="tabAdmin('adminReporteCarhue',this)">Reporte Carhue</button>
       <button class="tab" onclick="tabAdmin('adminHistorial',this)">Historial Huéspedes</button>
@@ -708,6 +709,53 @@
         </table></div>
       </div>
     </div>
+    <!-- Admin Promociones -->
+    <div id="tabAdminPromociones" class="hidden">
+      <div class="card">
+        <div class="card-title">Gestión de Promociones</div>
+        <div style="padding:16px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:20px;">
+          <h4 style="margin-bottom:12px;font-size:0.95rem;" id="promoFormTitle">Nueva Promoción</h4>
+          <input type="hidden" id="promoEditId" value="">
+          <div class="form-row">
+            <div class="form-group"><label>Nombre *</label><input type="text" id="promoNombre" placeholder="Ej: Promo Invierno 2026"></div>
+            <div class="form-group"><label>Tipo Habitación *</label>
+              <select id="promoTipoHab">
+                <option value="SINGLE">Single</option>
+                <option value="DOBLE">Doble</option>
+                <option value="TRIPLE">Triple</option>
+                <option value="CUADRUPLE">Cuádruple</option>
+                <option value="SUITE">Suite</option>
+              </select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Pensión *</label>
+              <select id="promoPension">
+                <option value="MAP">Media Pensión (MAP)</option>
+                <option value="COMPLETA">Pensión Completa (PLAN)</option>
+                <option value="SIN_PENSION">Sin MAP</option>
+              </select></div>
+            <div class="form-group"><label>Días *</label><input type="number" id="promoDias" min="1" value="2"></div>
+            <div class="form-group"><label>Noches *</label><input type="number" id="promoNoches" min="1" value="1"></div>
+            <div class="form-group"><label>Precio $ *</label><input type="number" id="promoPrecio" min="0" step="0.01" placeholder="Precio total de la promo"></div>
+          </div>
+          <div class="form-group"><label>Descripción</label><textarea id="promoDescripcion" rows="2" placeholder="Descripción detallada de la promoción..." style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;resize:vertical;"></textarea></div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-green btn-sm" onclick="guardarPromocion()">Guardar Promoción</button>
+            <button class="btn btn-sm" onclick="limpiarFormPromo()" style="display:none;" id="btnCancelarEditPromo">Cancelar Edición</button>
+          </div>
+        </div>
+        <h4 style="font-size:0.95rem;margin-bottom:12px;">Promociones Registradas</h4>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Nombre</th><th>Tipo Hab.</th><th>Pensión</th><th>Días/Noches</th><th>Precio</th><th>Estado</th><th>Creada</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyPromociones"></tbody>
+        </table></div>
+        <h4 style="font-size:0.95rem;margin:20px 0 12px;">Historial de Cambios</h4>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Promoción</th><th>Acción</th><th>Usuario</th></tr></thead>
+          <tbody id="tbodyPromoHistorial"></tbody>
+        </table></div>
+      </div>
+    </div>
     <!-- Admin Vouchers -->
     <div id="tabAdminVouchers" class="hidden">
       <div class="card">
@@ -828,6 +876,7 @@
       <button class="tab" onclick="tabRecepcion('clienteHabitual',this)">Cliente Habitual</button>
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
       <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
+      <button class="tab" onclick="tabRecepcion('promociones',this)">Promociones</button>
     </div>
     <!-- Tab Habitaciones -->
     <div id="tabRecHabitaciones">
@@ -892,16 +941,29 @@
           <div id="listaAcompanantes"></div>
         </div>
         <div style="padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa (varias habitaciones)</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa / Grupo</label>
           <div id="resEmpresaCampos" class="hidden" style="margin-top:10px;">
             <div class="form-row">
-              <div class="form-group"><label>Razón Social *</label><input type="text" id="resRazonSocial" placeholder="Nombre de la empresa"></div>
+              <div class="form-group"><label>Nombre Empresa / Grupo *</label><input type="text" id="resRazonSocial" placeholder="Nombre de la empresa"></div>
               <div class="form-group"><label>CUIT *</label><input type="text" id="resCuitEmpresa" placeholder="Ej: 30-12345678-9"></div>
             </div>
+            <div class="form-row">
+              <div class="form-group"><label>Email Empresa *</label><input type="email" id="resEmailEmpresa" placeholder="contacto@empresa.com"></div>
+              <div class="form-group"><label>Teléfono Empresa *</label><input type="text" id="resTelefonoEmpresa" placeholder="Teléfono de contacto"></div>
+            </div>
+            <p style="font-size:0.8rem;color:var(--muted);margin:4px 0 8px;">La empresa es el titular de la reserva y paga la estadía. Los consumos se cobran a los huéspedes alojados.</p>
             <div class="form-group"><label>Habitaciones (seleccioná varias con Ctrl+Click) *</label>
               <input type="text" id="buscarHabEmpresa" placeholder="Buscar habitación..." oninput="filtrarHabEmpresa()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
-              <select id="resHabitacionesEmpresa" multiple size="6" style="width:100%;"></select>
+              <select id="resHabitacionesEmpresa" multiple size="6" style="width:100%;" onchange="renderAlojadosEmpresa()"></select>
             </div>
+            <div style="margin-top:12px;padding:10px;background:rgba(46,204,113,0.06);border-radius:8px;border-left:3px solid var(--green);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <h4 style="font-size:0.9rem;">Alojados por Habitación</h4>
+                <span style="font-size:0.75rem;color:var(--muted);">Seleccioná habitaciones arriba, luego cargá los alojados de cada una</span>
+              </div>
+              <div id="listaAlojadosEmpresa"></div>
+            </div>
+            <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Nota: Al checkout la estadía se factura a la empresa, los consumos del restaurante a los huéspedes alojados.</p>
           </div>
         </div>
         <div class="form-row" id="resHabIndividualRow">
@@ -1078,6 +1140,14 @@
           <thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
           <tbody id="tbodyConsumosHab"></tbody>
         </table></div>
+      </div>
+    </div>
+    <!-- Tab Promociones Recepción -->
+    <div id="tabRecPromociones" class="hidden">
+      <div class="card">
+        <div class="card-title">Promociones Activas</div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Promociones vigentes que se pueden aplicar al hacer check-in.</p>
+        <div id="listaPromosRecepcion"></div>
       </div>
     </div>
     <!-- Tab Caja Recepción -->
@@ -1567,8 +1637,8 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminVouchers','tabAdminReporteCarhue','tabAdminHistorial'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue', adminHistorial:'tabAdminHistorial' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminPromociones','tabAdminVouchers','tabAdminReporteCarhue','tabAdminHistorial'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminPromociones:'tabAdminPromociones', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue', adminHistorial:'tabAdminHistorial' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
@@ -1579,6 +1649,7 @@ function tabAdmin(t, btn) {
   if (t === 'adminTarifas') cargarTarifas();
   if (t === 'adminConfig') cargarConfigHotel();
   if (t === 'adminMarketing') cargarListaMarketing();
+  if (t === 'adminPromociones') cargarPromocionesAdmin();
   if (t === 'adminVouchers') cargarVouchersAdmin();
   if (t === 'adminReporteCarhue') cargarReporteCarhue();
   if (t === 'adminHistorial') cargarHistorialHuespedes();
@@ -3401,8 +3472,8 @@ let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec' };
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec', promociones:'tabRecPromociones' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
   if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); }
@@ -3413,6 +3484,7 @@ function tabRecepcion(t, btn) {
   if (t === 'clienteHabitual') { /* se carga al buscar */ }
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
   if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
+  if (t === 'promociones') { cargarPromosRecepcion(); }
 }
 window.tabRecepcion = tabRecepcion;
 
@@ -3515,7 +3587,7 @@ function abrirPreReservaDesdeHab(hab) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   var btns = document.querySelectorAll('#panelRecepcion .tab');
   btns[1].classList.add('active'); // Nueva Reserva tab
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     // Pre-select the room
@@ -3922,14 +3994,18 @@ async function crearReserva() {
   if (esEmpresa) {
     var razonSocial = $('resRazonSocial').value.trim();
     var cuitEmpresa = $('resCuitEmpresa').value.trim();
+    var emailEmpresa = $('resEmailEmpresa').value.trim();
+    var telefonoEmpresa = $('resTelefonoEmpresa').value.trim();
     if (!razonSocial || !cuitEmpresa) { showToast('Completá razón social y CUIT de la empresa','warning'); return; }
+    if (!emailEmpresa || !telefonoEmpresa) { showToast('Completá email y teléfono de la empresa','warning'); return; }
     var selEmpresa = $('resHabitacionesEmpresa');
     var habsSeleccionadas = [];
     for (var i=0; i<selEmpresa.options.length; i++) {
       if (selEmpresa.options[i].selected) habsSeleccionadas.push(selEmpresa.options[i]);
     }
     if (!habsSeleccionadas.length) { showToast('Seleccioná al menos una habitación','warning'); return; }
-    return crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, habsSeleccionadas);
+    var alojadosPorHab = recogerAlojadosEmpresa();
+    return crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas, alojadosPorHab);
   }
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
@@ -4049,7 +4125,7 @@ async function crearReserva() {
 }
 window.crearReserva = crearReserva;
 
-async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, habsSeleccionadas) {
+async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas, alojadosPorHab) {
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
   if (!fechaIn || !fechaOut) { showToast('Completá fechas de check-in/out','warning'); return; }
@@ -4104,7 +4180,9 @@ async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalida
         fechaPreReserva: !tieneSeña ? new Date().toISOString() : null,
         vencePreReserva: null,
         usuario: currentUser.usuario,
-        esEmpresa: true, razonSocial, cuitEmpresa, grupoEmpresaId
+        esEmpresa: true, razonSocial, cuitEmpresa, emailEmpresa: emailEmpresa||'', telefonoEmpresa: telefonoEmpresa||'',
+        alojados: alojadosPorHab ? (alojadosPorHab[habNro] || []) : [],
+        grupoEmpresaId
       };
       await addDoc(collection(db,'reservas'), reservaData);
       await updateDoc(doc(db,'habitaciones',habId), { estado: tieneSeña ? 'RESERVADA' : 'PRE_RESERVA' });
@@ -4131,6 +4209,9 @@ async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalida
     $('listaAcompanantes').innerHTML=''; $('resumenReserva').style.display='none';
     $('resEmpresa').checked=false; toggleReservaEmpresa();
     $('resRazonSocial').value=''; $('resCuitEmpresa').value='';
+    if ($('resEmailEmpresa')) $('resEmailEmpresa').value='';
+    if ($('resTelefonoEmpresa')) $('resTelefonoEmpresa').value='';
+    if ($('listaAlojadosEmpresa')) $('listaAlojadosEmpresa').innerHTML='';
     await poblarSelectHabReserva();
     await cargarReservasActivas();
     await cargarPreReservas();
@@ -4494,14 +4575,27 @@ async function realizarCheckIn(resId) {
       showToast('Debés cargar los acompañantes antes del check-in ('+totalPersonas+' personas en la reserva). Editá la reserva primero.','warning');
       return;
     }
+    // Load active promos for check-in selection
+    var promosActivas = [];
+    try { var promoSnap = await getDocs(query(collection(db,'promociones'), where('estado','==','ACTIVA'))); promosActivas = promoSnap.docs.map(d => ({ id:d.id, ...d.data() })); } catch(e) {}
     var totalEstadia = res.totalPagar || 0;
     var senaAbonada = res.sena || 0;
     var restante = totalEstadia;
     var monedaLabel = res.moneda === 'USD' ? 'U$D' : '$';
+    var promoOptions = promosActivas.map(p => '<option value="'+p.id+'" data-precio="'+p.precio+'" data-dias="'+p.dias+'" data-noches="'+p.noches+'" data-pension="'+p.pension+'" data-tipo="'+esc(p.tipoHab||'')+'">'
+      + esc(p.nombre)+' — $'+(p.precio||0).toLocaleString('es-AR')+' ('+p.dias+'d/'+p.noches+'n)</option>').join('');
     var cuerpoCheckIn = `<div style="padding:16px;">
       <p>¿Confirmar check-in para <strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}?</p>
       <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
-      <div style="background:var(--surface);border-radius:10px;padding:14px;margin:12px 0;">
+      ${promosActivas.length ? `<div style="margin-bottom:12px;padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);">
+        <label style="font-size:0.88rem;font-weight:600;margin-bottom:6px;display:block;">Aplicar Promoción (opcional)</label>
+        <select id="checkInPromoSelect" onchange="aplicarPromoCheckIn()" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+          <option value="">— Sin promoción —</option>
+          ${promoOptions}
+        </select>
+        <div id="checkInPromoDetalle" style="display:none;margin-top:8px;font-size:0.82rem;color:var(--muted);"></div>
+      </div>` : ''}
+      <div id="checkInResumenEstadia" style="background:var(--surface);border-radius:10px;padding:14px;margin:12px 0;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Total Estadía</span><span>${monedaLabel} ${(totalEstadia+senaAbonada).toLocaleString('es-AR')}</span></div>
         ${senaAbonada ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green);"><span>Seña abonada</span><span>- '+monedaLabel+' '+senaAbonada.toLocaleString('es-AR')+'</span></div>' : ''}
         <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-top:6px;"><span>Restante a cobrar</span><span>${monedaLabel} ${restante.toLocaleString('es-AR')}</span></div>
@@ -4546,6 +4640,20 @@ async function realizarCheckIn(resId) {
       if (!ok) return;
       try {
         var updateData = { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() };
+        // Save promo if selected
+        var promoSel = $('checkInPromoSelect');
+        if (promoSel && promoSel.value) {
+          var promoOpt = promoSel.options[promoSel.selectedIndex];
+          updateData.promoAplicada = {
+            promoId: promoSel.value,
+            nombre: promoOpt.text.split(' — ')[0],
+            precio: parseFloat(promoOpt.getAttribute('data-precio'))||0,
+            dias: parseInt(promoOpt.getAttribute('data-dias'))||0,
+            noches: parseInt(promoOpt.getAttribute('data-noches'))||0,
+            pension: promoOpt.getAttribute('data-pension')||'',
+            tipoHab: promoOpt.getAttribute('data-tipo')||''
+          };
+        }
         var pagarAhora = $('checkInPagarEstadia')?.checked;
         if (pagarAhora) {
           var pagosRows = document.querySelectorAll('.checkin-pago-row');
@@ -4592,6 +4700,28 @@ function togglePagoCheckIn() {
   if (sec) sec.style.display = $('checkInPagarEstadia')?.checked ? 'block' : 'none';
 }
 window.togglePagoCheckIn = togglePagoCheckIn;
+
+function aplicarPromoCheckIn() {
+  var sel = $('checkInPromoSelect');
+  var detalle = $('checkInPromoDetalle');
+  if (!sel) return;
+  var opt = sel.options[sel.selectedIndex];
+  if (!sel.value) { if (detalle) detalle.style.display = 'none'; return; }
+  var precio = parseFloat(opt.getAttribute('data-precio'))||0;
+  var dias = opt.getAttribute('data-dias')||'';
+  var noches = opt.getAttribute('data-noches')||'';
+  var pension = opt.getAttribute('data-pension')||'';
+  var tipo = opt.getAttribute('data-tipo')||'';
+  var pensionLabels = { MAP:'Media Pensión (MAP)', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
+  if (detalle) {
+    detalle.style.display = 'block';
+    detalle.innerHTML = '<strong>Precio promo: $ '+precio.toLocaleString('es-AR')+'</strong> — '+dias+' días/'+noches+' noches, '+(pensionLabels[pension]||pension)+', Hab. '+tipo;
+  }
+  // Update payment amounts
+  var montos = document.querySelectorAll('.checkinMonto');
+  if (montos.length) montos[0].value = precio;
+}
+window.aplicarPromoCheckIn = aplicarPromoCheckIn;
 
 function toggleCheckinIdTx(sel) {
   var wrap = sel.closest('.checkin-pago-row').querySelector('.checkinIdTxWrap');
@@ -5390,7 +5520,7 @@ function abrirReservaDesdeCalendario(habId, habNro, fecha) {
   var tabs = document.querySelectorAll('#panelRecepcion .tab');
   tabs.forEach(b => b.classList.remove('active'));
   tabs[1].classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     var sel = $('resHabitacion');
@@ -5463,7 +5593,7 @@ function abrirReservaEmpresaDesdeCalendario(habIds) {
   var tabs = document.querySelectorAll('#panelRecepcion .tab');
   tabs.forEach(b => b.classList.remove('active'));
   tabs[1].classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
   $('resEmpresa').checked = true;
   toggleReservaEmpresa();
@@ -5515,13 +5645,22 @@ async function buscarClienteHabitual() {
     var totalEstadias = reservasCliente.length;
     var estadiasCompletadas = reservasCliente.filter(r => r.estado === 'CHECKOUT' || r.estado === 'COMPLETADA').length;
     var todasNotas = []; var todasRestricciones = []; var todosPedidos = []; var todosFestejos = [];
+    var configCamasPreferidas = []; var habPreferidas = [];
+    var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
     reservasCliente.forEach(r => {
       if (r.notas) todasNotas.push({ fecha: r.fechaIn, hab: r.habitacionNro, nota: r.notas });
       if (r.restriccionAlim) todasRestricciones.push(r.restriccionAlim);
       if (r.pedidosEsp) todosPedidos.push({ fecha: r.fechaIn, hab: r.habitacionNro, pedido: r.pedidosEsp });
       if (r.festejo) todosFestejos.push({ fecha: r.fechaIn, hab: r.habitacionNro, festejo: r.festejo });
+      if (r.configCamas) configCamasPreferidas.push(configCamasLabels[r.configCamas] || r.configCamas);
+      if (r.habitacionNro) habPreferidas.push(r.habitacionNro);
     });
     var restriccionesUnicas = [...new Set(todasRestricciones)];
+    var configCamasCount = {}; configCamasPreferidas.forEach(c => { configCamasCount[c] = (configCamasCount[c]||0)+1; });
+    var habCount = {}; habPreferidas.forEach(h2 => { habCount[h2] = (habCount[h2]||0)+1; });
+    var configCamasFav = Object.entries(configCamasCount).sort((a,b) => b[1]-a[1]);
+    var habFav = Object.entries(habCount).sort((a,b) => b[1]-a[1]);
+
     var html = '<div style="border:1px solid var(--border);border-radius:12px;padding:20px;background:var(--surface);">';
     html += '<h3 style="margin-bottom:16px;font-size:1.1rem;">'+esc((h.apellido||'')+' '+(h.nombre||''))+'</h3>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
@@ -5530,40 +5669,45 @@ async function buscarClienteHabitual() {
     html += '<div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">DNI/Pasaporte</strong><div style="font-size:0.95rem;font-weight:600;">'+(h.dni||h.pasaporte||'—')+'</div></div>';
     html += '<div style="padding:12px;background:rgba(139,92,246,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">Email</strong><div style="font-size:0.95rem;">'+(h.email||'—')+'</div></div>';
     html += '</div>';
-    if (restriccionesUnicas.length) {
-      html += '<div style="padding:12px;background:rgba(239,68,68,0.08);border-radius:10px;border-left:3px solid rgba(239,68,68,0.5);margin-bottom:16px;">';
-      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">⚠️ Restricciones Alimentarias</h4>';
-      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
-      restriccionesUnicas.forEach(r => html += '<li>'+esc(r)+'</li>');
-      html += '</ul></div>';
+
+    // Solicitudes Especiales Summary
+    var tieneSolicitudes = restriccionesUnicas.length || todosFestejos.length || todosPedidos.length || todasNotas.length || configCamasFav.length || habFav.length;
+    if (tieneSolicitudes) {
+      html += '<div style="padding:16px;background:rgba(245,158,11,0.08);border-radius:12px;border:2px solid rgba(245,158,11,0.3);margin-bottom:20px;">';
+      html += '<h4 style="font-size:1rem;margin-bottom:12px;color:#f59e0b;">Solicitudes Especiales del Cliente</h4>';
+      if (restriccionesUnicas.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">⚠️ Restricciones Alimentarias:</strong> <span style="font-size:0.88rem;">'+restriccionesUnicas.map(r => esc(r)).join(', ')+'</span></div>';
+      }
+      if (habFav.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">Habitaciones Preferidas:</strong> <span style="font-size:0.88rem;">'+habFav.slice(0,3).map(h2 => 'Hab. '+esc(h2[0])+' ('+h2[1]+'x)').join(', ')+'</span></div>';
+      }
+      if (configCamasFav.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">Config. Camas Preferida:</strong> <span style="font-size:0.88rem;">'+configCamasFav.slice(0,3).map(c => esc(c[0])+' ('+c[1]+'x)').join(', ')+'</span></div>';
+      }
+      if (todosFestejos.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">Festejos/Días Especiales:</strong><ul style="margin:4px 0 0 20px;font-size:0.85rem;">';
+        todosFestejos.forEach(f => html += '<li>'+esc(f.fecha)+' (Hab '+esc(f.hab)+'): '+esc(f.festejo)+'</li>');
+        html += '</ul></div>';
+      }
+      if (todosPedidos.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">Pedidos Especiales Habitación:</strong><ul style="margin:4px 0 0 20px;font-size:0.85rem;">';
+        todosPedidos.forEach(p => html += '<li>'+esc(p.fecha)+' (Hab '+esc(p.hab)+'): '+esc(p.pedido)+'</li>');
+        html += '</ul></div>';
+      }
+      if (todasNotas.length) {
+        html += '<div style="margin-bottom:10px;"><strong style="font-size:0.85rem;">Notas / Observaciones / Quejas:</strong><ul style="margin:4px 0 0 20px;font-size:0.85rem;">';
+        todasNotas.forEach(n => html += '<li>'+esc(n.fecha)+' (Hab '+esc(n.hab)+'): '+esc(n.nota)+'</li>');
+        html += '</ul></div>';
+      }
+      html += '</div>';
     }
-    if (todosFestejos.length) {
-      html += '<div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;">';
-      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Festejos / Días Especiales</h4>';
-      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
-      todosFestejos.forEach(f => html += '<li><strong>'+esc(f.fecha)+' (Hab '+esc(f.hab)+'):</strong> '+esc(f.festejo)+'</li>');
-      html += '</ul></div>';
-    }
-    if (todosPedidos.length) {
-      html += '<div style="padding:12px;background:rgba(139,92,246,0.08);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">';
-      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Pedidos Especiales</h4>';
-      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
-      todosPedidos.forEach(p => html += '<li><strong>'+esc(p.fecha)+' (Hab '+esc(p.hab)+'):</strong> '+esc(p.pedido)+'</li>');
-      html += '</ul></div>';
-    }
-    if (todasNotas.length) {
-      html += '<div style="padding:12px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">';
-      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Notas / Observaciones</h4>';
-      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
-      todasNotas.forEach(n => html += '<li><strong>'+esc(n.fecha)+' (Hab '+esc(n.hab)+'):</strong> '+esc(n.nota)+'</li>');
-      html += '</ul></div>';
-    }
+
     html += '<h4 style="font-size:0.95rem;margin-bottom:12px;">Historial de Estadías</h4>';
-    html += '<div class="table-wrap"><table><thead><tr><th>Fecha Ingreso</th><th>Fecha Egreso</th><th>Hab.</th><th>Pensión</th><th>Estado</th><th>Config Camas</th><th>Notas</th></tr></thead><tbody>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Fecha In</th><th>Fecha Out</th><th>Hab.</th><th>Pensión</th><th>Estado</th><th>Config Camas</th><th>Restricción</th><th>Pedidos Esp.</th><th>Notas</th></tr></thead><tbody>';
     reservasCliente.forEach(r => {
       var pensionLabel = {MAP:'Media Pensión',COMPLETA:'Pensión Completa',SIN_PENSION:'Sin MAP'}[r.pension]||r.pension||'';
       var estadoLabel = {PRE_RESERVA:'Pre-Reserva',CONFIRMADA:'Confirmada',CHECKIN:'Check-In',CHECKOUT:'Check-Out',ANULADA:'Anulada'}[r.estado]||r.estado||'';
-      html += '<tr><td>'+(r.fechaIn||'')+'</td><td>'+(r.fechaOut||'')+'</td><td>'+(r.habitacionNro||'')+'</td><td>'+pensionLabel+'</td><td>'+estadoLabel+'</td><td>'+(r.configCamas||'')+'</td><td>'+esc(r.notas||'')+'</td></tr>';
+      html += '<tr><td>'+(r.fechaIn||'')+'</td><td>'+(r.fechaOut||'')+'</td><td>'+(r.habitacionNro||'')+'</td><td>'+pensionLabel+'</td><td>'+estadoLabel+'</td><td>'+(configCamasLabels[r.configCamas]||r.configCamas||'')+'</td><td>'+esc(r.restriccionAlim||'')+'</td><td>'+esc(r.pedidosEsp||'')+'</td><td>'+esc(r.notas||'')+'</td></tr>';
     });
     html += '</tbody></table></div>';
     html += '<div style="margin-top:16px;text-align:right;"><button class="btn btn-sm" onclick="imprimirFichaClienteHabitual()">Imprimir Ficha</button></div>';
@@ -5583,6 +5727,234 @@ function imprimirFichaClienteHabitual() {
   win.print();
 }
 window.imprimirFichaClienteHabitual = imprimirFichaClienteHabitual;
+
+// ── ALOJADOS EMPRESA ──
+function renderAlojadosEmpresa() {
+  var sel = $('resHabitacionesEmpresa');
+  var container = $('listaAlojadosEmpresa');
+  if (!sel || !container) return;
+  var habsSeleccionadas = [];
+  for (var i=0; i<sel.options.length; i++) {
+    if (sel.options[i].selected) habsSeleccionadas.push({ id: sel.options[i].value, nro: sel.options[i].getAttribute('data-nro') || sel.options[i].text.split(' ')[0] });
+  }
+  if (!habsSeleccionadas.length) { container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">Seleccioná habitaciones arriba para cargar alojados.</p>'; return; }
+  var existingData = {};
+  container.querySelectorAll('.alojados-hab-block').forEach(block => {
+    var habNro = block.getAttribute('data-hab');
+    var alojados = [];
+    block.querySelectorAll('.alojado-item').forEach(item => {
+      alojados.push({
+        apellido: item.querySelector('.aloj-apellido')?.value||'',
+        nombre: item.querySelector('.aloj-nombre')?.value||'',
+        dni: item.querySelector('.aloj-dni')?.value||''
+      });
+    });
+    existingData[habNro] = alojados;
+  });
+  var html = '';
+  habsSeleccionadas.forEach(hab => {
+    var prevAlojados = existingData[hab.nro] || [];
+    html += '<div class="alojados-hab-block" data-hab="'+esc(hab.nro)+'" style="margin-bottom:12px;padding:10px;background:var(--card);border-radius:8px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><strong style="font-size:0.85rem;">Hab. '+esc(hab.nro)+'</strong>';
+    html += '<button class="btn btn-blue btn-xs" type="button" onclick="agregarAlojado(this)">+ Alojado</button></div>';
+    html += '<div class="alojados-list">';
+    if (prevAlojados.length) {
+      prevAlojados.forEach(a => {
+        html += '<div class="alojado-item" style="display:flex;gap:6px;margin-bottom:4px;align-items:center;">';
+        html += '<input type="text" class="aloj-apellido" placeholder="Apellido" value="'+esc(a.apellido)+'" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">';
+        html += '<input type="text" class="aloj-nombre" placeholder="Nombre" value="'+esc(a.nombre)+'" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">';
+        html += '<input type="text" class="aloj-dni" placeholder="DNI/Pasaporte" value="'+esc(a.dni)+'" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">';
+        html += '<button class="btn btn-red btn-xs" type="button" onclick="this.parentElement.remove()">X</button></div>';
+      });
+    }
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+window.renderAlojadosEmpresa = renderAlojadosEmpresa;
+
+function agregarAlojado(btn) {
+  var list = btn.closest('.alojados-hab-block').querySelector('.alojados-list');
+  var item = document.createElement('div');
+  item.className = 'alojado-item';
+  item.style.cssText = 'display:flex;gap:6px;margin-bottom:4px;align-items:center;';
+  item.innerHTML = '<input type="text" class="aloj-apellido" placeholder="Apellido" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">'
+    + '<input type="text" class="aloj-nombre" placeholder="Nombre" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">'
+    + '<input type="text" class="aloj-dni" placeholder="DNI/Pasaporte" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">'
+    + '<button class="btn btn-red btn-xs" type="button" onclick="this.parentElement.remove()">X</button>';
+  list.appendChild(item);
+}
+window.agregarAlojado = agregarAlojado;
+
+function recogerAlojadosEmpresa() {
+  var result = {};
+  document.querySelectorAll('.alojados-hab-block').forEach(block => {
+    var habNro = block.getAttribute('data-hab');
+    var alojados = [];
+    block.querySelectorAll('.alojado-item').forEach(item => {
+      var apellido = item.querySelector('.aloj-apellido')?.value?.trim()||'';
+      var nombre = item.querySelector('.aloj-nombre')?.value?.trim()||'';
+      var dni = item.querySelector('.aloj-dni')?.value?.trim()||'';
+      if (apellido || nombre) alojados.push({ apellido, nombre, dni });
+    });
+    result[habNro] = alojados;
+  });
+  return result;
+}
+
+// ── PROMOCIONES ADMIN ──
+async function cargarPromocionesAdmin() {
+  try {
+    var snap = await getDocs(collection(db,'promociones'));
+    var promos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    promos.sort((a,b) => (b.fechaCreacion?.seconds||0) - (a.fechaCreacion?.seconds||0));
+    var pensionLabels = { MAP:'Media Pensión (MAP)', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
+    var tbody = $('tbodyPromociones');
+    tbody.innerHTML = promos.map(p => {
+      var estado = p.estado || 'ACTIVA';
+      var estadoColor = estado === 'ACTIVA' ? 'var(--green)' : 'var(--red)';
+      var fecha = p.fechaCreacion ? new Date(p.fechaCreacion.seconds*1000).toLocaleDateString('es-AR') : '';
+      return '<tr>'
+        + '<td><strong>'+esc(p.nombre||'')+'</strong><br><span style="font-size:0.78rem;color:var(--muted);">'+esc(p.descripcion||'')+'</span></td>'
+        + '<td>'+esc(p.tipoHab||'')+'</td>'
+        + '<td>'+(pensionLabels[p.pension]||p.pension||'')+'</td>'
+        + '<td>'+p.dias+' días / '+p.noches+' noches</td>'
+        + '<td style="font-weight:700;">$ '+((p.precio||0).toLocaleString('es-AR'))+'</td>'
+        + '<td><span style="color:'+estadoColor+';font-weight:700;">'+estado+'</span></td>'
+        + '<td>'+fecha+'</td>'
+        + '<td style="white-space:nowrap;">'
+        + '<button class="btn btn-blue btn-xs" onclick="editarPromo(\''+p.id+'\')">Editar</button> '
+        + (estado === 'ACTIVA'
+          ? '<button class="btn btn-red btn-xs" onclick="toggleEstadoPromo(\''+p.id+'\',\'INACTIVA\')">Desactivar</button>'
+          : '<button class="btn btn-green btn-xs" onclick="toggleEstadoPromo(\''+p.id+'\',\'ACTIVA\')">Activar</button>')
+        + ' <button class="btn btn-xs" onclick="eliminarPromo(\''+p.id+'\')">Eliminar</button>'
+        + '</td></tr>';
+    }).join('');
+    // Historial
+    var histSnap = await getDocs(query(collection(db,'promoHistorial'), orderBy('fecha','desc'), limit(50)));
+    var hist = histSnap.docs.map(d => d.data());
+    var tbodyHist = $('tbodyPromoHistorial');
+    tbodyHist.innerHTML = hist.map(h => {
+      var fecha = h.fecha ? new Date(h.fecha.seconds*1000).toLocaleString('es-AR') : '';
+      return '<tr><td>'+fecha+'</td><td>'+esc(h.promoNombre||'')+'</td><td>'+esc(h.accion||'')+'</td><td>'+esc(h.usuario||'')+'</td></tr>';
+    }).join('');
+  } catch(e) { showToast('Error cargando promociones: '+e.message,'error'); }
+}
+
+async function guardarPromocion() {
+  var nombre = $('promoNombre').value.trim();
+  var tipoHab = $('promoTipoHab').value;
+  var pension = $('promoPension').value;
+  var dias = parseInt($('promoDias').value)||0;
+  var noches = parseInt($('promoNoches').value)||0;
+  var precio = parseFloat($('promoPrecio').value)||0;
+  var descripcion = $('promoDescripcion').value.trim();
+  if (!nombre) { showToast('Completá el nombre de la promoción','warning'); return; }
+  if (!dias || !noches) { showToast('Completá días y noches','warning'); return; }
+  if (!precio) { showToast('Completá el precio','warning'); return; }
+  var editId = $('promoEditId').value;
+  try {
+    var data = { nombre, tipoHab, pension, dias, noches, precio, descripcion, estado:'ACTIVA' };
+    if (editId) {
+      await updateDoc(doc(db,'promociones',editId), data);
+      await addDoc(collection(db,'promoHistorial'), { promoId:editId, promoNombre:nombre, accion:'Editada', usuario:currentUser.usuario, fecha:serverTimestamp() });
+      showToast('Promoción actualizada','success');
+    } else {
+      data.fechaCreacion = serverTimestamp();
+      var ref = await addDoc(collection(db,'promociones'), data);
+      await addDoc(collection(db,'promoHistorial'), { promoId:ref.id, promoNombre:nombre, accion:'Creada', usuario:currentUser.usuario, fecha:serverTimestamp() });
+      showToast('Promoción creada','success');
+    }
+    limpiarFormPromo();
+    cargarPromocionesAdmin();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.guardarPromocion = guardarPromocion;
+
+async function editarPromo(id) {
+  try {
+    var snap = await getDoc(doc(db,'promociones',id));
+    var p = snap.data();
+    $('promoEditId').value = id;
+    $('promoNombre').value = p.nombre||'';
+    $('promoTipoHab').value = p.tipoHab||'SINGLE';
+    $('promoPension').value = p.pension||'MAP';
+    $('promoDias').value = p.dias||2;
+    $('promoNoches').value = p.noches||1;
+    $('promoPrecio').value = p.precio||0;
+    $('promoDescripcion').value = p.descripcion||'';
+    $('promoFormTitle').textContent = 'Editar Promoción';
+    $('btnCancelarEditPromo').style.display = 'inline-flex';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.editarPromo = editarPromo;
+
+function limpiarFormPromo() {
+  $('promoEditId').value = '';
+  $('promoNombre').value = '';
+  $('promoTipoHab').value = 'SINGLE';
+  $('promoPension').value = 'MAP';
+  $('promoDias').value = '2';
+  $('promoNoches').value = '1';
+  $('promoPrecio').value = '';
+  $('promoDescripcion').value = '';
+  $('promoFormTitle').textContent = 'Nueva Promoción';
+  $('btnCancelarEditPromo').style.display = 'none';
+}
+window.limpiarFormPromo = limpiarFormPromo;
+
+async function toggleEstadoPromo(id, nuevoEstado) {
+  try {
+    var snap = await getDoc(doc(db,'promociones',id));
+    var nombre = snap.data().nombre || '';
+    await updateDoc(doc(db,'promociones',id), { estado: nuevoEstado });
+    await addDoc(collection(db,'promoHistorial'), { promoId:id, promoNombre:nombre, accion: nuevoEstado === 'ACTIVA' ? 'Activada' : 'Desactivada', usuario:currentUser.usuario, fecha:serverTimestamp() });
+    showToast('Promoción '+(nuevoEstado==='ACTIVA'?'activada':'desactivada'),'success');
+    cargarPromocionesAdmin();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.toggleEstadoPromo = toggleEstadoPromo;
+
+async function eliminarPromo(id) {
+  confirmarAccion('Eliminar Promoción', '<p>¿Seguro que querés eliminar esta promoción?</p>', 'Eliminar', async (ok) => {
+    if (!ok) return;
+    try {
+      var snap = await getDoc(doc(db,'promociones',id));
+      var nombre = snap.data().nombre || '';
+      await deleteDoc(doc(db,'promociones',id));
+      await addDoc(collection(db,'promoHistorial'), { promoId:id, promoNombre:nombre, accion:'Eliminada', usuario:currentUser.usuario, fecha:serverTimestamp() });
+      showToast('Promoción eliminada','success');
+      cargarPromocionesAdmin();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.eliminarPromo = eliminarPromo;
+
+// ── PROMOCIONES RECEPCION ──
+async function cargarPromosRecepcion() {
+  try {
+    var snap = await getDocs(query(collection(db,'promociones'), where('estado','==','ACTIVA')));
+    var promos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var container = $('listaPromosRecepcion');
+    if (!promos.length) { container.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay promociones activas en este momento.</p>'; return; }
+    var pensionLabels = { MAP:'Media Pensión (MAP)', COMPLETA:'Pensión Completa (PLAN)', SIN_PENSION:'Sin MAP' };
+    container.innerHTML = promos.map(p => {
+      return '<div style="padding:16px;background:var(--card);border-radius:12px;border-left:4px solid rgba(139,92,246,0.6);margin-bottom:12px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+        + '<div><h4 style="font-size:1rem;margin-bottom:4px;">'+esc(p.nombre||'')+'</h4>'
+        + (p.descripcion ? '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:8px;">'+esc(p.descripcion)+'</p>' : '')
+        + '</div>'
+        + '<div style="text-align:right;"><div style="font-size:1.4rem;font-weight:700;color:var(--green);">$ '+(p.precio||0).toLocaleString('es-AR')+'</div></div>'
+        + '</div>'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.88rem;color:var(--text);">'
+        + '<span>Tipo Hab.: <strong>'+esc(p.tipoHab||'')+'</strong></span>'
+        + '<span>Pensión: <strong>'+(pensionLabels[p.pension]||p.pension||'')+'</strong></span>'
+        + '<span>'+p.dias+' días / '+p.noches+' noches</span>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) { $('listaPromosRecepcion').innerHTML = '<p style="color:var(--red);">Error: '+e.message+'</p>'; }
+}
+window.cargarPromosRecepcion = cargarPromosRecepcion;
 
 // ── CONFIG HOTEL ──
 async function cargarConfigHotel() {
