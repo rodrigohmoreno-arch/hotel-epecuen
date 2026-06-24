@@ -122,6 +122,7 @@
     #calendarioHab table td[draggable="true"]:active { cursor:grabbing; }
     #calendarioHab table td { transition:background 0.2s; }
     #calendarioHab table td:hover { filter:brightness(1.1); }
+    #calendarioHab table td.cal-sel { outline:3px solid var(--blue); outline-offset:-3px; background:rgba(59,130,246,0.2) !important; }
 
     /* ── TABS ── */
     .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
@@ -212,7 +213,7 @@
     .confirm-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
 
     /* ── TOAST ── */
-    .toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast-container { position:fixed; top:24px; left:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
     .toast {
       padding:13px 20px; border-radius:10px; font-size:0.88rem; font-weight:500;
       box-shadow:var(--shadow); animation:slideIn .3s ease; max-width:320px;
@@ -221,7 +222,7 @@
     .toast-error   { background:#3a1a1a; border:1px solid var(--red); color:var(--red); }
     .toast-warning { background:#3a2e1a; border:1px solid var(--gold); color:var(--gold); }
     .toast-info    { background:#1a2a3a; border:1px solid var(--blue); color:var(--blue); }
-    @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes slideIn { from { transform:translateX(-100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
     /* ── STATS ROW ── */
     .stats-row { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
@@ -1471,10 +1472,13 @@ async function doLogin() {
 window.doLogin = doLogin;
 
 function doLogout() {
-  currentUser = null; mesasCache = []; productosCache = [];
-  $('loginScreen').classList.remove('hidden');
-  $('mainApp').classList.add('hidden');
-  ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion'].forEach(id => $(id).classList.add('hidden'));
+  confirmarAccion('Cerrar Sesión', '¿Desea cerrar y salir del sistema?', 'Sí, salir', function(ok) {
+    if (!ok) return;
+    currentUser = null; mesasCache = []; productosCache = [];
+    $('loginScreen').classList.remove('hidden');
+    $('mainApp').classList.add('hidden');
+    ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion'].forEach(id => $(id).classList.add('hidden'));
+  });
 }
 window.doLogout = doLogout;
 
@@ -5321,7 +5325,8 @@ async function renderCalendarioHab() {
         borderCircle = '';
       }
       var dblClickAttr = !res ? ` ondblclick="abrirReservaDesdeCalendario('${hab.id}','${esc(hab.numero)}','${fStr}')"` : '';
-      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'pointer'};min-height:28px;"${draggable}${tooltip}${dblClickAttr} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+      var emptyAttr = !res ? ` data-empty="1" data-hab-id="${hab.id}" data-hab-nro="${esc(hab.numero)}" data-fecha="${fStr}"` : '';
+      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'pointer'};min-height:28px;"${draggable}${tooltip}${dblClickAttr}${emptyAttr} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
     });
     html += '</tr>';
   });
@@ -5331,6 +5336,7 @@ async function renderCalendarioHab() {
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#f5b731;display:inline-block;"></span> Pre-Reserva</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#2ecc71;display:inline-block;"></span> Confirmada</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid var(--border);display:inline-block;"></span> Libre</span>';
+  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Arrastrá sobre celdas vacías para reserva empresa</span>';
   html += '</div>';
   $('calendarioHab').innerHTML = html;
 }
@@ -5394,6 +5400,65 @@ function abrirReservaDesdeCalendario(habId, habNro, fecha) {
   $('resFechaIn').value = fecha;
 }
 window.abrirReservaDesdeCalendario = abrirReservaDesdeCalendario;
+
+// ── DRAG-SELECT CALENDARIO → RESERVA EMPRESA ──
+var _calDragging = false;
+var _calSelected = [];
+
+document.addEventListener('mousedown', function(e) {
+  var td = e.target.closest('#calendarioHab td[data-empty="1"]');
+  if (!td) return;
+  e.preventDefault();
+  _calDragging = true;
+  _calSelected = [];
+  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  td.classList.add('cal-sel');
+  _calSelected.push(td);
+});
+
+document.addEventListener('mousemove', function(e) {
+  if (!_calDragging) return;
+  var td = e.target.closest('#calendarioHab td[data-empty="1"]');
+  if (!td || _calSelected.includes(td)) return;
+  td.classList.add('cal-sel');
+  _calSelected.push(td);
+});
+
+document.addEventListener('mouseup', function(e) {
+  if (!_calDragging) return;
+  _calDragging = false;
+  if (_calSelected.length < 2) {
+    document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+    _calSelected = [];
+    return;
+  }
+  var habIds = [];
+  _calSelected.forEach(function(td) {
+    var hId = td.getAttribute('data-hab-id');
+    if (hId && habIds.indexOf(hId) === -1) habIds.push(hId);
+  });
+  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  if (habIds.length >= 1) abrirReservaEmpresaDesdeCalendario(habIds);
+  _calSelected = [];
+});
+
+function abrirReservaEmpresaDesdeCalendario(habIds) {
+  var tabs = document.querySelectorAll('#panelRecepcion .tab');
+  tabs.forEach(b => b.classList.remove('active'));
+  tabs[1].classList.add('active');
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  $('tabRecNuevaReserva').classList.remove('hidden');
+  $('resEmpresa').checked = true;
+  toggleReservaEmpresa();
+  cargarTarifas();
+  poblarSelectHabEmpresa().then(function() {
+    var sel = $('resHabitacionesEmpresa');
+    for (var i = 0; i < sel.options.length; i++) {
+      sel.options[i].selected = habIds.indexOf(sel.options[i].value) !== -1;
+    }
+  });
+}
+window.abrirReservaEmpresaDesdeCalendario = abrirReservaEmpresaDesdeCalendario;
 
 // ── CLIENTE HABITUAL ──
 async function buscarClienteHabitual() {
