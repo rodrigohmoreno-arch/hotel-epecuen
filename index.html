@@ -822,6 +822,7 @@
       <button class="tab" onclick="tabRecepcion('reservas',this)">Reservas</button>
       <button class="tab" onclick="tabRecepcion('checkin',this)">Check-In/Out</button>
       <button class="tab" onclick="tabRecepcion('huespedes',this)">Huéspedes</button>
+      <button class="tab" onclick="tabRecepcion('clienteHabitual',this)">Cliente Habitual</button>
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
       <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
     </div>
@@ -887,7 +888,20 @@
           </div>
           <div id="listaAcompanantes"></div>
         </div>
-        <div class="form-row">
+        <div style="padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa (varias habitaciones)</label>
+          <div id="resEmpresaCampos" class="hidden" style="margin-top:10px;">
+            <div class="form-row">
+              <div class="form-group"><label>Razón Social *</label><input type="text" id="resRazonSocial" placeholder="Nombre de la empresa"></div>
+              <div class="form-group"><label>CUIT *</label><input type="text" id="resCuitEmpresa" placeholder="Ej: 30-12345678-9"></div>
+            </div>
+            <div class="form-group"><label>Habitaciones (seleccioná varias con Ctrl+Click) *</label>
+              <input type="text" id="buscarHabEmpresa" placeholder="Buscar habitación..." oninput="filtrarHabEmpresa()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+              <select id="resHabitacionesEmpresa" multiple size="6" style="width:100%;"></select>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" id="resHabIndividualRow">
           <div class="form-group"><label>Habitación *</label>
             <input type="text" id="buscarHabReserva" placeholder="Buscar habitación..." oninput="filtrarHabReserva()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
             <select id="resHabitacion" style="width:100%;"></select></div>
@@ -1036,6 +1050,18 @@
         </table></div>
       </div>
     </div>
+    <!-- Tab Cliente Habitual -->
+    <div id="tabRecClienteHabitual" class="hidden">
+      <div class="card">
+        <div class="card-title">Registro de Cliente Habitual</div>
+        <div class="filtros" style="margin-bottom:16px;">
+          <div class="form-group"><label>Buscar por DNI/Pasaporte</label><input type="text" id="buscarClienteHabDni" placeholder="DNI o Pasaporte..." onkeyup="buscarClienteHabitual()"></div>
+          <div class="form-group"><label>Buscar por Apellido/Nombre</label><input type="text" id="buscarClienteHabNombre" placeholder="Apellido o nombre..." onkeyup="buscarClienteHabitual()"></div>
+          <button class="btn btn-blue btn-sm" onclick="buscarClienteHabitual()" style="margin-top:auto;">Buscar</button>
+        </div>
+        <div id="clienteHabResultado"></div>
+      </div>
+    </div>
     <!-- Tab Consumos -->
     <div id="tabRecConsumos" class="hidden">
       <div class="card">
@@ -1174,6 +1200,7 @@
           <option value="EPECUEN_PC">Epecuén Pensión Completa (PLAN)</option>
           <option value="CARHUE">Hotel Carhue</option>
           <option value="SERVICIO_HABITACION">Servicio a Habitación</option>
+          <option value="CONSUMO_HABITACION">Consumo Habitación</option>
           <option value="EXTERNO">Externo - Consumidor Final</option>
         </select>
       </div>
@@ -1585,7 +1612,7 @@ function renderMesas() {
     var infoExtra = '';
     if (est !== 'LIBRE') {
       var tipo = m.tipoCliente || '';
-      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', EPECUEN_PC:'Hotel Epecuén (PLAN)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
+      var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén', EPECUEN_SIN_MAP:'Hotel Epecuén', EPECUEN_PC:'Hotel Epecuén (PLAN)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', CONSUMO_HABITACION:'Consumo Habitación', EXTERNO:'Externo - Consumidor Final' };
       var tipoLabel = tipoLabels[tipo] || tipo;
       infoExtra += `<div style="font-size:0.72rem;color:var(--gold);margin-top:4px;font-weight:600;">${esc(tipoLabel)}</div>`;
       if (tipo !== 'EXTERNO' && m.nroHabitacion) {
@@ -1690,19 +1717,19 @@ function onHabSelectChange() {
   if (!pension) return;
   var currentTipo = tipoSel.value;
   if (pension === 'MAP') {
-    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_MAP';
+    if (currentTipo !== 'SERVICIO_HABITACION' && currentTipo !== 'CONSUMO_HABITACION') tipoSel.value = 'EPECUEN_MAP';
     if (sinMapOpt) sinMapOpt.disabled = true;
     if (pcOpt) pcOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
     if (externoOpt) externoOpt.disabled = true;
   } else if (pension === 'COMPLETA') {
-    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_PC';
+    if (currentTipo !== 'SERVICIO_HABITACION' && currentTipo !== 'CONSUMO_HABITACION') tipoSel.value = 'EPECUEN_PC';
     if (mapOpt) mapOpt.disabled = true;
     if (sinMapOpt) sinMapOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
     if (externoOpt) externoOpt.disabled = true;
   } else if (pension === 'SIN_PENSION') {
-    if (currentTipo !== 'SERVICIO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
+    if (currentTipo !== 'SERVICIO_HABITACION' && currentTipo !== 'CONSUMO_HABITACION') tipoSel.value = 'EPECUEN_SIN_MAP';
     if (mapOpt) mapOpt.disabled = true;
     if (pcOpt) pcOpt.disabled = true;
     if (carhueOpt) carhueOpt.disabled = true;
@@ -1809,7 +1836,7 @@ async function abrirComanda(mesaId) {
 
   $('comandaMesaTitulo').textContent = 'Comanda — ' + (mesa.nombre||'');
   var tipo = mesa.tipoCliente || '';
-  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', EPECUEN_PC:'Epecuén P.Completa', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', EXTERNO:'Externo - Cons. Final' };
+  var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', EPECUEN_PC:'Epecuén P.Completa', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', CONSUMO_HABITACION:'Consumo Hab.', EXTERNO:'Externo - Cons. Final' };
   $('comandaClienteInfo').textContent = (labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '');
 
   // Cargar items
@@ -3368,8 +3395,8 @@ let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec' };
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
   if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); }
@@ -3377,6 +3404,7 @@ function tabRecepcion(t, btn) {
   if (t === 'reservas') { cargarReservasActivas(); }
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
+  if (t === 'clienteHabitual') { /* se carga al buscar */ }
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
   if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
 }
@@ -3481,7 +3509,7 @@ function abrirPreReservaDesdeHab(hab) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   var btns = document.querySelectorAll('#panelRecepcion .tab');
   btns[1].classList.add('active'); // Nueva Reserva tab
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     // Pre-select the room
@@ -3776,6 +3804,13 @@ function calcularTotalReserva() {
 }
 window.calcularTotalReserva = calcularTotalReserva;
 
+async function obtenerPrecioNoche(tipo, pension) {
+  await cargarTarifas();
+  var moneda = $('resMoneda')?.value || 'ARS';
+  var tarifa = tarifasCache.find(t => t.tipo === tipo && t.pension === pension);
+  return tarifa ? (moneda === 'USD' ? (tarifa.precioUSD||0) : (tarifa.precioARS||0)) : 0;
+}
+
 // Listeners para recalcular
 ['resHabitacion','resPension','resFechaIn','resFechaOut'].forEach(id => {
   var el = $(id);
@@ -3815,6 +3850,33 @@ function toggleDocReserva() {
 }
 window.toggleDocReserva = toggleDocReserva;
 
+function toggleReservaEmpresa() {
+  var checked = $('resEmpresa').checked;
+  $('resEmpresaCampos').classList.toggle('hidden', !checked);
+  $('resHabIndividualRow').style.display = checked ? 'none' : '';
+  if (checked) poblarSelectHabEmpresa();
+}
+window.toggleReservaEmpresa = toggleReservaEmpresa;
+
+async function poblarSelectHabEmpresa() {
+  await cargarHabitaciones();
+  var sel = $('resHabitacionesEmpresa');
+  sel.innerHTML = '';
+  habitacionesCache.filter(h => h.estado === 'LIBRE' || h.estado === 'RESERVADA').forEach(h => {
+    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}</option>`;
+  });
+}
+
+function filtrarHabEmpresa() {
+  var q = ($('buscarHabEmpresa')?.value || '').toLowerCase();
+  var sel = $('resHabitacionesEmpresa');
+  for (var i = 0; i < sel.options.length; i++) {
+    var o = sel.options[i];
+    o.style.display = (o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) ? '' : 'none';
+  }
+}
+window.filtrarHabEmpresa = filtrarHabEmpresa;
+
 function toggleMedioPagoSena() {
   var sena = parseFloat($('resSena').value)||0;
   var sel = $('resMedioPagoSena');
@@ -3848,10 +3910,23 @@ async function crearReserva() {
   var tel = $('resTelefono').value.trim();
   var email = $('resEmail').value.trim();
   var fechaNac = $('resFechaNac').value;
-  var habSel = $('resHabitacion');
-  var opt = habSel.options[habSel.selectedIndex];
+  var esEmpresa = $('resEmpresa')?.checked || false;
   if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
   if (!tel) { showToast('Completá el teléfono del huésped','warning'); return; }
+  if (esEmpresa) {
+    var razonSocial = $('resRazonSocial').value.trim();
+    var cuitEmpresa = $('resCuitEmpresa').value.trim();
+    if (!razonSocial || !cuitEmpresa) { showToast('Completá razón social y CUIT de la empresa','warning'); return; }
+    var selEmpresa = $('resHabitacionesEmpresa');
+    var habsSeleccionadas = [];
+    for (var i=0; i<selEmpresa.options.length; i++) {
+      if (selEmpresa.options[i].selected) habsSeleccionadas.push(selEmpresa.options[i]);
+    }
+    if (!habsSeleccionadas.length) { showToast('Seleccioná al menos una habitación','warning'); return; }
+    return crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, habsSeleccionadas);
+  }
+  var habSel = $('resHabitacion');
+  var opt = habSel.options[habSel.selectedIndex];
   if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
@@ -3922,7 +3997,7 @@ async function crearReserva() {
       cotizacionUsada: configHotel.cotizacionDolar || 0,
       fechaReserva: serverTimestamp(),
       fechaPreReserva: !tieneSeña ? new Date().toISOString() : null,
-      vencePreReserva: !tieneSeña ? new Date(Date.now()+48*3600000).toISOString() : null,
+      vencePreReserva: null,
       usuario: currentUser.usuario
     };
     await addDoc(collection(db,'reservas'), reservaData);
@@ -3968,28 +4043,106 @@ async function crearReserva() {
 }
 window.crearReserva = crearReserva;
 
+async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, habsSeleccionadas) {
+  var fechaIn = $('resFechaIn').value;
+  var fechaOut = $('resFechaOut').value;
+  if (!fechaIn || !fechaOut) { showToast('Completá fechas de check-in/out','warning'); return; }
+  var noches = Math.ceil((new Date(fechaOut) - new Date(fechaIn)) / 86400000);
+  if (noches <= 0) { showToast('La fecha de checkout debe ser posterior al checkin','warning'); return; }
+  var pension = $('resPension').value;
+  var adultos = parseInt($('resAdultos').value) || 1;
+  var menores = parseInt($('resMenores').value) || 0;
+  var moneda = $('resMoneda').value;
+  var desc = parseFloat($('resDescuento').value) || 0;
+  var sena = parseFloat($('resSena').value) || 0;
+  var medioPagoSena = $('resMedioPagoSena').value;
+  var notas = $('resNotas').value.trim();
+  var configCamas = $('resConfigCamas').value;
+  var festejo = $('resFestejo').value.trim();
+  var restriccionAlim = $('resRestriccionAlim').value.trim();
+  var pedidosEsp = $('resPedidosEsp').value.trim();
+  var tieneSeña = sena > 0 && medioPagoSena;
+  var estadoReserva = tieneSeña ? 'CONFIRMADA' : 'PRE_RESERVA';
+  var acompanantes = [];
+  document.querySelectorAll('#listaAcompanantes .acomp-item').forEach(el => {
+    var ap = el.querySelector('.acomp-apellido')?.value?.trim()||'';
+    var nm = el.querySelector('.acomp-nombre')?.value?.trim()||'';
+    if (ap || nm) {
+      var nac = el.querySelector('.acomp-nacionalidad')?.value||'AR';
+      acompanantes.push({ apellido:ap, nombre:nm, nacionalidad:nac, dni: nac==='AR' ? (el.querySelector('.acomp-dni')?.value?.trim()||'') : '', pasaporte: nac!=='AR' ? (el.querySelector('.acomp-pasaporte')?.value?.trim()||'') : '', fechaNac:el.querySelector('.acomp-fechanac')?.value||'', esMenor:el.querySelector('.acomp-menor')?.checked||false, telefono:el.querySelector('.acomp-telefono')?.value?.trim()||'' });
+    }
+  });
+  var grupoEmpresaId = 'EMP-' + Date.now();
+  try {
+    for (var i=0; i<habsSeleccionadas.length; i++) {
+      var opt = habsSeleccionadas[i];
+      var habId = opt.value;
+      var habNro = opt.getAttribute('data-nro') || opt.text.split(' ')[0];
+      var precioNoche = await obtenerPrecioNoche(opt.getAttribute('data-tipo') || '', pension) || 0;
+      var totalEstadia = precioNoche * noches;
+      if (desc > 0) totalEstadia = totalEstadia * (1 - desc/100);
+      var totalPagar = totalEstadia - sena;
+      var reservaData = {
+        huesped, apellido: resApellido, nombre: resNombre,
+        nacionalidad: nacionalidad||'AR', dni: dni||'', pasaporte: pasaporte||'',
+        telefono: tel, email: email||'', fechaNac: fechaNac||'',
+        habitacionId: habId, habitacionNro: habNro,
+        fechaIn, fechaOut, noches, adultos, menores,
+        precioNoche, moneda, totalEstadia, descuento: desc, sena: i===0 ? sena : 0, medioPagoSena: i===0 ? medioPagoSena : '',
+        totalPagar: i===0 ? totalPagar : totalEstadia, notas,
+        configCamas, festejo, restriccionAlim, pedidosEsp,
+        acompanantes: i===0 ? acompanantes : [],
+        estado: estadoReserva,
+        cotizacionUsada: configHotel.cotizacionDolar || 0,
+        fechaReserva: serverTimestamp(),
+        fechaPreReserva: !tieneSeña ? new Date().toISOString() : null,
+        vencePreReserva: null,
+        usuario: currentUser.usuario,
+        esEmpresa: true, razonSocial, cuitEmpresa, grupoEmpresaId
+      };
+      await addDoc(collection(db,'reservas'), reservaData);
+      await updateDoc(doc(db,'habitaciones',habId), { estado: tieneSeña ? 'RESERVADA' : 'PRE_RESERVA' });
+    }
+    var docId = esAR ? dni : pasaporte;
+    if (docId) {
+      var campo = esAR ? 'dni' : 'pasaporte';
+      var huesExiste = await getDocs(query(collection(db,'huespedes'), where(campo,'==',docId)));
+      if (huesExiste.empty) {
+        await addDoc(collection(db,'huespedes'), { nombre: resNombre, apellido: resApellido, dni: dni||'', fechaNac: fechaNac||'', telefono:tel, email: email||'', localidad:'', nacionalidad: nacionalidad||'AR', pasaporte: pasaporte||'', notas:'', ultimaVisita:serverTimestamp() });
+      } else {
+        var updateData = { ultimaVisita:serverTimestamp() };
+        if (fechaNac) updateData.fechaNac = fechaNac;
+        if (email) updateData.email = email;
+        await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), updateData);
+      }
+    }
+    showToast('Reserva EMPRESA creada — '+habsSeleccionadas.length+' habitaciones para '+razonSocial, 'success');
+    $('resApellido').value=''; $('resNombre').value=''; $('resDni').value=''; $('resTelefono').value='';
+    $('resEmail').value=''; $('resFechaNac').value=''; $('resPasaporte').value=''; $('resNacionalidad').value='AR';
+    $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
+    $('resDescuento').value='0'; $('resFestejo').value=''; $('resPedidosEsp').value='';
+    $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
+    $('listaAcompanantes').innerHTML=''; $('resumenReserva').style.display='none';
+    $('resEmpresa').checked=false; toggleReservaEmpresa();
+    $('resRazonSocial').value=''; $('resCuitEmpresa').value='';
+    await poblarSelectHabReserva();
+    await cargarReservasActivas();
+    await cargarPreReservas();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
 // Pre-reservas list
 async function cargarPreReservas() {
   try {
     var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','PRE_RESERVA')));
     var preReservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    // Auto-liberar pre-reservas vencidas (>48hs)
-    var ahora = new Date().toISOString();
-    for (var pr of preReservas) {
-      if (pr.vencePreReserva && pr.vencePreReserva < ahora) {
-        await updateDoc(doc(db,'reservas',pr.id), { estado:'VENCIDA' });
-        await updateDoc(doc(db,'habitaciones',pr.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
-        showToast('Pre-reserva de '+pr.huesped+' venció (48hs) — Hab. '+pr.habitacionNro+' liberada','warning');
-      }
-    }
-    // Re-filter only active pre-reservas
-    preReservas = preReservas.filter(pr => !pr.vencePreReserva || pr.vencePreReserva >= ahora);
+
     var cont = $('listaPreReservas');
     if (!preReservas.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay pre-reservas pendientes</p>'; return; }
     var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
     cont.innerHTML = preReservas.map(r => {
-      var vence = r.vencePreReserva ? new Date(r.vencePreReserva) : null;
-      var horasRestantes = vence ? Math.max(0,Math.round((vence-new Date())/3600000)) : '?';
+      var fechaCreacion = r.fechaPreReserva ? new Date(r.fechaPreReserva) : null;
+      var diasDesdeCreacion = fechaCreacion ? Math.round((Date.now()-fechaCreacion.getTime())/86400000) : '?';
       var extras = [];
       if (r.configCamas) extras.push('🛏️ '+(configCamasLabels[r.configCamas]||r.configCamas));
       if (r.festejo) extras.push('🎉 '+esc(r.festejo));
@@ -3997,7 +4150,7 @@ async function cargarPreReservas() {
       if (r.pedidosEsp) extras.push('📋 '+esc(r.pedidosEsp));
       return `<div class="reserva-card">
       <div class="reserva-header">
-        <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''}</div>
+        <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''} ${r.esEmpresa?`<span style="background:rgba(139,92,246,0.15);color:rgba(139,92,246,1);padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">EMPRESA: ${esc(r.razonSocial||'')}</span>`:''}</div>
         <span class="reserva-estado" style="background:rgba(245,183,49,0.2);color:var(--gold);">PRE-RESERVA</span>
       </div>
       <div class="reserva-info">
@@ -4007,7 +4160,7 @@ async function cargarPreReservas() {
         <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
       ${extras.length?`<div style="margin-top:6px;font-size:0.8rem;color:var(--text);display:flex;flex-wrap:wrap;gap:8px;">${extras.join(' | ')}</div>`:''}
-      <div style="margin-top:6px;font-size:0.78rem;color:${horasRestantes<=12?'var(--red)':'var(--muted)'};">⏱ Vence en ${horasRestantes}hs — sin seña se libera automáticamente</div>
+      <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">📅 Creada hace ${diasDesdeCreacion} día(s) — pendiente de seña</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-blue btn-xs" onclick="editarReserva('${r.id}')">Editar</button>
         <button class="btn btn-green btn-xs" onclick="confirmarPreReserva('${r.id}','${r.habitacionId}')">Confirmar Seña</button>
@@ -4091,7 +4244,7 @@ async function cargarReservasActivas() {
       var sinAcomp = totalPersonas > 1 && (!r.acompanantes || r.acompanantes.length === 0);
       return `<div class="reserva-card" style="${vencida?'border-left:3px solid var(--red);':''}">
         <div class="reserva-header">
-          <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''}</div>
+          <div><strong>${esc(r.huesped)}</strong> ${r.dni?`<span style="color:var(--muted);font-size:0.8rem;">(DNI: ${esc(r.dni)})</span>`:''} ${r.esEmpresa?`<span style="background:rgba(139,92,246,0.15);color:rgba(139,92,246,1);padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">EMPRESA: ${esc(r.razonSocial||'')}</span>`:''}</div>
           <span class="reserva-estado" style="background:${vencida?'rgba(232,69,60,0.2)':estColor};color:${vencida?'var(--red)':estTxt};">${vencida?'VENCIDA':r.estado}</span>
         </div>
         ${vencida?'<div style="margin:4px 0;font-size:0.8rem;color:var(--red);font-weight:600;">La fecha de ingreso ya pasó — anulá la reserva o editá la fecha</div>':''}
@@ -5167,7 +5320,8 @@ async function renderCalendarioHab() {
       } else {
         borderCircle = '';
       }
-      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'default'};min-height:28px;"${draggable}${tooltip} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+      var dblClickAttr = !res ? ` ondblclick="abrirReservaDesdeCalendario('${hab.id}','${esc(hab.numero)}','${fStr}')"` : '';
+      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'pointer'};min-height:28px;"${draggable}${tooltip}${dblClickAttr} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
     });
     html += '</tr>';
   });
@@ -5222,6 +5376,131 @@ function dropReserva(ev, habId, habNro) {
   });
 }
 window.dropReserva = dropReserva;
+
+function abrirReservaDesdeCalendario(habId, habNro, fecha) {
+  // Switch to Nueva Reserva tab
+  var tabs = document.querySelectorAll('#panelRecepcion .tab');
+  tabs.forEach(b => b.classList.remove('active'));
+  tabs[1].classList.add('active');
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec'].forEach(id => $(id).classList.add('hidden'));
+  $('tabRecNuevaReserva').classList.remove('hidden');
+  cargarTarifas(); poblarSelectHabReserva().then(() => {
+    var sel = $('resHabitacion');
+    for (var i=0; i<sel.options.length; i++) {
+      if (sel.options[i].value === habId) { sel.selectedIndex = i; break; }
+    }
+    calcularTotalReserva();
+  });
+  $('resFechaIn').value = fecha;
+}
+window.abrirReservaDesdeCalendario = abrirReservaDesdeCalendario;
+
+// ── CLIENTE HABITUAL ──
+async function buscarClienteHabitual() {
+  var qDni = ($('buscarClienteHabDni')?.value||'').trim().toLowerCase();
+  var qNombre = ($('buscarClienteHabNombre')?.value||'').trim().toLowerCase();
+  var container = $('clienteHabResultado');
+  if (!qDni && !qNombre) { container.innerHTML = '<p style="color:var(--muted);font-size:0.9rem;">Ingresá un DNI/Pasaporte o nombre para buscar el historial del cliente.</p>'; return; }
+  container.innerHTML = '<p style="color:var(--muted);">Buscando...</p>';
+  try {
+    var huespedesSnap = await getDocs(collection(db,'huespedes'));
+    var huespedEncontrado = null;
+    huespedesSnap.docs.forEach(d => {
+      var h = { id:d.id, ...d.data() };
+      var nombre = ((h.apellido||'') + ' ' + (h.nombre||'')).toLowerCase();
+      var dniMatch = qDni && ((h.dni||'').toLowerCase().includes(qDni) || (h.pasaporte||'').toLowerCase().includes(qDni));
+      var nombreMatch = qNombre && nombre.includes(qNombre);
+      if (dniMatch || nombreMatch) huespedEncontrado = h;
+    });
+    if (!huespedEncontrado) { container.innerHTML = '<p style="color:var(--muted);">No se encontró ningún huésped con esos datos.</p>'; return; }
+    var h = huespedEncontrado;
+    var reservasSnap = await getDocs(collection(db,'reservas'));
+    var reservasCliente = [];
+    reservasSnap.docs.forEach(d => {
+      var r = { id:d.id, ...d.data() };
+      var match = false;
+      if (h.dni && r.dni && h.dni === r.dni) match = true;
+      if (h.pasaporte && r.pasaporte && h.pasaporte === r.pasaporte) match = true;
+      var rNombre = ((r.apellido||'') + ' ' + (r.nombre||'')).toLowerCase();
+      var hNombre = ((h.apellido||'') + ' ' + (h.nombre||'')).toLowerCase();
+      if (!match && hNombre && rNombre === hNombre) match = true;
+      if (match) reservasCliente.push(r);
+    });
+    reservasCliente.sort((a,b) => {
+      var fa = a.fechaIn || ''; var fb = b.fechaIn || '';
+      return fb.localeCompare(fa);
+    });
+    var totalEstadias = reservasCliente.length;
+    var estadiasCompletadas = reservasCliente.filter(r => r.estado === 'CHECKOUT' || r.estado === 'COMPLETADA').length;
+    var todasNotas = []; var todasRestricciones = []; var todosPedidos = []; var todosFestejos = [];
+    reservasCliente.forEach(r => {
+      if (r.notas) todasNotas.push({ fecha: r.fechaIn, hab: r.habitacionNro, nota: r.notas });
+      if (r.restriccionAlim) todasRestricciones.push(r.restriccionAlim);
+      if (r.pedidosEsp) todosPedidos.push({ fecha: r.fechaIn, hab: r.habitacionNro, pedido: r.pedidosEsp });
+      if (r.festejo) todosFestejos.push({ fecha: r.fechaIn, hab: r.habitacionNro, festejo: r.festejo });
+    });
+    var restriccionesUnicas = [...new Set(todasRestricciones)];
+    var html = '<div style="border:1px solid var(--border);border-radius:12px;padding:20px;background:var(--surface);">';
+    html += '<h3 style="margin-bottom:16px;font-size:1.1rem;">'+esc((h.apellido||'')+' '+(h.nombre||''))+'</h3>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
+    html += '<div style="padding:12px;background:rgba(74,144,217,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">Total Estadías</strong><div style="font-size:1.5rem;font-weight:700;color:var(--blue);">'+totalEstadias+'</div></div>';
+    html += '<div style="padding:12px;background:rgba(34,197,94,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">Completadas</strong><div style="font-size:1.5rem;font-weight:700;color:var(--green);">'+estadiasCompletadas+'</div></div>';
+    html += '<div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">DNI/Pasaporte</strong><div style="font-size:0.95rem;font-weight:600;">'+(h.dni||h.pasaporte||'—')+'</div></div>';
+    html += '<div style="padding:12px;background:rgba(139,92,246,0.08);border-radius:8px;"><strong style="font-size:0.8rem;color:var(--muted);">Email</strong><div style="font-size:0.95rem;">'+(h.email||'—')+'</div></div>';
+    html += '</div>';
+    if (restriccionesUnicas.length) {
+      html += '<div style="padding:12px;background:rgba(239,68,68,0.08);border-radius:10px;border-left:3px solid rgba(239,68,68,0.5);margin-bottom:16px;">';
+      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">⚠️ Restricciones Alimentarias</h4>';
+      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
+      restriccionesUnicas.forEach(r => html += '<li>'+esc(r)+'</li>');
+      html += '</ul></div>';
+    }
+    if (todosFestejos.length) {
+      html += '<div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;">';
+      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Festejos / Días Especiales</h4>';
+      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
+      todosFestejos.forEach(f => html += '<li><strong>'+esc(f.fecha)+' (Hab '+esc(f.hab)+'):</strong> '+esc(f.festejo)+'</li>');
+      html += '</ul></div>';
+    }
+    if (todosPedidos.length) {
+      html += '<div style="padding:12px;background:rgba(139,92,246,0.08);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">';
+      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Pedidos Especiales</h4>';
+      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
+      todosPedidos.forEach(p => html += '<li><strong>'+esc(p.fecha)+' (Hab '+esc(p.hab)+'):</strong> '+esc(p.pedido)+'</li>');
+      html += '</ul></div>';
+    }
+    if (todasNotas.length) {
+      html += '<div style="padding:12px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">';
+      html += '<h4 style="font-size:0.9rem;margin-bottom:6px;">Notas / Observaciones</h4>';
+      html += '<ul style="margin:0;padding-left:20px;font-size:0.88rem;">';
+      todasNotas.forEach(n => html += '<li><strong>'+esc(n.fecha)+' (Hab '+esc(n.hab)+'):</strong> '+esc(n.nota)+'</li>');
+      html += '</ul></div>';
+    }
+    html += '<h4 style="font-size:0.95rem;margin-bottom:12px;">Historial de Estadías</h4>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Fecha Ingreso</th><th>Fecha Egreso</th><th>Hab.</th><th>Pensión</th><th>Estado</th><th>Config Camas</th><th>Notas</th></tr></thead><tbody>';
+    reservasCliente.forEach(r => {
+      var pensionLabel = {MAP:'Media Pensión',COMPLETA:'Pensión Completa',SIN_PENSION:'Sin MAP'}[r.pension]||r.pension||'';
+      var estadoLabel = {PRE_RESERVA:'Pre-Reserva',CONFIRMADA:'Confirmada',CHECKIN:'Check-In',CHECKOUT:'Check-Out',ANULADA:'Anulada'}[r.estado]||r.estado||'';
+      html += '<tr><td>'+(r.fechaIn||'')+'</td><td>'+(r.fechaOut||'')+'</td><td>'+(r.habitacionNro||'')+'</td><td>'+pensionLabel+'</td><td>'+estadoLabel+'</td><td>'+(r.configCamas||'')+'</td><td>'+esc(r.notas||'')+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div style="margin-top:16px;text-align:right;"><button class="btn btn-sm" onclick="imprimirFichaClienteHabitual()">Imprimir Ficha</button></div>';
+    html += '</div>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<p style="color:var(--red);">Error: '+e.message+'</p>'; }
+}
+window.buscarClienteHabitual = buscarClienteHabitual;
+
+function imprimirFichaClienteHabitual() {
+  var contenido = $('clienteHabResultado').innerHTML;
+  var win = window.open('','','width=800,height=600');
+  win.document.write('<html><head><title>Ficha Cliente Habitual</title><style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;}table{width:100%;border-collapse:collapse;margin-top:10px;}th,td{border:1px solid #333;padding:6px;text-align:left;font-size:11px;}th{background:#f0f0f0;font-weight:bold;}h3{margin-bottom:10px;}h4{margin-top:15px;margin-bottom:8px;}ul{margin:5px 0;}li{margin-bottom:3px;}.btn{display:none!important;}</style></head><body>');
+  win.document.write(contenido);
+  win.document.write('</body></html>');
+  win.document.close();
+  win.print();
+}
+window.imprimirFichaClienteHabitual = imprimirFichaClienteHabitual;
 
 // ── CONFIG HOTEL ──
 async function cargarConfigHotel() {
