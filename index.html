@@ -598,6 +598,29 @@
           <tbody id="tbodyCierresCheckouts"></tbody>
         </table></div>
       </div>
+      <!-- Cierres de Caja Recepción -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Cierres de Caja Recepción</div>
+        <button class="btn btn-blue btn-sm" onclick="cargarCierresCajaAdmin()" style="margin-bottom:12px;">Cargar Cierres de Caja</button>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Usuario</th><th>Turno</th><th>Apertura</th><th>Ef. Esperado</th><th>Cierre Real</th><th>Diferencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyCierresCaja"></tbody>
+        </table></div>
+      </div>
+      <!-- Cobros Electrónicos para Conciliación Bancaria -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Cobros Electrónicos — Conciliación Bancaria</div>
+        <div class="filtros" style="margin-bottom:12px;">
+          <div class="form-group"><label>Desde</label><input type="date" id="filtroCobroElecDesde"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="filtroCobroElecHasta"></div>
+          <button class="btn btn-gold btn-sm" onclick="cargarCobrosElectronicos()">Buscar</button>
+          <button class="btn btn-sm" onclick="exportarCobrosElectronicos()" style="margin-left:auto;">Exportar CSV</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Huésped/Cliente</th><th>Hab.</th><th>Concepto</th><th>Monto</th><th>Medio Pago</th><th>ID Transacción</th></tr></thead>
+          <tbody id="tbodyCobrosElectronicos"></tbody>
+        </table></div>
+      </div>
     </div>
     <!-- Admin Auditoría -->
     <div id="tabAdminAuditoria" class="hidden">
@@ -688,10 +711,7 @@
           <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
           <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
         </div>
-        <div class="form-row" style="margin-top:16px;">
-          <div class="form-group"><label>Promoción Activa</label><input type="text" id="cfgPromo" placeholder="Ej: 3x2 temporada baja"></div>
-          <div class="form-group"><label>Descuento Promo %</label><input type="number" id="cfgDescPromo" value="0" min="0" max="100"></div>
-        </div>
+
       </div>
     </div>
     <!-- Admin Marketing -->
@@ -739,6 +759,7 @@
             <div class="form-group"><label>Precio $ *</label><input type="number" id="promoPrecio" min="0" step="0.01" placeholder="Precio total de la promo"></div>
           </div>
           <div class="form-group"><label>Descripción</label><textarea id="promoDescripcion" rows="2" placeholder="Descripción detallada de la promoción..." style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.88rem;resize:vertical;"></textarea></div>
+          <div class="form-group" style="margin-top:8px;"><label>Fecha de Vencimiento (opcional)</label><input type="date" id="promoFechaVencimiento"><small style="color:var(--muted);font-size:0.75rem;">La promoción pasará a INACTIVA automáticamente al vencer</small></div>
           <div style="display:flex;gap:8px;margin-top:8px;">
             <button class="btn btn-green btn-sm" onclick="guardarPromocion()">Guardar Promoción</button>
             <button class="btn btn-sm" onclick="limpiarFormPromo()" style="display:none;" id="btnCancelarEditPromo">Cancelar Edición</button>
@@ -1579,6 +1600,7 @@ function mostrarPanel(rol) {
     cargarMesasAdmin();
     $('filtroCierresFecha').valueAsDate = new Date();
     $('filtroAuditFecha').valueAsDate = new Date();
+    desactivarPromosVencidas();
   } else if (rol === 'CARHUE_RECEPCION') {
     $('panelCarhue').classList.remove('hidden');
     $('vFechaDia1').valueAsDate = new Date();
@@ -3075,6 +3097,166 @@ function imprimirCierreDia() {
 window.imprimirCierreDia = imprimirCierreDia;
 
 // ══════════════════════════════════════
+// ADMIN — CIERRES DE CAJA RECEPCIÓN
+// ══════════════════════════════════════
+async function cargarCierresCajaAdmin() {
+  try {
+    var snap = await getDocs(query(collection(db,'cajaRecepcion'), orderBy('fechaApertura','desc'), limit(50)));
+    var cajas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var turnoLabels = { MANANA:'Mañana', TARDE:'Tarde', NOCHE:'Noche' };
+    $('tbodyCierresCaja').innerHTML = cajas.map(c => {
+      var fAp = c.fechaApertura ? new Date(c.fechaApertura).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-';
+      var dif = c.diferencia || 0;
+      var difColor = dif === 0 ? 'var(--green)' : (dif > 0 ? 'var(--blue)' : 'var(--red)');
+      var estadoColor = c.estado === 'ABIERTA' ? 'var(--gold)' : 'var(--green)';
+      return `<tr>
+        <td>${fAp}</td>
+        <td>${esc(c.usuario||'-')}</td>
+        <td>${turnoLabels[c.turno]||c.turno||'-'}</td>
+        <td>$${(c.montoApertura||0).toLocaleString('es-AR')}</td>
+        <td>$${(c.efectivoEsperado||0).toLocaleString('es-AR')}</td>
+        <td>$${(c.montoCierre||0).toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;color:${difColor};">$${dif.toLocaleString('es-AR')}</td>
+        <td><span style="color:${estadoColor};font-weight:600;">${c.estado||'-'}</span></td>
+        <td>${c.estado === 'CERRADA' ? '<button class="btn btn-gold btn-xs" onclick="rectificarCajaCerrada(\''+c.id+'\')">Rectificar</button>' : ''}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Sin cierres de caja</td></tr>';
+  } catch(e) { showToast('Error cargando cierres de caja: '+e.message,'error'); }
+}
+window.cargarCierresCajaAdmin = cargarCierresCajaAdmin;
+
+async function rectificarCajaCerrada(cajaId) {
+  try {
+    var snap = await getDoc(doc(db,'cajaRecepcion',cajaId));
+    if (!snap.exists()) { showToast('Caja no encontrada','error'); return; }
+    var c = snap.data();
+    var turnoLabels = { MANANA:'Mañana', TARDE:'Tarde', NOCHE:'Noche' };
+    var cuerpo = `<div style="padding:20px;">
+      <p style="margin-bottom:12px;font-weight:600;">Rectificar Cierre de Caja</p>
+      <div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.85rem;">
+        <div style="display:flex;justify-content:space-between;"><span>Turno:</span><span>${turnoLabels[c.turno]||c.turno}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Usuario:</span><span>${esc(c.usuario||'')}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Apertura:</span><span>$${(c.montoApertura||0).toLocaleString('es-AR')}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Efectivo Esperado:</span><span>$${(c.efectivoEsperado||0).toLocaleString('es-AR')}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>Cierre Original:</span><span>$${(c.montoCierre||0).toLocaleString('es-AR')}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;color:${(c.diferencia||0)===0?'var(--green)':'var(--red)'};"><span>Diferencia Original:</span><span>$${(c.diferencia||0).toLocaleString('es-AR')}</span></div>
+      </div>
+      <div class="form-group"><label>Nuevo Monto Cierre $</label><input type="number" id="rectMontoCierre" step="0.01" min="0" value="${c.montoCierre||0}"></div>
+      <div class="form-group" style="margin-top:8px;"><label>Motivo de Rectificación *</label><input type="text" id="rectMotivo" placeholder="Ej: Se encontró diferencia por cobro no registrado"></div>
+    </div>`;
+    confirmarAccion('Rectificar Caja', cuerpo, 'Confirmar Rectificación', async (ok) => {
+      if (!ok) return;
+      var nuevoMonto = parseFloat(document.getElementById('rectMontoCierre').value)||0;
+      var motivo = document.getElementById('rectMotivo').value.trim();
+      if (!motivo) { showToast('Completá el motivo de la rectificación','warning'); return; }
+      var nuevaDif = nuevoMonto - (c.efectivoEsperado||0);
+      await updateDoc(doc(db,'cajaRecepcion',cajaId), {
+        montoCierre: nuevoMonto,
+        diferencia: nuevaDif,
+        rectificado: true,
+        rectificacion: { montoAnterior: c.montoCierre, motivo, usuario: currentUser.usuario, fecha: new Date().toISOString() }
+      });
+      showToast('Caja rectificada — Nueva diferencia: $'+nuevaDif.toLocaleString('es-AR'),'success');
+      cargarCierresCajaAdmin();
+    });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.rectificarCajaCerrada = rectificarCajaCerrada;
+
+// ══════════════════════════════════════
+// ADMIN — COBROS ELECTRÓNICOS (Conciliación Bancaria)
+// ══════════════════════════════════════
+async function cargarCobrosElectronicos() {
+  var desde = $('filtroCobroElecDesde').value;
+  var hasta = $('filtroCobroElecHasta').value;
+  if (!desde || !hasta) { showToast('Seleccioná rango de fechas','warning'); return; }
+  var dDesde = new Date(desde+'T00:00:00');
+  var dHasta = new Date(hasta+'T23:59:59');
+  try {
+    // Checkouts con medios electrónicos
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKOUT')));
+    var checkouts = snap.docs.map(d => d.data()).filter(r => {
+      if (!r.fechaCheckOutReal) return false;
+      var f = r.fechaCheckOutReal.toDate ? r.fechaCheckOutReal.toDate() : new Date(r.fechaCheckOutReal);
+      return f >= dDesde && f <= dHasta;
+    });
+    // Filtrar solo electrónicos
+    var electronicos = checkouts.filter(r => ['TARJETA_DEBITO','TARJETA_CREDITO','TRANSFERENCIA'].includes(r.medioPagoFinal));
+    // También pagos múltiples que tengan componentes electrónicos
+    var multiPagos = checkouts.filter(r => r.pagosMultiples && r.pagosMultiples.length > 0);
+    var rows = [];
+    electronicos.forEach(r => {
+      var f = r.fechaCheckOutReal.toDate ? r.fechaCheckOutReal.toDate() : new Date(r.fechaCheckOutReal);
+      rows.push({
+        fecha: f, huesped: r.huesped||'', hab: r.habitacionNro||'',
+        concepto: 'Checkout', monto: r.totalGeneral||0,
+        medioPago: r.medioPagoFinal, idTx: r.idTransaccion||''
+      });
+    });
+    multiPagos.forEach(r => {
+      var f = r.fechaCheckOutReal.toDate ? r.fechaCheckOutReal.toDate() : new Date(r.fechaCheckOutReal);
+      (r.pagosMultiples||[]).forEach(p => {
+        if (['TARJETA_DEBITO','TARJETA_CREDITO','TRANSFERENCIA'].includes(p.medio)) {
+          rows.push({
+            fecha: f, huesped: r.huesped||'', hab: r.habitacionNro||'',
+            concepto: 'Checkout (parcial)', monto: p.monto||0,
+            medioPago: p.medio, idTx: p.idTransaccion||''
+          });
+        }
+      });
+    });
+    // Cierres restaurante con pago electrónico
+    var cierresSnap = await getDocs(query(collection(db,'cierres'),
+      where('fechaCierre','>=', Timestamp.fromDate(dDesde)),
+      where('fechaCierre','<=', Timestamp.fromDate(dHasta))
+    ));
+    cierresSnap.docs.forEach(d => {
+      var c = d.data();
+      if (['TARJETA_DEBITO','TARJETA_CREDITO','TRANSFERENCIA'].includes(c.medioPago)) {
+        var f = c.fechaCierre.toDate ? c.fechaCierre.toDate() : new Date(c.fechaCierre);
+        rows.push({
+          fecha: f, huesped: c.nombreCliente||c.mesaNombre||'', hab: '-',
+          concepto: 'Restaurante', monto: c.totalGeneral||0,
+          medioPago: c.medioPago, idTx: c.idTransaccion||''
+        });
+      }
+    });
+    rows.sort((a,b) => b.fecha - a.fecha);
+    var mpLabels = { TARJETA_DEBITO:'Débito', TARJETA_CREDITO:'Crédito', TRANSFERENCIA:'Transferencia' };
+    $('tbodyCobrosElectronicos').innerHTML = rows.map(r => {
+      return `<tr>
+        <td>${r.fecha.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+        <td>${esc(r.huesped)}</td>
+        <td>${esc(r.hab)}</td>
+        <td>${esc(r.concepto)}</td>
+        <td style="font-weight:700;">$${r.monto.toLocaleString('es-AR')}</td>
+        <td>${mpLabels[r.medioPago]||r.medioPago}</td>
+        <td style="font-weight:600;color:var(--blue);">${esc(r.idTx||'-')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin cobros electrónicos en el período</td></tr>';
+    showToast(rows.length+' cobros electrónicos encontrados','success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarCobrosElectronicos = cargarCobrosElectronicos;
+
+function exportarCobrosElectronicos() {
+  var tabla = $('tbodyCobrosElectronicos');
+  if (!tabla || !tabla.rows.length) { showToast('Primero buscá los cobros electrónicos','warning'); return; }
+  var csv = 'Fecha,Huésped/Cliente,Hab.,Concepto,Monto,Medio Pago,ID Transacción\n';
+  Array.from(tabla.rows).forEach(row => {
+    var cols = Array.from(row.cells).map(c => '"'+c.textContent.replace(/"/g,'""')+'"');
+    csv += cols.join(',') + '\n';
+  });
+  var blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8;' });
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'cobros_electronicos_'+new Date().toISOString().split('T')[0]+'.csv';
+  link.click();
+  showToast('CSV exportado','success');
+}
+window.exportarCobrosElectronicos = exportarCobrosElectronicos;
+
+// ══════════════════════════════════════
 // ADMIN — AUDITORÍA
 // ══════════════════════════════════════
 async function cargarAuditoria() {
@@ -3460,7 +3642,16 @@ let habitacionesCache = [];
 let huespedesCache = [];
 let tarifasCache = [];
 let reservasCache = [];
-let configHotel = { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 };
+let configHotel = { cotizacionDolar:1200 };
+
+function volverAHabitaciones() {
+  var tabs = document.querySelectorAll('#panelRecepcion .tab');
+  tabs.forEach(b => b.classList.remove('active'));
+  if (tabs[0]) tabs[0].classList.add('active');
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
+  $('tabRecHabitaciones').classList.remove('hidden');
+  cargarHabitaciones(); renderCalendarioHab();
+}
 
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
@@ -4122,6 +4313,8 @@ async function crearReserva() {
     await poblarSelectHabReserva();
     await cargarReservasActivas();
     await cargarPreReservas();
+    // Volver al panel de habitaciones
+    volverAHabitaciones();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.crearReserva = crearReserva;
@@ -4185,6 +4378,8 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
     await poblarSelectHabReserva();
     await cargarReservasActivas();
     await cargarPreReservas();
+    // Volver al panel de habitaciones
+    volverAHabitaciones();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
@@ -5898,12 +6093,13 @@ async function guardarPromocion() {
   var noches = parseInt($('promoNoches').value)||0;
   var precio = parseFloat($('promoPrecio').value)||0;
   var descripcion = $('promoDescripcion').value.trim();
+  var fechaVencimiento = $('promoFechaVencimiento').value || null;
   if (!nombre) { showToast('Completá el nombre de la promoción','warning'); return; }
   if (!dias || !noches) { showToast('Completá días y noches','warning'); return; }
   if (!precio) { showToast('Completá el precio','warning'); return; }
   var editId = $('promoEditId').value;
   try {
-    var data = { nombre, tipoHab, pension, dias, noches, precio, descripcion, estado:'ACTIVA' };
+    var data = { nombre, tipoHab, pension, dias, noches, precio, descripcion, estado:'ACTIVA', fechaVencimiento };
     if (editId) {
       await updateDoc(doc(db,'promociones',editId), data);
       await addDoc(collection(db,'promoHistorial'), { promoId:editId, promoNombre:nombre, accion:'Editada', usuario:currentUser.usuario, fecha:serverTimestamp() });
@@ -5932,6 +6128,7 @@ async function editarPromo(id) {
     $('promoNoches').value = p.noches||1;
     $('promoPrecio').value = p.precio||0;
     $('promoDescripcion').value = p.descripcion||'';
+    $('promoFechaVencimiento').value = p.fechaVencimiento||'';
     $('promoFormTitle').textContent = 'Editar Promoción';
     $('btnCancelarEditPromo').style.display = 'inline-flex';
   } catch(e) { showToast('Error: '+e.message,'error'); }
@@ -5947,6 +6144,7 @@ function limpiarFormPromo() {
   $('promoNoches').value = '1';
   $('promoPrecio').value = '';
   $('promoDescripcion').value = '';
+  $('promoFechaVencimiento').value = '';
   $('promoFormTitle').textContent = 'Nueva Promoción';
   $('btnCancelarEditPromo').style.display = 'none';
 }
@@ -5963,6 +6161,20 @@ async function toggleEstadoPromo(id, nuevoEstado) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.toggleEstadoPromo = toggleEstadoPromo;
+
+async function desactivarPromosVencidas() {
+  try {
+    var hoy = new Date().toISOString().split('T')[0];
+    var snap = await getDocs(query(collection(db,'promociones'), where('estado','==','ACTIVA')));
+    snap.docs.forEach(async d => {
+      var p = d.data();
+      if (p.fechaVencimiento && p.fechaVencimiento < hoy) {
+        await updateDoc(doc(db,'promociones',d.id), { estado:'INACTIVA' });
+        await addDoc(collection(db,'promoHistorial'), { promoId:d.id, promoNombre:p.nombre||'', accion:'Vencida (auto-desactivada)', usuario:'SISTEMA', fecha:serverTimestamp() });
+      }
+    });
+  } catch(e) { console.error('Error desactivando promos vencidas:', e); }
+}
 
 async function eliminarPromo(id) {
   confirmarAccion('Eliminar Promoción', '<p>¿Seguro que querés eliminar esta promoción?</p>', 'Eliminar', async (ok) => {
@@ -6013,18 +6225,14 @@ async function cargarConfigHotel() {
       configHotel = snap.data();
     }
     $('cfgCotizacion').value = configHotel.cotizacionDolar || 1200;
-    $('cfgPromo').value = configHotel.promoActiva || '';
-    $('cfgDescPromo').value = configHotel.descuentoPromo || 0;
   } catch(e) {}
 }
 
 async function guardarConfigHotel() {
   var cotiz = parseFloat($('cfgCotizacion').value) || 0;
-  var promo = $('cfgPromo').value.trim();
-  var descP = parseFloat($('cfgDescPromo').value) || 0;
   try {
-    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz, promoActiva:promo, descuentoPromo:descP });
-    configHotel = { cotizacionDolar:cotiz, promoActiva:promo, descuentoPromo:descP };
+    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz });
+    configHotel = { cotizacionDolar:cotiz };
     showToast('Configuración guardada','success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -6212,7 +6420,7 @@ async function inicializarDatosBase() {
     try {
       var cfgSnap = await getDoc(doc(db,'configHotel','general'));
       if (!cfgSnap.exists()) {
-        await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:1200, promoActiva:'', descuentoPromo:0 });
+        await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:1200 });
         console.log('Config hotel creada');
       }
     } catch(e2) {}
