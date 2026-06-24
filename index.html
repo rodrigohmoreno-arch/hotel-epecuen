@@ -864,6 +864,17 @@
           <tbody id="tbodyMovCtaCte"></tbody>
         </table></div>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Liquidaciones por Estadía</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Generá una liquidación detallada por empresa y rango de fechas para entregar a la empresa.</p>
+        <div class="filtros" style="margin-bottom:12px;">
+          <div class="form-group"><label>Empresa (CUIT)</label><select id="filtroLiquidacionEmpresa" style="min-width:200px;"><option value="">— Seleccionar —</option></select></div>
+          <div class="form-group"><label>Desde</label><input type="date" id="filtroLiquidacionDesde"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="filtroLiquidacionHasta"></div>
+          <button class="btn btn-gold btn-sm" onclick="generarLiquidacion()">Generar Liquidación</button>
+        </div>
+        <div id="liquidacionResultado"></div>
+      </div>
     </div>
   </div>
 
@@ -3690,6 +3701,9 @@ async function cargarCtasCorrientes() {
     // Poblar filtro de empresas
     var sel = $('filtroCtaCteEmpresa');
     sel.innerHTML = '<option value="">— Todas —</option>' + cuentas.map(c => `<option value="${c.id}">${esc(c.razonSocial)}</option>`).join('');
+    // Poblar filtro liquidaciones
+    var selLiq = $('filtroLiquidacionEmpresa');
+    if (selLiq) selLiq.innerHTML = '<option value="">— Seleccionar —</option>' + cuentas.map(c => `<option value="${c.cuit}" data-razon="${esc(c.razonSocial)}">${esc(c.razonSocial)} (${esc(c.cuit)})</option>`).join('');
   } catch(e) { showToast('Error cargando cuentas corrientes: '+e.message,'error'); }
 }
 window.cargarCtasCorrientes = cargarCtasCorrientes;
@@ -3820,6 +3834,102 @@ async function cargarDeudaCtaCte(ctaId, razonSocial, cuit, monto, concepto) {
     saldoResultante: nuevoSaldo
   });
 }
+
+// Liquidaciones de empresa por estadía
+async function generarLiquidacion() {
+  var cuit = $('filtroLiquidacionEmpresa')?.value;
+  var desde = $('filtroLiquidacionDesde')?.value;
+  var hasta = $('filtroLiquidacionHasta')?.value;
+  if (!cuit) { showToast('Seleccioná una empresa','warning'); return; }
+  if (!desde || !hasta) { showToast('Seleccioná rango de fechas','warning'); return; }
+  try {
+    var selOpt = $('filtroLiquidacionEmpresa').selectedOptions[0];
+    var razonSocial = selOpt?.getAttribute('data-razon') || cuit;
+    // Buscar reservas de esta empresa en el rango
+    var snapRes = await getDocs(query(collection(db,'reservas'), where('cuitEmpresa','==',cuit)));
+    var reservas = snapRes.docs.map(d => ({id:d.id, ...d.data()})).filter(r => {
+      if (r.estado !== 'CHECKOUT') return false;
+      var fi = r.fechaIn || '';
+      return fi >= desde && fi <= hasta;
+    });
+    // Buscar movimientos de cta cte en el rango
+    var snapMov = await getDocs(query(collection(db,'ctaCteMovimientos'), where('cuit','==',cuit)));
+    var movimientos = snapMov.docs.map(d => d.data()).filter(m => {
+      var fm = m.fecha ? m.fecha.substring(0,10) : '';
+      return fm >= desde && fm <= hasta;
+    });
+    var totalEstadias = reservas.reduce((s,r) => s + (r.totalPagar||0), 0);
+    var totalConsumos = reservas.reduce((s,r) => s + (r.totalConsumos||0), 0);
+    var totalGeneral = reservas.reduce((s,r) => s + (r.totalGeneral||0), 0);
+    var totalPagado = movimientos.filter(m => m.tipo==='PAGO').reduce((s,m) => s + (m.monto||0), 0);
+    var totalCargado = movimientos.filter(m => m.tipo==='CARGO').reduce((s,m) => s + (m.monto||0), 0);
+    var saldoPendiente = totalCargado - totalPagado;
+
+    var htmlRes = reservas.length ? reservas.map(r => `<tr>
+      <td>${esc(r.habitacionNro||'')}</td>
+      <td>${r.fechaIn} → ${r.fechaOut}</td>
+      <td>${r.noches||0}</td>
+      <td>$${(r.totalPagar||0).toLocaleString('es-AR')}</td>
+      <td>$${(r.totalConsumos||0).toLocaleString('es-AR')}</td>
+      <td>$${(r.totalGeneral||0).toLocaleString('es-AR')}</td>
+      <td>${r.medioPagoFinal||'—'}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin estadías en el período</td></tr>';
+
+    var htmlMov = movimientos.length ? movimientos.map(m => `<tr>
+      <td>${m.fecha ? m.fecha.substring(0,10) : '—'}</td>
+      <td style="color:${m.tipo==='CARGO'?'var(--red)':'var(--green)'};">${m.tipo}</td>
+      <td>${esc(m.concepto||'')}</td>
+      <td>$${(m.monto||0).toLocaleString('es-AR')}</td>
+      <td>${esc(m.medioPago||'')}</td>
+      <td>${esc(m.idTransaccion||'—')}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin movimientos</td></tr>';
+
+    $('liquidacionResultado').innerHTML = `
+      <div style="background:var(--surface);border-radius:12px;padding:20px;margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;">Liquidación — ${esc(razonSocial)}</h3>
+            <p style="color:var(--muted);font-size:0.82rem;margin-top:4px;">CUIT: ${esc(cuit)} | Período: ${desde} al ${hasta}</p>
+          </div>
+          <button class="btn btn-blue btn-sm" onclick="imprimirLiquidacion()">Imprimir</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <h4 style="font-size:0.9rem;margin-bottom:8px;">Estadías</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Hab.</th><th>Período</th><th>Noches</th><th>Estadía</th><th>Consumos</th><th>Total</th><th>Medio Pago</th></tr></thead>
+            <tbody>${htmlRes}</tbody>
+          </table></div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <h4 style="font-size:0.9rem;margin-bottom:8px;">Movimientos Cta. Cte.</h4>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th><th>Medio Pago</th><th>ID Transacción</th></tr></thead>
+            <tbody>${htmlMov}</tbody>
+          </table></div>
+        </div>
+        <div style="background:var(--card);border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Total Estadías</span><span style="font-weight:700;">$${totalEstadias.toLocaleString('es-AR')}</span></div>
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Total Consumos</span><span style="font-weight:700;">$${totalConsumos.toLocaleString('es-AR')}</span></div>
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Total General</span><span style="font-weight:700;">$${totalGeneral.toLocaleString('es-AR')}</span></div>
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Cargado a Cta. Cte.</span><span style="font-weight:700;color:var(--red);">$${totalCargado.toLocaleString('es-AR')}</span></div>
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Pagado</span><span style="font-weight:700;color:var(--green);">$${totalPagado.toLocaleString('es-AR')}</span></div>
+          <div><span style="display:block;font-size:0.78rem;color:var(--muted);">Saldo Pendiente</span><span style="font-weight:700;color:${saldoPendiente>0?'var(--red)':'var(--green)'};">$${saldoPendiente.toLocaleString('es-AR')}</span></div>
+        </div>
+      </div>`;
+  } catch(e) { showToast('Error generando liquidación: '+e.message,'error'); }
+}
+window.generarLiquidacion = generarLiquidacion;
+
+function imprimirLiquidacion() {
+  var cont = $('liquidacionResultado');
+  if (!cont || !cont.innerHTML.trim()) { showToast('Generá primero una liquidación','warning'); return; }
+  var win = window.open('','','width=800,height=600');
+  win.document.write(`<!DOCTYPE html><html><head><title>Liquidación Empresa</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;}table{width:100%;border-collapse:collapse;margin:10px 0;}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}th{background:#f0f0f0;font-weight:600;}h3{margin:0 0 4px;} h4{margin:12px 0 6px;font-size:13px;} .summary{display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;} .summary div{border:1px solid #ddd;padding:8px 12px;border-radius:4px;} .summary span{display:block;font-size:11px;color:#666;} @media print{button{display:none!important;}}</style>
+  </head><body>${cont.innerHTML}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  win.document.close();
+}
+window.imprimirLiquidacion = imprimirLiquidacion;
 
 // ══════════════════════════════════════
 // RECEPCION — HOTEL MANAGEMENT
@@ -4578,7 +4688,50 @@ async function cargarPreReservas() {
     var cont = $('listaPreReservas');
     if (!preReservas.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay pre-reservas pendientes</p>'; return; }
     var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
-    cont.innerHTML = preReservas.map(r => {
+
+    // Agrupar pre-reservas empresa por grupoEmpresaId
+    var grupos = {};
+    var individuales = [];
+    preReservas.forEach(r => {
+      if (r.esEmpresa && r.grupoEmpresaId) {
+        if (!grupos[r.grupoEmpresaId]) grupos[r.grupoEmpresaId] = [];
+        grupos[r.grupoEmpresaId].push(r);
+      } else {
+        individuales.push(r);
+      }
+    });
+
+    var html = '';
+    // Renderizar grupos empresa como una sola tarjeta
+    Object.keys(grupos).forEach(gId => {
+      var grupo = grupos[gId];
+      var r0 = grupo[0];
+      var fechaCreacion = r0.fechaPreReserva ? new Date(r0.fechaPreReserva) : null;
+      var diasDesdeCreacion = fechaCreacion ? Math.round((Date.now()-fechaCreacion.getTime())/86400000) : '?';
+      var totalGrupo = grupo.reduce((s,r) => s + (r.totalEstadia||r.totalPagar||0), 0);
+      var habsInfo = grupo.map(r => 'Hab. '+esc(r.habitacionNro)).join(', ');
+      var idsJson = JSON.stringify(grupo.map(r => ({id:r.id, habId:r.habitacionId}))).replace(/"/g,'&quot;');
+      html += `<div class="reserva-card" style="border-left:3px solid rgba(139,92,246,0.7);">
+      <div class="reserva-header">
+        <div><span style="background:rgba(139,92,246,0.15);color:rgba(139,92,246,1);padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">EMPRESA: ${esc(r0.razonSocial||'')}</span> <span style="color:var(--muted);font-size:0.8rem;">CUIT: ${esc(r0.cuitEmpresa||'')}</span></div>
+        <span class="reserva-estado" style="background:rgba(245,183,49,0.2);color:var(--gold);">PRE-RESERVA (${grupo.length} hab.)</span>
+      </div>
+      <div class="reserva-info">
+        <span>${habsInfo}</span>
+        <span>In: ${r0.fechaIn} → Out: ${r0.fechaOut}</span>
+        <span>${r0.noches} noches</span>
+        <span>Total Grupo: $ ${totalGrupo.toLocaleString('es-AR')}</span>
+      </div>
+      <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">📅 Creada hace ${diasDesdeCreacion} día(s) — pendiente de seña</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-green btn-xs" onclick="confirmarPreReservaGrupo('${gId}')">Confirmar Seña (Grupo)</button>
+        <button class="btn btn-red btn-xs" onclick="cancelarReservaGrupo('${gId}')">Cancelar Grupo</button>
+      </div>
+    </div>`;
+    });
+
+    // Renderizar individuales
+    html += individuales.map(r => {
       var fechaCreacion = r.fechaPreReserva ? new Date(r.fechaPreReserva) : null;
       var diasDesdeCreacion = fechaCreacion ? Math.round((Date.now()-fechaCreacion.getTime())/86400000) : '?';
       var extras = [];
@@ -4605,6 +4758,7 @@ async function cargarPreReservas() {
         <button class="btn btn-red btn-xs" onclick="cancelarReserva('${r.id}','${r.habitacionId}')">Cancelar</button>
       </div>
     </div>`}).join('');
+    cont.innerHTML = html;
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
@@ -4659,6 +4813,83 @@ async function confirmarPreReserva(resId, habId) {
   });
 }
 window.confirmarPreReserva = confirmarPreReserva;
+
+async function confirmarPreReservaGrupo(grupoId) {
+  var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','PRE_RESERVA')));
+  var grupo = snap.docs.filter(d => d.data().grupoEmpresaId === grupoId).map(d => ({id:d.id, ...d.data()}));
+  if (!grupo.length) { showToast('No se encontraron reservas del grupo','warning'); return; }
+  var r0 = grupo[0];
+  var totalGrupo = grupo.reduce((s,r) => s + (r.totalEstadia||r.totalPagar||0), 0);
+  var habsInfo = grupo.map(r => 'Hab. '+r.habitacionNro).join(', ');
+  var cuerpo = `<div style="padding:20px;">
+    <p style="margin-bottom:8px;font-weight:600;">Confirmar Seña — ${esc(r0.razonSocial||'')}</p>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">${grupo.length} habitaciones: ${habsInfo} | Total: $ ${totalGrupo.toLocaleString('es-AR')}</p>
+    <div class="form-row">
+      <div class="form-group"><label>Monto Seña (total grupo) *</label><input type="number" id="confirmarSenaMonto" step="0.01" min="1" placeholder="$"></div>
+      <div class="form-group"><label>Medio de Pago *</label>
+        <select id="confirmarSenaMedio" onchange="var n=$('confirmarSenaNota');if(n)n.style.display=this.value==='EFECTIVO'?'block':'none';">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+          <option value="DEBITO">Tarjeta Débito</option>
+          <option value="CREDITO">Tarjeta Crédito</option>
+        </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>N° Cupón / ID Transacción *</label><input type="text" id="confirmarSenaComprobante" placeholder="Ej: CBU, N° operación, cupón"></div>
+      <div class="form-group"><label>Fecha de Pago</label><input type="date" id="confirmarSenaFecha" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>N° Factura (vinculada a reserva)</label><input type="text" id="confirmarSenaFactura" placeholder="Ej: A-0001-00012345"></div>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">Una sola seña confirma todas las habitaciones del grupo.</p>
+    <p id="confirmarSenaNota" style="font-size:0.78rem;color:var(--gold);margin-top:4px;display:none;">Si el pago es en efectivo, el N° cupón y factura son opcionales.</p>
+  </div>`;
+  confirmarAccion('Confirmar Seña — Grupo Empresa', cuerpo, 'Confirmar Todas', async (ok) => {
+    if (!ok) return;
+    var monto = parseFloat($('confirmarSenaMonto')?.value)||0;
+    var medio = $('confirmarSenaMedio')?.value||'EFECTIVO';
+    var comprobante = $('confirmarSenaComprobante')?.value?.trim()||'';
+    var fechaPago = $('confirmarSenaFecha')?.value||new Date().toISOString().split('T')[0];
+    var factura = $('confirmarSenaFactura')?.value?.trim()||'';
+    if (monto <= 0) { showToast('Ingresá el monto de la seña','warning'); return; }
+    if (medio !== 'EFECTIVO' && !comprobante) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
+    try {
+      for (var r of grupo) {
+        await updateDoc(doc(db,'reservas',r.id), {
+          estado:'CONFIRMADA', sena: monto, medioPagoSena: medio,
+          comprobanteSena: comprobante, facturaSena: factura,
+          fechaPagoSena: fechaPago, fechaConfirmacion: new Date().toISOString(),
+          senaGrupo: true
+        });
+        await updateDoc(doc(db,'habitaciones',r.habitacionId), { estado:'RESERVADA' });
+      }
+      showToast('Grupo CONFIRMADO con seña — '+grupo.length+' habitaciones listas para check-in','success');
+      await cargarPreReservas();
+      await cargarReservasActivas();
+      await cargarHabitaciones();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.confirmarPreReservaGrupo = confirmarPreReservaGrupo;
+
+async function cancelarReservaGrupo(grupoId) {
+  var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','PRE_RESERVA')));
+  var grupo = snap.docs.filter(d => d.data().grupoEmpresaId === grupoId).map(d => ({id:d.id, ...d.data()}));
+  if (!grupo.length) { showToast('No se encontraron reservas del grupo','warning'); return; }
+  confirmarAccion('Cancelar Grupo', `<p style="padding:20px;">¿Cancelar las ${grupo.length} habitaciones de ${esc(grupo[0].razonSocial||'')}?</p>`, 'Sí, cancelar', async (ok) => {
+    if (!ok) return;
+    try {
+      for (var r of grupo) {
+        await updateDoc(doc(db,'reservas',r.id), { estado:'CANCELADA', fechaCancelacion: new Date().toISOString() });
+        await updateDoc(doc(db,'habitaciones',r.habitacionId), { estado:'LIBRE' });
+      }
+      showToast('Grupo cancelado — '+grupo.length+' habitaciones liberadas','success');
+      await cargarPreReservas();
+      await cargarHabitaciones();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cancelarReservaGrupo = cancelarReservaGrupo;
 
 async function cargarReservasActivas() {
   try {
@@ -5345,12 +5576,21 @@ async function iniciarCheckOut(resId) {
         for (var cDoc of consSnap.docs) {
           try { await deleteDoc(doc(db,'consumosHabitacion',cDoc.id)); } catch(ee) {}
         }
-        // Si pagó con cuenta corriente, cargar deuda a la empresa
+        // Si pagó con cuenta corriente explícita, cargar deuda a la empresa
         if (tieneCtaCte && esEmpresaCheckout && montoCtaCte > 0) {
           try {
             var ctaId = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
             await cargarDeudaCtaCte(ctaId, res.razonSocial||'', res.cuitEmpresa||'', montoCtaCte, 'Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+') - Reserva '+resId.substring(0,6));
           } catch(ee) { console.error('Error ctacte:',ee); }
+        }
+        // Auto-crear cta cte para empresas que no pagaron el total (pago diferido)
+        if (esEmpresaCheckout && !tieneCtaCte && totalGeneral > 0 && totalPagado < totalGeneral) {
+          try {
+            var montoPendiente = totalGeneral - totalPagado;
+            var ctaId2 = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
+            await cargarDeudaCtaCte(ctaId2, res.razonSocial||'', res.cuitEmpresa||'', montoPendiente, 'Pago Diferido — Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+')');
+            showToast('Saldo pendiente $'+montoPendiente.toLocaleString('es-AR')+' cargado a Cta. Cte. de '+esc(res.razonSocial||''),'info');
+          } catch(ee) { console.error('Error auto ctacte:',ee); }
         }
         showToast('Check-Out completado — Total: $'+totalGeneral.toLocaleString('es-AR'),'success');
         imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medioPago, idTxPrimero, pagos, saldoFavor);
