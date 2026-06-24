@@ -904,11 +904,11 @@
         <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;font-size:0.85rem;color:var(--gold);">
           <strong>Importante:</strong> Sin seña confirmada la reserva queda como PRE-RESERVA (no se asigna habitación). Para confirmar la reserva debe registrarse la seña.
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resDatosHuesped1">
           <div class="form-group"><label>Apellido *</label><input type="text" id="resApellido"></div>
           <div class="form-group"><label>Nombre *</label><input type="text" id="resNombre"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resDatosHuesped2">
           <div class="form-group"><label>Nacionalidad</label>
             <select id="resNacionalidad" onchange="toggleDocReserva()">
               <option value="AR">Argentina</option>
@@ -926,14 +926,14 @@
           <div class="form-group" id="resGrupoDni"><label>DNI *</label><input type="text" id="resDni"></div>
           <div class="form-group hidden" id="resGrupoPasaporte"><label>Pasaporte / Cédula *</label><input type="text" id="resPasaporte"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resDatosHuesped3">
           <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
           <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resDatosHuesped4">
           <div class="form-group"><label>Teléfono *</label><input type="text" id="resTelefono"></div>
         </div>
-        <div style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
+        <div id="seccionAcompanantes" style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <h4 style="font-size:0.9rem;">Acompañantes</h4>
             <button class="btn btn-blue btn-xs" type="button" onclick="agregarAcompanante()">+ Agregar</button>
@@ -954,16 +954,9 @@
             <p style="font-size:0.8rem;color:var(--muted);margin:4px 0 8px;">La empresa es el titular de la reserva y paga la estadía. Los consumos se cobran a los huéspedes alojados.</p>
             <div class="form-group"><label>Habitaciones (seleccioná varias con Ctrl+Click) *</label>
               <input type="text" id="buscarHabEmpresa" placeholder="Buscar habitación..." oninput="filtrarHabEmpresa()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
-              <select id="resHabitacionesEmpresa" multiple size="6" style="width:100%;" onchange="renderAlojadosEmpresa()"></select>
+              <select id="resHabitacionesEmpresa" multiple size="6" style="width:100%;"></select>
             </div>
-            <div style="margin-top:12px;padding:10px;background:rgba(46,204,113,0.06);border-radius:8px;border-left:3px solid var(--green);">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <h4 style="font-size:0.9rem;">Alojados por Habitación</h4>
-                <span style="font-size:0.75rem;color:var(--muted);">Seleccioná habitaciones arriba, luego cargá los alojados de cada una</span>
-              </div>
-              <div id="listaAlojadosEmpresa"></div>
-            </div>
-            <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Nota: Al checkout la estadía se factura a la empresa, los consumos del restaurante a los huéspedes alojados.</p>
+            <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Los datos de los alojados se cargan al momento del check-in. Al checkout la estadía se factura a la empresa, los consumos del restaurante a los huéspedes alojados.</p>
           </div>
         </div>
         <div class="form-row" id="resHabIndividualRow">
@@ -3932,6 +3925,15 @@ function toggleReservaEmpresa() {
   var checked = $('resEmpresa').checked;
   $('resEmpresaCampos').classList.toggle('hidden', !checked);
   $('resHabIndividualRow').style.display = checked ? 'none' : '';
+  // Hide personal fields when empresa is checked
+  var camposPersonales = ['resApellido','resNombre','resNacionalidad','resDni','resPasaporte','resEmail','resFechaNac','resTelefono'].map(id => $(id));
+  var rowsPersonales = document.querySelectorAll('#tabRecNuevaReserva .form-row');
+  var datosHuespedSection = $('resApellido')?.closest('.form-row');
+  // Toggle visibility of personal data rows
+  ['resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
+  // Hide acompañantes section for empresa
+  var secAcomp = $('seccionAcompanantes');
+  if (secAcomp) secAcomp.style.display = checked ? 'none' : '';
   if (checked) poblarSelectHabEmpresa();
 }
 window.toggleReservaEmpresa = toggleReservaEmpresa;
@@ -3978,6 +3980,7 @@ function toggleDocAcomp(sel) {
 window.toggleDocAcomp = toggleDocAcomp;
 
 async function crearReserva() {
+  var esEmpresa = $('resEmpresa')?.checked || false;
   var resApellido = $('resApellido').value.trim();
   var resNombre = $('resNombre').value.trim();
   var huesped = (resApellido + ' ' + resNombre).trim();
@@ -3988,9 +3991,6 @@ async function crearReserva() {
   var tel = $('resTelefono').value.trim();
   var email = $('resEmail').value.trim();
   var fechaNac = $('resFechaNac').value;
-  var esEmpresa = $('resEmpresa')?.checked || false;
-  if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
-  if (!tel) { showToast('Completá el teléfono del huésped','warning'); return; }
   if (esEmpresa) {
     var razonSocial = $('resRazonSocial').value.trim();
     var cuitEmpresa = $('resCuitEmpresa').value.trim();
@@ -4004,9 +4004,10 @@ async function crearReserva() {
       if (selEmpresa.options[i].selected) habsSeleccionadas.push(selEmpresa.options[i]);
     }
     if (!habsSeleccionadas.length) { showToast('Seleccioná al menos una habitación','warning'); return; }
-    var alojadosPorHab = recogerAlojadosEmpresa();
-    return crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas, alojadosPorHab);
+    return crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas);
   }
+  if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
+  if (!tel) { showToast('Completá el teléfono del huésped','warning'); return; }
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
   if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
@@ -4125,35 +4126,20 @@ async function crearReserva() {
 }
 window.crearReserva = crearReserva;
 
-async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalidad, esAR, dni, pasaporte, tel, email, fechaNac, razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas, alojadosPorHab) {
+async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas) {
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
   if (!fechaIn || !fechaOut) { showToast('Completá fechas de check-in/out','warning'); return; }
   var noches = Math.ceil((new Date(fechaOut) - new Date(fechaIn)) / 86400000);
   if (noches <= 0) { showToast('La fecha de checkout debe ser posterior al checkin','warning'); return; }
   var pension = $('resPension').value;
-  var adultos = parseInt($('resAdultos').value) || 1;
-  var menores = parseInt($('resMenores').value) || 0;
   var moneda = $('resMoneda').value;
   var desc = parseFloat($('resDescuento').value) || 0;
   var sena = parseFloat($('resSena').value) || 0;
   var medioPagoSena = $('resMedioPagoSena').value;
   var notas = $('resNotas').value.trim();
-  var configCamas = $('resConfigCamas').value;
-  var festejo = $('resFestejo').value.trim();
-  var restriccionAlim = $('resRestriccionAlim').value.trim();
-  var pedidosEsp = $('resPedidosEsp').value.trim();
   var tieneSeña = sena > 0 && medioPagoSena;
   var estadoReserva = tieneSeña ? 'CONFIRMADA' : 'PRE_RESERVA';
-  var acompanantes = [];
-  document.querySelectorAll('#listaAcompanantes .acomp-item').forEach(el => {
-    var ap = el.querySelector('.acomp-apellido')?.value?.trim()||'';
-    var nm = el.querySelector('.acomp-nombre')?.value?.trim()||'';
-    if (ap || nm) {
-      var nac = el.querySelector('.acomp-nacionalidad')?.value||'AR';
-      acompanantes.push({ apellido:ap, nombre:nm, nacionalidad:nac, dni: nac==='AR' ? (el.querySelector('.acomp-dni')?.value?.trim()||'') : '', pasaporte: nac!=='AR' ? (el.querySelector('.acomp-pasaporte')?.value?.trim()||'') : '', fechaNac:el.querySelector('.acomp-fechanac')?.value||'', esMenor:el.querySelector('.acomp-menor')?.checked||false, telefono:el.querySelector('.acomp-telefono')?.value?.trim()||'' });
-    }
-  });
   var grupoEmpresaId = 'EMP-' + Date.now();
   try {
     for (var i=0; i<habsSeleccionadas.length; i++) {
@@ -4165,15 +4151,15 @@ async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalida
       if (desc > 0) totalEstadia = totalEstadia * (1 - desc/100);
       var totalPagar = totalEstadia - sena;
       var reservaData = {
-        huesped, apellido: resApellido, nombre: resNombre,
-        nacionalidad: nacionalidad||'AR', dni: dni||'', pasaporte: pasaporte||'',
-        telefono: tel, email: email||'', fechaNac: fechaNac||'',
+        huesped: razonSocial, apellido:'', nombre:'',
+        nacionalidad:'', dni:'', pasaporte:'',
+        telefono: telefonoEmpresa, email: emailEmpresa, fechaNac:'',
         habitacionId: habId, habitacionNro: habNro,
-        fechaIn, fechaOut, noches, adultos, menores,
+        fechaIn, fechaOut, noches, adultos: 0, menores: 0,
         precioNoche, moneda, totalEstadia, descuento: desc, sena: i===0 ? sena : 0, medioPagoSena: i===0 ? medioPagoSena : '',
         totalPagar: i===0 ? totalPagar : totalEstadia, notas,
-        configCamas, festejo, restriccionAlim, pedidosEsp,
-        acompanantes: i===0 ? acompanantes : [],
+        configCamas:'', festejo:'', restriccionAlim:'', pedidosEsp:'',
+        acompanantes: [],
         estado: estadoReserva,
         cotizacionUsada: configHotel.cotizacionDolar || 0,
         fechaReserva: serverTimestamp(),
@@ -4181,37 +4167,21 @@ async function crearReservasEmpresa(huesped, resApellido, resNombre, nacionalida
         vencePreReserva: null,
         usuario: currentUser.usuario,
         esEmpresa: true, razonSocial, cuitEmpresa, emailEmpresa: emailEmpresa||'', telefonoEmpresa: telefonoEmpresa||'',
-        alojados: alojadosPorHab ? (alojadosPorHab[habNro] || []) : [],
+        alojados: [],
         grupoEmpresaId
       };
       await addDoc(collection(db,'reservas'), reservaData);
       await updateDoc(doc(db,'habitaciones',habId), { estado: tieneSeña ? 'RESERVADA' : 'PRE_RESERVA' });
     }
-    var docId = esAR ? dni : pasaporte;
-    if (docId) {
-      var campo = esAR ? 'dni' : 'pasaporte';
-      var huesExiste = await getDocs(query(collection(db,'huespedes'), where(campo,'==',docId)));
-      if (huesExiste.empty) {
-        await addDoc(collection(db,'huespedes'), { nombre: resNombre, apellido: resApellido, dni: dni||'', fechaNac: fechaNac||'', telefono:tel, email: email||'', localidad:'', nacionalidad: nacionalidad||'AR', pasaporte: pasaporte||'', notas:'', ultimaVisita:serverTimestamp() });
-      } else {
-        var updateData = { ultimaVisita:serverTimestamp() };
-        if (fechaNac) updateData.fechaNac = fechaNac;
-        if (email) updateData.email = email;
-        await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), updateData);
-      }
-    }
     showToast('Reserva EMPRESA creada — '+habsSeleccionadas.length+' habitaciones para '+razonSocial, 'success');
     $('resApellido').value=''; $('resNombre').value=''; $('resDni').value=''; $('resTelefono').value='';
     $('resEmail').value=''; $('resFechaNac').value=''; $('resPasaporte').value=''; $('resNacionalidad').value='AR';
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
-    $('resDescuento').value='0'; $('resFestejo').value=''; $('resPedidosEsp').value='';
-    $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
-    $('listaAcompanantes').innerHTML=''; $('resumenReserva').style.display='none';
+    $('resDescuento').value='0';
     $('resEmpresa').checked=false; toggleReservaEmpresa();
     $('resRazonSocial').value=''; $('resCuitEmpresa').value='';
     if ($('resEmailEmpresa')) $('resEmailEmpresa').value='';
     if ($('resTelefonoEmpresa')) $('resTelefonoEmpresa').value='';
-    if ($('listaAlojadosEmpresa')) $('listaAlojadosEmpresa').innerHTML='';
     await poblarSelectHabReserva();
     await cargarReservasActivas();
     await cargarPreReservas();
@@ -4569,11 +4539,13 @@ async function realizarCheckIn(resId) {
     var hoy = new Date(); hoy.setHours(0,0,0,0);
     var fechaIn = new Date(res.fechaIn+'T00:00:00');
     if (hoy < fechaIn) { showToast('No se puede hacer check-in antes de la fecha de ingreso ('+res.fechaIn+')','warning'); return; }
-    // Validar acompañantes obligatorios si más de 1 huésped
-    var totalPersonas = (res.adultos||1) + (res.menores||0);
-    if (totalPersonas > 1 && (!res.acompanantes || res.acompanantes.length === 0)) {
-      showToast('Debés cargar los acompañantes antes del check-in ('+totalPersonas+' personas en la reserva). Editá la reserva primero.','warning');
-      return;
+    // Validar acompañantes obligatorios si más de 1 huésped (no aplica a empresa: alojados se cargan en check-in)
+    if (!res.esEmpresa) {
+      var totalPersonas = (res.adultos||1) + (res.menores||0);
+      if (totalPersonas > 1 && (!res.acompanantes || res.acompanantes.length === 0)) {
+        showToast('Debés cargar los acompañantes antes del check-in ('+totalPersonas+' personas en la reserva). Editá la reserva primero.','warning');
+        return;
+      }
     }
     // Load active promos for check-in selection
     var promosActivas = [];
@@ -4584,9 +4556,23 @@ async function realizarCheckIn(resId) {
     var monedaLabel = res.moneda === 'USD' ? 'U$D' : '$';
     var promoOptions = promosActivas.map(p => '<option value="'+p.id+'" data-precio="'+p.precio+'" data-dias="'+p.dias+'" data-noches="'+p.noches+'" data-pension="'+p.pension+'" data-tipo="'+esc(p.tipoHab||'')+'">'
       + esc(p.nombre)+' — $'+(p.precio||0).toLocaleString('es-AR')+' ('+p.dias+'d/'+p.noches+'n)</option>').join('');
+    var esEmpresaRes = res.esEmpresa || false;
     var cuerpoCheckIn = `<div style="padding:16px;">
       <p>¿Confirmar check-in para <strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}?</p>
       <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
+      ${esEmpresaRes ? `<div style="margin:12px 0;padding:12px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <h4 style="font-size:0.92rem;font-weight:700;">Alojados de la Habitación</h4>
+          <button class="btn btn-blue btn-xs" type="button" onclick="agregarAlojadoCheckIn()">+ Agregar Alojado</button>
+        </div>
+        <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">Cargá los datos de las personas que se alojan en esta habitación.</p>
+        <div id="listaAlojadosCheckIn"></div>
+        <div style="margin-top:10px;">
+          <div class="form-group"><label style="font-size:0.85rem;font-weight:600;">Observaciones / Pedidos Especiales</label>
+            <textarea id="checkInObservaciones" rows="2" placeholder="Pedidos especiales, restricciones, solicitudes del huésped..." style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;resize:vertical;"></textarea>
+          </div>
+        </div>
+      </div>` : ''}
       ${promosActivas.length ? `<div style="margin-bottom:12px;padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);">
         <label style="font-size:0.88rem;font-weight:600;margin-bottom:6px;display:block;">Aplicar Promoción (opcional)</label>
         <select id="checkInPromoSelect" onchange="aplicarPromoCheckIn()" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
@@ -4640,6 +4626,20 @@ async function realizarCheckIn(resId) {
       if (!ok) return;
       try {
         var updateData = { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() };
+        // Save alojados for empresa reservations
+        if (esEmpresaRes) {
+          var alojadosCI = recogerAlojadosCheckIn();
+          if (!alojadosCI.length) { showToast('Cargá al menos un alojado para la habitación','warning'); return; }
+          for (var a of alojadosCI) {
+            if (!a.apellido || !a.nombre) { showToast('Completá apellido y nombre de todos los alojados','warning'); return; }
+            if (!a.telefono) { showToast('Completá el teléfono de todos los alojados','warning'); return; }
+            if (a.nacionalidad === 'AR' && !a.dni) { showToast('Completá el DNI de todos los alojados argentinos','warning'); return; }
+            if (a.nacionalidad !== 'AR' && !a.pasaporte) { showToast('Completá pasaporte/cédula de alojados extranjeros','warning'); return; }
+          }
+          updateData.alojados = alojadosCI;
+          var obs = $('checkInObservaciones')?.value?.trim()||'';
+          if (obs) updateData.observacionesCheckIn = obs;
+        }
         // Save promo if selected
         var promoSel = $('checkInPromoSelect');
         if (promoSel && promoSel.value) {
@@ -4700,6 +4700,55 @@ function togglePagoCheckIn() {
   if (sec) sec.style.display = $('checkInPagarEstadia')?.checked ? 'block' : 'none';
 }
 window.togglePagoCheckIn = togglePagoCheckIn;
+
+function agregarAlojadoCheckIn() {
+  var lista = $('listaAlojadosCheckIn');
+  if (!lista) return;
+  var idx = lista.querySelectorAll('.alojado-checkin-item').length;
+  var div = document.createElement('div');
+  div.className = 'alojado-checkin-item';
+  div.style.cssText = 'margin-bottom:10px;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--border);';
+  div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><strong style="font-size:0.82rem;">Alojado #'+(idx+1)+'</strong><button type="button" class="btn btn-red btn-xs" onclick="this.closest(\'.alojado-checkin-item\').remove()" style="padding:2px 8px;font-size:0.75rem;">✕</button></div>'
+    + '<div class="form-row" style="margin-bottom:4px;"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Apellido *</label><input type="text" class="aloj-apellido" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
+    + '<div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Nombre *</label><input type="text" class="aloj-nombre" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
+    + '<div class="form-row" style="margin-bottom:4px;"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Nacionalidad</label><select class="aloj-nacionalidad" onchange="toggleDocAlojCheckIn(this)" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"><option value="AR">Argentina</option><option value="BR">Brasil</option><option value="CL">Chile</option><option value="UY">Uruguay</option><option value="PY">Paraguay</option><option value="BO">Bolivia</option><option value="PE">Perú</option><option value="CO">Colombia</option><option value="US">Estados Unidos</option><option value="EU">Europa</option><option value="OTRO">Otro</option></select></div>'
+    + '<div class="form-group aloj-dni-group" style="flex:1;"><label style="font-size:0.78rem;">DNI *</label><input type="text" class="aloj-dni" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
+    + '<div class="form-group aloj-pasaporte-group" style="flex:1;display:none;"><label style="font-size:0.78rem;">Pasaporte / Cédula *</label><input type="text" class="aloj-pasaporte" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
+    + '<div class="form-row" style="margin-bottom:4px;"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Teléfono *</label><input type="text" class="aloj-telefono" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
+    + '<div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Email</label><input type="email" class="aloj-email" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Fecha Nacimiento</label><input type="date" class="aloj-fechanac" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>';
+  lista.appendChild(div);
+}
+window.agregarAlojadoCheckIn = agregarAlojadoCheckIn;
+
+function toggleDocAlojCheckIn(sel) {
+  var item = sel.closest('.alojado-checkin-item');
+  var esAR = sel.value === 'AR';
+  item.querySelector('.aloj-dni-group').style.display = esAR ? '' : 'none';
+  item.querySelector('.aloj-pasaporte-group').style.display = esAR ? 'none' : '';
+  if (esAR) { item.querySelector('.aloj-pasaporte').value=''; } else { item.querySelector('.aloj-dni').value=''; }
+}
+window.toggleDocAlojCheckIn = toggleDocAlojCheckIn;
+
+function recogerAlojadosCheckIn() {
+  var items = document.querySelectorAll('#listaAlojadosCheckIn .alojado-checkin-item');
+  var alojados = [];
+  for (var item of items) {
+    var apellido = item.querySelector('.aloj-apellido')?.value?.trim()||'';
+    var nombre = item.querySelector('.aloj-nombre')?.value?.trim()||'';
+    if (!apellido || !nombre) continue;
+    var nac = item.querySelector('.aloj-nacionalidad')?.value||'AR';
+    alojados.push({
+      apellido, nombre, nacionalidad: nac,
+      dni: nac==='AR' ? (item.querySelector('.aloj-dni')?.value?.trim()||'') : '',
+      pasaporte: nac!=='AR' ? (item.querySelector('.aloj-pasaporte')?.value?.trim()||'') : '',
+      telefono: item.querySelector('.aloj-telefono')?.value?.trim()||'',
+      email: item.querySelector('.aloj-email')?.value?.trim()||'',
+      fechaNac: item.querySelector('.aloj-fechanac')?.value||''
+    });
+  }
+  return alojados;
+}
 
 function aplicarPromoCheckIn() {
   var sel = $('checkInPromoSelect');
