@@ -123,6 +123,8 @@
     #calendarioHab table td { transition:background 0.2s; }
     #calendarioHab table td:hover { filter:brightness(1.1); }
     #calendarioHab table td.cal-sel { outline:3px solid var(--blue); outline-offset:-3px; background:rgba(59,130,246,0.2) !important; }
+    #calendarioHab.cal-dragging { user-select:none; -webkit-user-select:none; }
+    #calendarioHab.cal-dragging table td[data-empty="1"] { cursor:crosshair; }
 
     /* ── TABS ── */
     .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
@@ -5405,20 +5407,33 @@ window.abrirReservaDesdeCalendario = abrirReservaDesdeCalendario;
 var _calDragging = false;
 var _calSelected = [];
 
+function _calGetCell(e) {
+  var el = e.target;
+  if (el.closest('#calendarioHab td[data-empty="1"]')) return el.closest('#calendarioHab td[data-empty="1"]');
+  return null;
+}
+
 document.addEventListener('mousedown', function(e) {
-  var td = e.target.closest('#calendarioHab td[data-empty="1"]');
+  var td = _calGetCell(e);
   if (!td) return;
   e.preventDefault();
   _calDragging = true;
   _calSelected = [];
   document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  var cal = document.getElementById('calendarioHab');
+  if (cal) cal.classList.add('cal-dragging');
   td.classList.add('cal-sel');
   _calSelected.push(td);
 });
 
+document.addEventListener('selectstart', function(e) {
+  if (_calDragging) e.preventDefault();
+});
+
 document.addEventListener('mousemove', function(e) {
   if (!_calDragging) return;
-  var td = e.target.closest('#calendarioHab td[data-empty="1"]');
+  e.preventDefault();
+  var td = _calGetCell(e);
   if (!td || _calSelected.includes(td)) return;
   td.classList.add('cal-sel');
   _calSelected.push(td);
@@ -5427,6 +5442,8 @@ document.addEventListener('mousemove', function(e) {
 document.addEventListener('mouseup', function(e) {
   if (!_calDragging) return;
   _calDragging = false;
+  var cal = document.getElementById('calendarioHab');
+  if (cal) cal.classList.remove('cal-dragging');
   if (_calSelected.length < 2) {
     document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
     _calSelected = [];
