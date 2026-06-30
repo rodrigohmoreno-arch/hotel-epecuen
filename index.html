@@ -211,6 +211,7 @@
 
     /* ── CONFIRM MODAL ── */
     #modalConfirm .modal { max-width:420px; }
+    #modalConfirm.modal-apaisado .modal { max-width:90vw; width:90vw; }
     .confirm-body { padding:24px; }
     .confirm-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
 
@@ -981,7 +982,7 @@
               <option value="EU">Europa</option>
               <option value="OTRO">Otro</option>
             </select></div>
-          <div class="form-group" id="resGrupoDni"><label>DNI *</label><input type="text" id="resDni"></div>
+          <div class="form-group" id="resGrupoDni" style="position:relative;"><label>DNI *</label><input type="text" id="resDni" oninput="buscarHuespedPorDni(this.value)"><div id="resHuespedSugerencias" style="display:none;position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;width:100%;box-shadow:var(--shadow);top:100%;"></div></div>
           <div class="form-group hidden" id="resGrupoPasaporte"><label>Pasaporte / Cédula *</label><input type="text" id="resPasaporte"></div>
         </div>
         <div class="form-row" id="resDatosHuesped3">
@@ -990,6 +991,13 @@
         </div>
         <div class="form-row" id="resDatosHuesped4">
           <div class="form-group"><label>Teléfono *</label><input type="text" id="resTelefono"></div>
+        </div>
+        <div class="form-row" id="resDatosHuesped5">
+          <div class="form-group"><label>Localidad</label><input type="text" id="resLocalidad" placeholder="Localidad"></div>
+          <div class="form-group"><label>Provincia</label><input type="text" id="resProvincia" placeholder="Provincia"></div>
+        </div>
+        <div class="form-row" id="resDatosHuesped6">
+          <div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
         </div>
         <div id="seccionAcompanantes" style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1002,7 +1010,7 @@
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa / Grupo</label>
           <div id="resEmpresaCampos" class="hidden" style="margin-top:10px;">
             <div class="form-row">
-              <div class="form-group"><label>Nombre Empresa / Grupo *</label><input type="text" id="resRazonSocial" placeholder="Nombre de la empresa"></div>
+              <div class="form-group"><label>Nombre Empresa / Grupo *</label><input type="text" id="resRazonSocial" placeholder="Buscar empresa..." oninput="buscarEmpresaAutocomplete(this)"><div id="resEmpresaSugerencias" style="display:none;position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;width:100%;box-shadow:var(--shadow);"></div></div>
               <div class="form-group"><label>CUIT *</label><input type="text" id="resCuitEmpresa" placeholder="Ej: 30-12345678-9"></div>
             </div>
             <div class="form-row">
@@ -1032,11 +1040,11 @@
           <div class="form-group"><label>Fecha Check-in *</label><input type="date" id="resFechaIn"></div>
           <div class="form-group"><label>Fecha Check-out *</label><input type="date" id="resFechaOut"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resRowAdultosMenores">
           <div class="form-group"><label>Adultos</label><input type="number" id="resAdultos" value="1" min="1"></div>
           <div class="form-group"><label>Menores</label><input type="number" id="resMenores" value="0" min="0"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resRowMonedaDescuento">
           <div class="form-group"><label>Moneda</label>
             <select id="resMoneda" onchange="calcularTotalReserva()">
               <option value="ARS">ARS (Pesos)</option>
@@ -1044,7 +1052,7 @@
             </select></div>
           <div class="form-group"><label>Descuento %</label><input type="number" id="resDescuento" value="0" min="0" max="100" onchange="calcularTotalReserva()"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resRowConfigSena">
           <div class="form-group"><label>Configuración de Camas</label>
             <select id="resConfigCamas">
               <option value="MATRIMONIAL">Cama Matrimonial</option>
@@ -1056,7 +1064,7 @@
             </select></div>
           <div class="form-group"><label>Seña/Reserva $ *</label><input type="number" id="resSena" value="0" step="0.01" onchange="calcularTotalReserva();toggleMedioPagoSena()"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resRowMedioPagoFestejo">
           <div class="form-group"><label>Medio Pago Seña *</label>
             <select id="resMedioPagoSena">
               <option value="">Sin seña (Pre-Reserva)</option>
@@ -1066,7 +1074,7 @@
             </select></div>
           <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="resFestejo" placeholder="Ej: Cumpleaños, Aniversario"></div>
         </div>
-        <div class="form-row">
+        <div class="form-row" id="resRowRestriccion">
           <div class="form-group"><label>Restricción Alimentaria</label>
             <select id="resRestriccionAlim">
               <option value="">Ninguna</option>
@@ -1457,7 +1465,7 @@
 
 <!-- MODAL CONFIRM -->
 <div id="modalConfirm" class="modal-overlay hidden">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" id="modalConfirmContent" style="max-width:420px;">
     <div class="modal-header">
       <h3 id="confirmTitulo"></h3>
       <button class="modal-close" onclick="resolverConfirm(false)">&times;</button>
@@ -1528,15 +1536,19 @@ function mostrarModal(id) { $(id).classList.remove('hidden'); }
 function cerrarModal(id)  { $(id).classList.add('hidden'); }
 window.cerrarModal = cerrarModal;
 
-function confirmarAccion(titulo, cuerpoHtml, textoOk, cb) {
+function confirmarAccion(titulo, cuerpoHtml, textoOk, cb, anchoMax) {
   $('confirmTitulo').textContent = titulo;
   $('confirmCuerpo').innerHTML = cuerpoHtml;
   $('confirmBtn').textContent = textoOk || 'Confirmar';
+  var cont = $('modalConfirmContent');
+  if (cont) cont.style.maxWidth = anchoMax || '420px';
   _confirmCb = cb;
   mostrarModal('modalConfirm');
 }
 function resolverConfirm(val) {
   cerrarModal('modalConfirm');
+  var cont = $('modalConfirmContent');
+  if (cont) cont.style.maxWidth = '420px';
   if (_confirmCb) { var f = _confirmCb; _confirmCb = null; f(val); }
 }
 window.resolverConfirm = resolverConfirm;
@@ -3956,7 +3968,7 @@ function tabRecepcion(t, btn) {
   var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec', promociones:'tabRecPromociones' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
-  if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); }
+  if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); cargarEmpresasCache(); cargarHuespedCache(); }
   if (t === 'preReservas') { cargarPreReservas(); }
   if (t === 'reservas') { cargarReservasActivas(); }
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
@@ -4270,8 +4282,8 @@ function renderHuespedes(lista) {
     <td>${h.fechaNac||'-'}</td>
     <td>${nacLabels[h.nacionalidad]||''} ${esc(h.nacionalidad||'AR')}${h.pasaporte?' (P:'+esc(h.pasaporte)+')':''}</td>
     <td style="font-size:0.82rem;">${esc(h.email||'-')}</td>
-    <td style="font-size:0.8rem;color:var(--muted);">${h.ultimaVisita ? fmtFecha(h.ultimaVisita) : '-'}</td>
-    <td><button class="btn btn-red btn-xs" onclick="eliminarHuesped('${h.id}')">Elim.</button></td>
+    <td style="font-size:0.8rem;color:var(--muted);">${h.ultimaVisita ? fmtFecha(h.ultimaVisita) : '-'}${h.ultimaEdicion ? '<br><span style="font-size:0.72rem;">Edit: '+fmtFecha(h.ultimaEdicion)+(h.editadoPor?' ('+esc(h.editadoPor)+')':'')+'</span>' : ''}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="editarHuesped('${h.id}')">Editar</button>${(currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) ? '' : '<button class="btn btn-red btn-xs" onclick="eliminarHuesped(\''+h.id+'\')" style="margin-left:4px;">Elim.</button>'}</td>
   </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin huéspedes registrados</td></tr>';
 }
 
@@ -4310,6 +4322,7 @@ async function guardarHuesped() {
 window.guardarHuesped = guardarHuesped;
 
 async function eliminarHuesped(id) {
+  if (currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) { showToast('Recepción no puede eliminar huéspedes, solo editar','warning'); return; }
   confirmarAccion('Eliminar Huésped','<p style="padding:16px;">¿Eliminar este huésped del registro?</p>','Eliminar', async (ok) => {
     if (!ok) return;
     try { await deleteDoc(doc(db,'huespedes',id)); showToast('Huésped eliminado','success'); await cargarHuespedes(); }
@@ -4317,6 +4330,48 @@ async function eliminarHuesped(id) {
   });
 }
 window.eliminarHuesped = eliminarHuesped;
+
+async function editarHuesped(id) {
+  var h = huespedesCache.find(x => x.id === id);
+  if (!h) return;
+  var cuerpo = '<div style="padding:16px;display:flex;flex-direction:column;gap:8px;">'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Apellido *</label><input type="text" id="editHuesApellido" value="'+esc(h.apellido||'')+'"></div>'
+    + '<div class="form-group" style="flex:1;"><label>Nombre *</label><input type="text" id="editHuesNombre" value="'+esc(h.nombre||'')+'"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label>DNI</label><input type="text" id="editHuesDni" value="'+esc(h.dni||'')+'"></div>'
+    + '<div class="form-group" style="flex:1;"><label>Teléfono</label><input type="text" id="editHuesTelefono" value="'+esc(h.telefono||'')+'"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Email</label><input type="email" id="editHuesEmail" value="'+esc(h.email||'')+'"></div>'
+    + '<div class="form-group" style="flex:1;"><label>Fecha Nac.</label><input type="date" id="editHuesFechaNac" value="'+esc(h.fechaNac||'')+'"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Localidad</label><input type="text" id="editHuesLocalidad" value="'+esc(h.localidad||'')+'"></div>'
+    + '<div class="form-group" style="flex:1;"><label>Provincia</label><input type="text" id="editHuesProvincia" value="'+esc(h.provincia||'')+'"></div></div>'
+    + '<div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="editHuesAntecedentes" value="'+esc(h.antecedentesSalud||'')+'" placeholder="Afecciones simples o crónicas"></div>'
+    + '<div class="form-group"><label>Notas</label><input type="text" id="editHuesNotas" value="'+esc(h.notas||'')+'"></div>'
+    + (h.ultimaEdicion ? '<p style="font-size:0.78rem;color:var(--muted);">Última edición: '+fmtFecha(h.ultimaEdicion)+(h.editadoPor?' por '+esc(h.editadoPor):'')+'</p>' : '')
+    + '</div>';
+  confirmarAccion('Editar Huésped', cuerpo, 'Guardar Cambios', async (ok) => {
+    if (!ok) return;
+    var apellido = $('editHuesApellido').value.trim();
+    var nombre = $('editHuesNombre').value.trim();
+    if (!apellido || !nombre) { showToast('Completá apellido y nombre','warning'); return; }
+    try {
+      await updateDoc(doc(db,'huespedes',id), {
+        apellido, nombre,
+        dni: $('editHuesDni').value.trim(),
+        telefono: $('editHuesTelefono').value.trim(),
+        email: $('editHuesEmail').value.trim(),
+        fechaNac: $('editHuesFechaNac').value,
+        localidad: $('editHuesLocalidad').value.trim(),
+        provincia: $('editHuesProvincia').value.trim(),
+        antecedentesSalud: $('editHuesAntecedentes').value.trim(),
+        notas: $('editHuesNotas').value.trim(),
+        ultimaEdicion: serverTimestamp(),
+        editadoPor: currentUser ? currentUser.usuario : ''
+      });
+      showToast('Huésped actualizado','success');
+      await cargarHuespedes();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.editarHuesped = editarHuesped;
 
 // ── RESERVAS ──
 async function poblarSelectHabReserva() {
@@ -4412,12 +4467,10 @@ function toggleReservaEmpresa() {
   var checked = $('resEmpresa').checked;
   $('resEmpresaCampos').classList.toggle('hidden', !checked);
   $('resHabIndividualRow').style.display = checked ? 'none' : '';
-  // Hide personal fields when empresa is checked
-  var camposPersonales = ['resApellido','resNombre','resNacionalidad','resDni','resPasaporte','resEmail','resFechaNac','resTelefono'].map(id => $(id));
-  var rowsPersonales = document.querySelectorAll('#tabRecNuevaReserva .form-row');
-  var datosHuespedSection = $('resApellido')?.closest('.form-row');
   // Toggle visibility of personal data rows
-  ['resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
+  ['resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4','resDatosHuesped5','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
+  // Hide empresa-unnecessary fields
+  ['resRowAdultosMenores','resRowMonedaDescuento','resRowConfigSena','resRowMedioPagoFestejo','resRowRestriccion'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
   // Hide acompañantes section for empresa
   var secAcomp = $('seccionAcompanantes');
   if (secAcomp) secAcomp.style.display = checked ? 'none' : '';
@@ -4443,6 +4496,46 @@ function filtrarHabEmpresa() {
   }
 }
 window.filtrarHabEmpresa = filtrarHabEmpresa;
+
+// ── EMPRESA SEARCH/AUTOCOMPLETE ──
+var empresasCache = [];
+async function cargarEmpresasCache() {
+  try { var snap = await getDocs(collection(db,'empresas')); empresasCache = snap.docs.map(d => ({ id:d.id, ...d.data() })); } catch(e) {}
+}
+
+function buscarEmpresaAutocomplete(input) {
+  var q = (input.value||'').trim().toLowerCase();
+  var cont = $('resEmpresaSugerencias');
+  if (!cont || q.length < 2) { if (cont) cont.style.display='none'; return; }
+  var res = empresasCache.filter(e => (e.razonSocial||'').toLowerCase().includes(q) || (e.cuit||'').toLowerCase().includes(q));
+  if (!res.length) { cont.style.display='none'; return; }
+  cont.innerHTML = res.map(e => '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;" onmousedown="seleccionarEmpresa(\''+esc(e.razonSocial)+'\',\''+esc(e.cuit)+'\',\''+esc(e.email||'')+'\',\''+esc(e.telefono||'')+'\')">'
+    + '<strong>'+esc(e.razonSocial)+'</strong> <span style="color:var(--muted);">(CUIT: '+esc(e.cuit)+')</span></div>').join('');
+  cont.style.display = 'block';
+}
+window.buscarEmpresaAutocomplete = buscarEmpresaAutocomplete;
+
+function seleccionarEmpresa(razon, cuit, email, tel) {
+  $('resRazonSocial').value = razon;
+  $('resCuitEmpresa').value = cuit;
+  if ($('resEmailEmpresa')) $('resEmailEmpresa').value = email;
+  if ($('resTelefonoEmpresa')) $('resTelefonoEmpresa').value = tel;
+  var cont = $('resEmpresaSugerencias');
+  if (cont) cont.style.display = 'none';
+}
+window.seleccionarEmpresa = seleccionarEmpresa;
+
+async function guardarEmpresaEnBD(razonSocial, cuit, email, telefono) {
+  if (!razonSocial || !cuit) return;
+  try {
+    var existe = await getDocs(query(collection(db,'empresas'), where('cuit','==',cuit)));
+    if (existe.empty) {
+      await addDoc(collection(db,'empresas'), { razonSocial, cuit, email:email||'', telefono:telefono||'', fechaCreacion:serverTimestamp() });
+    } else {
+      await updateDoc(doc(db,'empresas',existe.docs[0].id), { razonSocial, email:email||'', telefono:telefono||'' });
+    }
+  } catch(e) { console.error('Error guardando empresa:',e); }
+}
 
 function toggleMedioPagoSena() {
   var sena = parseFloat($('resSena').value)||0;
@@ -4491,6 +4584,7 @@ async function crearReserva() {
       if (selEmpresa.options[i].selected) habsSeleccionadas.push(selEmpresa.options[i]);
     }
     if (!habsSeleccionadas.length) { showToast('Seleccioná al menos una habitación','warning'); return; }
+    await guardarEmpresaEnBD(razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa);
     return crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, telefonoEmpresa, habsSeleccionadas);
   }
   if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
@@ -4519,6 +4613,9 @@ async function crearReserva() {
   var festejo = $('resFestejo').value.trim();
   var restriccionAlim = $('resRestriccionAlim').value;
   var pedidosEsp = $('resPedidosEsp').value.trim();
+  var localidadRes = $('resLocalidad')?.value?.trim()||'';
+  var provinciaRes = $('resProvincia')?.value?.trim()||'';
+  var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
 
   // Recoger acompañantes
   var acompanantes = [];
@@ -4562,6 +4659,7 @@ async function crearReserva() {
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
       configCamas, festejo, restriccionAlim, pedidosEsp,
+      localidad: localidadRes, provincia: provinciaRes, antecedentesSalud,
       acompanantes,
       estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
@@ -4990,6 +5088,11 @@ async function editarReserva(resId) {
       <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="editResFestejo" value="${esc(reserva.festejo||'')}"></div>
       <div class="form-group"><label>Pedidos Especiales</label><input type="text" id="editResPedidosEsp" value="${esc(reserva.pedidosEsp||'')}"></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label>Localidad</label><input type="text" id="editResLocalidad" value="${esc(reserva.localidad||'')}"></div>
+      <div class="form-group"><label>Provincia</label><input type="text" id="editResProvincia" value="${esc(reserva.provincia||'')}"></div>
+    </div>
+    <div class="form-group"><label>Antecedentes de Salud (afecciones simples o crónicas)</label><input type="text" id="editResAntecedentes" value="${esc(reserva.antecedentesSalud||'')}" placeholder="Afecciones simples o crónicas"></div>
     <div class="form-group"><label>Notas</label><textarea id="editResNotas" rows="2" style="width:100%;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;">${esc(reserva.notas||'')}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -5035,6 +5138,9 @@ async function editarReserva(resId) {
         restriccionAlim: $('editResRestriccion')?.value||'',
         festejo: $('editResFestejo')?.value?.trim()||'',
         pedidosEsp: $('editResPedidosEsp')?.value?.trim()||'',
+        localidad: $('editResLocalidad')?.value?.trim()||'',
+        provincia: $('editResProvincia')?.value?.trim()||'',
+        antecedentesSalud: $('editResAntecedentes')?.value?.trim()||'',
         notas: $('editResNotas')?.value?.trim()||'',
         acompanantes: acompanantes
       });
@@ -5042,7 +5148,7 @@ async function editarReserva(resId) {
       await cargarReservasActivas();
       await cargarPreReservas();
     } catch(e) { showToast('Error: '+e.message,'error'); }
-  });
+  }, '92vw');
 }
 window.editarReserva = editarReserva;
 
@@ -5172,6 +5278,18 @@ async function realizarCheckIn(resId) {
     var cuerpoCheckIn = `<div style="padding:16px;">
       <p>¿Confirmar check-in para <strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}?</p>
       <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
+      <div style="margin:10px 0;padding:10px;background:var(--surface);border-radius:10px;">
+        <div class="form-row" style="margin-bottom:6px;">
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:6px;">
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Localidad</label><input type="text" id="checkInLocalidad" value="${esc(res.localidad||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Provincia</label><input type="text" id="checkInProvincia" value="${esc(res.provincia||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Antecedentes de Salud</label><input type="text" id="checkInAntecedentesSalud" value="${esc(res.antecedentesSalud||'')}" placeholder="Afecciones simples o crónicas" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+        </div>
+      </div>
       ${esEmpresaRes ? `<div style="margin:12px 0;padding:12px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <h4 style="font-size:0.92rem;font-weight:700;">Alojados de la Habitación</h4>
@@ -5233,11 +5351,23 @@ async function realizarCheckIn(resId) {
           </div>
         </div>
       </div>
+      <div style="margin-top:12px;text-align:center;">
+        <button class="btn btn-blue" type="button" onclick="imprimirFichaHuesped('${resId}')" style="font-size:0.9rem;">Imprimir Ficha de Huésped (A4)</button>
+      </div>
     </div>`;
     confirmarAccion('Confirmar Check-In', cuerpoCheckIn, 'Confirmar Check-In', async (ok) => {
       if (!ok) return;
       try {
         var updateData = { estado:'CHECKIN', fechaCheckInReal:serverTimestamp() };
+        // Save check-in fields
+        var vehiculo = $('checkInVehiculo')?.value?.trim()||'';
+        var localidadCI = $('checkInLocalidad')?.value?.trim()||'';
+        var provinciaCI = $('checkInProvincia')?.value?.trim()||'';
+        var antecedentesSaludCI = $('checkInAntecedentesSalud')?.value?.trim()||'';
+        if (vehiculo) updateData.vehiculo = vehiculo;
+        if (localidadCI) updateData.localidad = localidadCI;
+        if (provinciaCI) updateData.provincia = provinciaCI;
+        if (antecedentesSaludCI) updateData.antecedentesSalud = antecedentesSaludCI;
         // Save alojados for empresa reservations
         if (esEmpresaRes) {
           var alojadosCI = recogerAlojadosCheckIn();
@@ -5292,9 +5422,21 @@ async function realizarCheckIn(resId) {
         }
         await updateDoc(doc(db,'reservas',resId), updateData);
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'OCUPADA', huespedActual:res.huesped, reservaId:resId });
+        // Save huéspedes to huespedes DB
         if (res.dni) {
           var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
-          if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp() });
+          if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp(), localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'' });
+          else await addDoc(collection(db,'huespedes'), { apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni, telefono:res.telefono||'', email:res.email||'', nacionalidad:res.nacionalidad||'AR', fechaNac:res.fechaNac||'', localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+        }
+        // Save empresa alojados to huespedes DB
+        if (esEmpresaRes && updateData.alojados) {
+          for (var aloj of updateData.alojados) {
+            if (aloj.dni) {
+              var existeAloj = await getDocs(query(collection(db,'huespedes'), where('dni','==',aloj.dni)));
+              if (!existeAloj.empty) await updateDoc(doc(db,'huespedes',existeAloj.docs[0].id), { ultimaVisita:serverTimestamp() });
+              else await addDoc(collection(db,'huespedes'), { apellido:aloj.apellido, nombre:aloj.nombre, dni:aloj.dni, telefono:aloj.telefono||'', email:aloj.email||'', nacionalidad:aloj.nacionalidad||'AR', fechaNac:aloj.fechaNac||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+            }
+          }
         }
         showToast('Check-In realizado — Hab. '+res.habitacionNro,'success');
         await cargarListaCheckIn();
@@ -5416,6 +5558,108 @@ function agregarPagoCheckIn(restante, monedaLabel) {
 }
 window.agregarPagoCheckIn = agregarPagoCheckIn;
 
+// ── BÚSQUEDA HUÉSPED POR DNI ──
+var huespedCache = [];
+async function cargarHuespedCache() {
+  try { var snap = await getDocs(collection(db,'huespedes')); huespedCache = snap.docs.map(d => ({ id:d.id, ...d.data() })); } catch(e) {}
+}
+
+function buscarHuespedPorDni(val) {
+  var q = (val||'').trim();
+  var cont = $('resHuespedSugerencias');
+  if (!cont || q.length < 3) { if (cont) cont.style.display='none'; return; }
+  var res = huespedCache.filter(h => (h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase()));
+  if (!res.length) { cont.style.display='none'; return; }
+  cont.innerHTML = res.slice(0,5).map(h => '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;" onmousedown="seleccionarHuesped(\''+esc(h.id)+'\')">'
+    + '<strong>'+esc(h.apellido)+', '+esc(h.nombre)+'</strong> <span style="color:var(--muted);">DNI: '+esc(h.dni||'')+' | '+esc(h.telefono||'')+'</span>'
+    + (h.ultimaVisita ? ' <span style="color:var(--green);font-size:0.75rem;">Cliente Habitual</span>' : '')+'</div>').join('');
+  cont.style.display = 'block';
+}
+window.buscarHuespedPorDni = buscarHuespedPorDni;
+
+function seleccionarHuesped(hId) {
+  var h = huespedCache.find(x => x.id === hId);
+  if (!h) return;
+  $('resApellido').value = h.apellido||'';
+  $('resNombre').value = h.nombre||'';
+  $('resDni').value = h.dni||'';
+  $('resTelefono').value = h.telefono||'';
+  $('resEmail').value = h.email||'';
+  $('resFechaNac').value = h.fechaNac||'';
+  if ($('resLocalidad')) $('resLocalidad').value = h.localidad||'';
+  if ($('resProvincia')) $('resProvincia').value = h.provincia||'';
+  if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value = h.antecedentesSalud||'';
+  if (h.nacionalidad) { $('resNacionalidad').value = h.nacionalidad; toggleDocReserva(); }
+  if (h.pasaporte && $('resPasaporte')) $('resPasaporte').value = h.pasaporte;
+  var cont = $('resHuespedSugerencias');
+  if (cont) cont.style.display = 'none';
+  if (h.ultimaVisita) showToast('Cliente habitual: '+h.apellido+' '+h.nombre,'success');
+}
+window.seleccionarHuesped = seleccionarHuesped;
+
+// ── IMPRIMIR FICHA DE HUÉSPED A4 ──
+async function imprimirFichaHuesped(resId) {
+  try {
+    var resSnap = await getDoc(doc(db,'reservas',resId));
+    var res = resSnap.data();
+    var vehiculo = $('checkInVehiculo')?.value?.trim()||res.vehiculo||'';
+    var localidad = $('checkInLocalidad')?.value?.trim()||res.localidad||'';
+    var provincia = $('checkInProvincia')?.value?.trim()||res.provincia||'';
+    var antSalud = $('checkInAntecedentesSalud')?.value?.trim()||res.antecedentesSalud||'';
+    var fechaIngreso = res.fechaIn||new Date().toISOString().slice(0,10);
+    var personas = [];
+    if (!res.esEmpresa) {
+      personas.push({ apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni||'', telefono:res.telefono||'', email:res.email||'', fechaNac:res.fechaNac||'', nacionalidad:res.nacionalidad||'AR', localidad, provincia, antSalud, vehiculo });
+      if (res.acompanantes) res.acompanantes.forEach(a => personas.push({ apellido:a.apellido||'', nombre:a.nombre||'', dni:a.dni||'', telefono:a.telefono||'', email:a.email||'', fechaNac:a.fechaNac||'', nacionalidad:a.nacionalidad||'AR', localidad:'', provincia:'', antSalud:'', vehiculo:'' }));
+    } else {
+      var alojItems = document.querySelectorAll('#listaAlojadosCheckIn .alojado-checkin-item');
+      if (alojItems.length) {
+        alojItems.forEach(item => personas.push({ apellido:item.querySelector('.aloj-apellido')?.value?.trim()||'', nombre:item.querySelector('.aloj-nombre')?.value?.trim()||'', dni:item.querySelector('.aloj-dni')?.value?.trim()||'', telefono:item.querySelector('.aloj-telefono')?.value?.trim()||'', email:item.querySelector('.aloj-email')?.value?.trim()||'', fechaNac:item.querySelector('.aloj-fechanac')?.value||'', nacionalidad:item.querySelector('.aloj-nacionalidad')?.value||'AR', localidad:'', provincia:'', antSalud:'', vehiculo:'' }));
+      } else if (res.alojados) {
+        res.alojados.forEach(a => personas.push({ apellido:a.apellido||'', nombre:a.nombre||'', dni:a.dni||'', telefono:a.telefono||'', email:a.email||'', fechaNac:a.fechaNac||'', nacionalidad:a.nacionalidad||'AR', localidad:'', provincia:'', antSalud:'', vehiculo:'' }));
+      }
+    }
+    if (!personas.length) { showToast('No hay datos de huéspedes para imprimir','warning'); return; }
+
+    var leyendaTermal = 'Duración del baño termal: No más de 20 minutos corridos en piscinas a 36 C°, dejo constancia que cumplo con todos los requisitos para acceder a balneoterapia termal. Queda bajo mi exclusiva responsabilidad cualquier eventual accidente que pudiera ocurrir ya sea por causas naturales o por propia negligencia, en la realización de baños termales, actividades recreativas que realice el hotel fuera de sus instalaciones, como así también el uso de bicicletas de paseo.';
+
+    function generarFichaHTML(p, idx) {
+      return '<div style="border:1px solid #999;padding:18px 22px;height:48%;box-sizing:border-box;page-break-inside:avoid;position:relative;font-family:Arial,sans-serif;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">'
+        + '<div><strong style="font-size:14px;">Habitación: '+esc(res.habitacionNro)+'</strong><br><span style="font-size:12px;">Fecha Ingreso: '+fechaIngreso+'</span></div>'
+        + '<div style="text-align:right;"><strong style="font-size:16px;">EPECUEN</strong><br><span style="font-size:11px;">Hotel & Spa</span></div>'
+        + '</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+        + '<tr><td style="padding:4px;border:1px solid #ccc;width:25%;"><strong>Apellido:</strong> '+esc(p.apellido)+'</td><td style="padding:4px;border:1px solid #ccc;width:25%;"><strong>Nombre:</strong> '+esc(p.nombre)+'</td><td style="padding:4px;border:1px solid #ccc;width:25%;"><strong>DNI:</strong> '+esc(p.dni)+'</td><td style="padding:4px;border:1px solid #ccc;width:25%;"><strong>Nacionalidad:</strong> '+esc(p.nacionalidad)+'</td></tr>'
+        + '<tr><td style="padding:4px;border:1px solid #ccc;"><strong>Teléfono:</strong> '+esc(p.telefono)+'</td><td style="padding:4px;border:1px solid #ccc;"><strong>Email:</strong> '+esc(p.email)+'</td><td style="padding:4px;border:1px solid #ccc;"><strong>Fecha Nac.:</strong> '+esc(p.fechaNac)+'</td><td style="padding:4px;border:1px solid #ccc;"><strong>Vehículo:</strong> '+esc(p.vehiculo||vehiculo)+'</td></tr>'
+        + (p.localidad || p.provincia ? '<tr><td style="padding:4px;border:1px solid #ccc;" colspan="2"><strong>Localidad:</strong> '+esc(p.localidad)+'</td><td style="padding:4px;border:1px solid #ccc;" colspan="2"><strong>Provincia:</strong> '+esc(p.provincia)+'</td></tr>' : '')
+        + (p.antSalud ? '<tr><td style="padding:4px;border:1px solid #ccc;" colspan="4"><strong>Antecedentes de Salud:</strong> '+esc(p.antSalud)+'</td></tr>' : '')
+        + '</table>'
+        + '<div style="margin-top:12px;font-size:9px;line-height:1.4;font-style:italic;border:1px solid #ccc;padding:8px;background:#f9f9f9;">'+leyendaTermal+'</div>'
+        + '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:flex-end;">'
+        + '<div style="border-top:1px solid #000;width:45%;text-align:center;padding-top:4px;font-size:10px;">Firma del Huésped</div>'
+        + '<div style="border-top:1px solid #000;width:45%;text-align:center;padding-top:4px;font-size:10px;">Aclaración</div>'
+        + '</div></div>';
+    }
+
+    var paginas = '';
+    for (var i=0; i<personas.length; i+=2) {
+      paginas += '<div style="page-break-after:always;height:100vh;display:flex;flex-direction:column;justify-content:space-between;padding:10px;">';
+      paginas += generarFichaHTML(personas[i], i);
+      if (i+1 < personas.length) paginas += generarFichaHTML(personas[i+1], i+1);
+      else paginas += '<div style="height:48%;"></div>';
+      paginas += '</div>';
+    }
+
+    var w = window.open('','','width=800,height=1100');
+    w.document.write('<html><head><title>Ficha de Huésped</title><style>@page{margin:10mm;}@media print{body{margin:0;}}</style></head><body style="margin:0;font-family:Arial,sans-serif;">'+paginas+'</body></html>');
+    w.document.close();
+    w.focus();
+    w.print();
+  } catch(e) { showToast('Error generando ficha: '+e.message,'error'); }
+}
+window.imprimirFichaHuesped = imprimirFichaHuesped;
+
 // ── ANULACIÓN DE RESERVA VENCIDA ──
 async function anularReservaVencida(resId, habId) {
   confirmarAccion('Anular Reserva Vencida','<p style="padding:16px;">Esta reserva está vencida (la fecha de ingreso ya pasó). ¿Anular y liberar la habitación?</p>','Anular y Liberar', async (ok) => {
@@ -5503,6 +5747,7 @@ async function iniciarCheckOut(resId) {
       <div style="margin-bottom:12px;font-weight:700;font-size:1.1rem;">Check-Out — Hab. ${esc(res.habitacionNro)}</div>
       <p style="color:var(--muted);margin-bottom:4px;">Huésped: <strong>${esc(res.huesped)}</strong></p>
       ${esEmpresaCheckout ? '<p style="color:rgba(139,92,246,1);font-size:0.85rem;margin-bottom:4px;font-weight:600;">🏢 Empresa: '+esc(res.razonSocial||'')+' (CUIT: '+esc(res.cuitEmpresa||'')+')</p>' : ''}
+      ${esEmpresaCheckout ? '<label style="display:flex;align-items:center;gap:8px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:10px;margin-bottom:10px;cursor:pointer;font-size:0.85rem;"><input type="checkbox" id="checkoutEstadiaCtaCte" onchange="toggleCheckoutEstadiaCtaCte('+totalConsumos+','+costoEstadia+','+saldoFavor+')"><span>Enviar <strong>estadía</strong> a Cta. Cte. de la empresa y cobrar al huésped solo los <strong>consumos</strong></span></label>' : ''}
       <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
@@ -5514,8 +5759,9 @@ async function iniciarCheckOut(resId) {
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:1.2rem;font-weight:700;padding:10px;background:rgba(46,204,113,0.1);border-radius:10px;">
-        <span>TOTAL A COBRAR</span><span style="color:var(--green);">$ ${totalGeneral.toLocaleString('es-AR')}</span>
+        <span>TOTAL A COBRAR</span><span id="checkoutTotalCobrar" style="color:var(--green);">$ ${totalGeneral.toLocaleString('es-AR')}</span>
       </div>
+      <div id="checkoutEstadiaCtaCteAviso" style="display:none;font-size:0.82rem;color:rgba(139,92,246,1);margin-top:6px;">La estadía se cargará a la Cta. Cte. de la empresa.</div>
       <div style="margin-top:16px;">
         <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:8px;font-weight:600;">Medios de Pago</label>
         <div id="checkoutPagosContainer">
@@ -5544,6 +5790,7 @@ async function iniciarCheckOut(resId) {
 
     confirmarAccion('Check-Out', cuerpo, 'Confirmar Check-Out', async (ok) => {
       if (!ok) return;
+      var estadiaACtaCte = esEmpresaCheckout && $('checkoutEstadiaCtaCte') && $('checkoutEstadiaCtaCte').checked;
       // Collect multiple payments
       var pagosRows = document.querySelectorAll('.checkout-pago-row');
       var pagos = [];
@@ -5558,7 +5805,8 @@ async function iniciarCheckOut(resId) {
         if (medio === 'CUENTA_CORRIENTE') { tieneCtaCte = true; montoCtaCte += monto; }
         if (monto > 0) { pagos.push({ medio, monto, idTx }); totalPagado += monto; }
       }
-      if (!pagos.length && totalGeneral > 0) { showToast('Agregá al menos un pago','warning'); return; }
+      var totalEfectivo = estadiaACtaCte ? Math.max(0, totalConsumos - saldoFavor) : totalGeneral;
+      if (!pagos.length && totalEfectivo > 0) { showToast('Agregá al menos un pago','warning'); return; }
       var medioPago = pagos.length === 1 ? pagos[0].medio : 'MULTIPLE';
       var idTxPrimero = pagos.length === 1 ? (pagos[0].idTx||'') : pagos.map(p=>p.medio+':'+p.monto+(p.idTx?'('+p.idTx+')':'')).join(', ');
       // Verificar caja abierta (solo si hay pagos que no son cta cte)
@@ -5583,8 +5831,16 @@ async function iniciarCheckOut(resId) {
             await cargarDeudaCtaCte(ctaId, res.razonSocial||'', res.cuitEmpresa||'', montoCtaCte, 'Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+') - Reserva '+resId.substring(0,6));
           } catch(ee) { console.error('Error ctacte:',ee); }
         }
+        // Enviar estadía a Cta. Cte. (cobrar al huésped solo consumos)
+        if (estadiaACtaCte && esEmpresaCheckout && costoEstadia > 0) {
+          try {
+            var ctaIdE = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
+            await cargarDeudaCtaCte(ctaIdE, res.razonSocial||'', res.cuitEmpresa||'', costoEstadia, 'Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+') - Reserva '+resId.substring(0,6));
+            showToast('Estadía $'+costoEstadia.toLocaleString('es-AR')+' enviada a Cta. Cte. de '+esc(res.razonSocial||''),'info');
+          } catch(ee) { console.error('Error estadia ctacte:',ee); }
+        }
         // Auto-crear cta cte para empresas que no pagaron el total (pago diferido)
-        if (esEmpresaCheckout && !tieneCtaCte && totalGeneral > 0 && totalPagado < totalGeneral) {
+        if (!estadiaACtaCte && esEmpresaCheckout && !tieneCtaCte && totalGeneral > 0 && totalPagado < totalGeneral) {
           try {
             var montoPendiente = totalGeneral - totalPagado;
             var ctaId2 = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
@@ -5607,6 +5863,25 @@ function toggleCheckoutRowIdTx(sel) {
   if (wrap) wrap.style.display = (sel.value !== 'EFECTIVO' && sel.value !== 'CUENTA_CORRIENTE') ? 'block' : 'none';
 }
 window.toggleCheckoutRowIdTx = toggleCheckoutRowIdTx;
+
+function toggleCheckoutEstadiaCtaCte(totalConsumos, costoEstadia, saldoFavor) {
+  var chk = $('checkoutEstadiaCtaCte');
+  var nuevoTotal;
+  if (chk && chk.checked) {
+    nuevoTotal = totalConsumos - saldoFavor;
+  } else {
+    nuevoTotal = costoEstadia + totalConsumos - saldoFavor;
+  }
+  if (nuevoTotal < 0) nuevoTotal = 0;
+  var spanTotal = $('checkoutTotalCobrar');
+  if (spanTotal) spanTotal.textContent = '$ ' + nuevoTotal.toLocaleString('es-AR');
+  var aviso = $('checkoutEstadiaCtaCteAviso');
+  if (aviso) aviso.style.display = (chk && chk.checked) ? 'block' : 'none';
+  // Actualizar el primer monto del pago
+  var primerMonto = document.querySelector('.checkoutMonto');
+  if (primerMonto) primerMonto.value = nuevoTotal;
+}
+window.toggleCheckoutEstadiaCtaCte = toggleCheckoutEstadiaCtaCte;
 
 function agregarPagoCheckout(total) {
   var container = $('checkoutPagosContainer');
@@ -5674,7 +5949,10 @@ async function cargarConsumosHab() {
     if (snap.docs.length > 0) {
       tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="5" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
     }
-  } catch(e) { showToast('Error cargando consumos: '+e.message,'error'); }
+  } catch(e) {
+    var tb = $('tbodyConsumosHab');
+    if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No hay consumos para mostrar</td></tr>';
+  }
 }
 window.cargarConsumosHab = cargarConsumosHab;
 
@@ -5739,6 +6017,11 @@ async function abrirCajaRec() {
   // Check if already open
   var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
   if (!snap.empty) { showToast('Ya hay una caja abierta. Cerrá la actual antes de abrir otra.','warning'); return; }
+  // Check turno restriction: one opening per turno per day
+  var hoy = new Date().toISOString().slice(0,10);
+  var snapTurno = await getDocs(collection(db,'cajaRecepcion'));
+  var yaAbiertoTurno = snapTurno.docs.some(d => { var data=d.data(); return data.turno===turno && (data.fechaApertura||'').slice(0,10)===hoy; });
+  if (yaAbiertoTurno) { showToast('Ya se abrió caja para el turno '+turno+' hoy. No se puede abrir dos veces.','warning'); return; }
   try {
     await addDoc(collection(db,'cajaRecepcion'), {
       turno, montoApertura: monto, observaciones: obs,
@@ -6156,7 +6439,7 @@ async function renderCalendarioHab() {
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#f5b731;display:inline-block;"></span> Pre-Reserva</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#2ecc71;display:inline-block;"></span> Confirmada</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid var(--border);display:inline-block;"></span> Libre</span>';
-  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Arrastrá sobre celdas vacías para reserva empresa</span>';
+  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Click en celda vacía → reserva / pre-reserva · Arrastrá varias → reserva empresa</span>';
   html += '</div>';
   $('calendarioHab').innerHTML = html;
 }
@@ -6263,8 +6546,16 @@ document.addEventListener('mouseup', function(e) {
   var cal = document.getElementById('calendarioHab');
   if (cal) cal.classList.remove('cal-dragging');
   if (_calSelected.length < 2) {
+    // Click simple sobre celda vacía → abrir reserva / pre-reserva
+    var unica = _calSelected[0];
     document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
     _calSelected = [];
+    if (unica) {
+      var hId = unica.getAttribute('data-hab-id');
+      var hNro = unica.getAttribute('data-hab-nro');
+      var fch = unica.getAttribute('data-fecha');
+      if (hId) abrirReservaDesdeCalendario(hId, hNro, fch);
+    }
     return;
   }
   var habIds = [];
