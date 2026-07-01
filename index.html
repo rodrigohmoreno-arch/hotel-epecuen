@@ -566,7 +566,11 @@
                 <option value="MOZO">Mozo</option><option value="CAJA">Caja</option>
                 <option value="STOCK">Stock</option><option value="CHEF">Chef</option>
                 <option value="RECEPCION">Recepción Epecuén</option>
-                <option value="CARHUE_RECEPCION">Carhue Recepción</option><option value="ADMIN">Admin</option>
+                <option value="CARHUE_RECEPCION">Carhue Recepción</option>
+                <option value="SPA_RECEPCION">Spa Recepción (Turnos)</option>
+                <option value="SPA_CONFIRMA">Spa Encargado (Confirmar)</option>
+                <option value="SPA_ADMIN">Spa Admin</option>
+                <option value="ADMIN">Admin</option>
               </select></div>
           </div>
           <button class="btn btn-purple btn-sm" onclick="agregarUsuario()">Crear Usuario</button>
@@ -986,7 +990,7 @@
           <div class="form-group hidden" id="resGrupoPasaporte"><label>Pasaporte / Cédula *</label><input type="text" id="resPasaporte"></div>
         </div>
         <div class="form-row" id="resDatosHuesped3">
-          <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="resEmail"></div>
           <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
         <div class="form-row" id="resDatosHuesped4">
@@ -995,6 +999,7 @@
         <div class="form-row" id="resDatosHuesped5">
           <div class="form-group"><label>Localidad</label><input type="text" id="resLocalidad" placeholder="Localidad"></div>
           <div class="form-group"><label>Provincia</label><input type="text" id="resProvincia" placeholder="Provincia"></div>
+          <div class="form-group"><label>Vehículo (patente/modelo)</label><input type="text" id="resVehiculo" placeholder="Ej: ABC123 - Ford Ranger"></div>
         </div>
         <div class="form-row" id="resDatosHuesped6">
           <div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
@@ -1194,9 +1199,10 @@
           <div class="form-group"><label>Habitación</label><select id="filtroConsHab" onchange="cargarConsumosHab()"><option value="">Todas</option></select></div>
           <div class="form-group"><label>Fecha</label><input type="date" id="filtroConsHabFecha" onchange="cargarConsumosHab()"></div>
           <button class="btn btn-sm" onclick="imprimirConsumosHab()" style="margin-top:auto;">Imprimir Consumos</button>
+          <button class="btn btn-gold btn-sm" id="btnCobrarConsSel" onclick="cobrarConsumosSeleccionados()" style="margin-top:auto;display:none;">Cobrar Consumos Seleccionados</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
+          <thead><tr><th style="width:32px;"><input type="checkbox" id="consSelAll" onchange="toggleConsSelAll(this)"></th><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Consumió</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
           <tbody id="tbodyConsumosHab"></tbody>
         </table></div>
       </div>
@@ -1265,6 +1271,146 @@
       </div>
     </div>
   </div>
+
+  <!-- PANEL SPA RECEPCIÓN (Turnos) -->
+  <div id="panelSpaRecepcion" class="hidden">
+    <div class="tabs" style="flex-wrap:wrap;">
+      <button class="tab active" onclick="tabSpaRec('nuevo',this)">Nuevo Turno</button>
+      <button class="tab" onclick="tabSpaRec('agenda',this)">Agenda del Día</button>
+    </div>
+    <div id="tabSpaRecNuevo">
+      <div class="card">
+        <div class="card-title">Cargar Turno de Spa</div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha *</label><input type="date" id="stFecha"></div>
+          <div class="form-group"><label>Hora *</label><input type="time" id="stHora"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Tipo Cliente *</label>
+            <select id="stTipoCliente" onchange="toggleSpaTipoCliente()">
+              <option value="ALOJADO">Huésped Alojado</option>
+              <option value="EXTERNO">Externo</option>
+            </select></div>
+          <div class="form-group" id="stGrupoHab"><label>Habitación *</label>
+            <input type="text" id="stHabitacion" placeholder="N° habitación"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="stNombreCliente" placeholder="Nombre y apellido"></div>
+          <div class="form-group" id="stGrupoTelExterno" style="display:none;"><label>Teléfono</label><input type="text" id="stTelefono"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Servicio *</label><select id="stServicio"></select></div>
+          <div class="form-group"><label>Profesional (Masajista) *</label><select id="stProfesional"></select></div>
+        </div>
+        <div class="form-group"><label>Notas</label><input type="text" id="stNotas" placeholder="Observaciones del turno"></div>
+        <button class="btn btn-gold btn-sm" onclick="crearTurnoSpa()">Cargar Turno</button>
+      </div>
+    </div>
+    <div id="tabSpaRecAgenda" class="hidden">
+      <div class="card">
+        <div class="card-title">Agenda de Turnos</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;">
+          <input type="date" id="stAgendaFecha" onchange="cargarAgendaSpa()">
+          <button class="btn btn-sm" onclick="cargarAgendaSpa()">Actualizar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Hab.</th><th>Servicio</th><th>Profesional</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyAgendaSpa"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL SPA CONFIRMA (Encargado) -->
+  <div id="panelSpaConfirma" class="hidden">
+    <div class="tabs"><button class="tab active">Turnos del Día</button></div>
+    <div class="card">
+      <div class="card-title">Turnos para Confirmar</div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;">
+        <input type="date" id="scFecha" onchange="cargarTurnosConfirma()">
+        <button class="btn btn-sm" onclick="cargarTurnosConfirma()">Actualizar</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Hab.</th><th>Servicio</th><th>Profesional</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tbodyConfirmaSpa"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PANEL SPA ADMIN -->
+  <div id="panelSpaAdmin" class="hidden">
+    <div class="tabs" style="flex-wrap:wrap;">
+      <button class="tab active" onclick="tabSpaAdmin('profesionales',this)">Profesionales</button>
+      <button class="tab" onclick="tabSpaAdmin('servicios',this)">Servicios</button>
+      <button class="tab" onclick="tabSpaAdmin('turnos',this)">Turnos</button>
+      <button class="tab" onclick="tabSpaAdmin('liquidaciones',this)">Liquidaciones</button>
+      <button class="tab" onclick="tabSpaAdmin('estadisticas',this)">Estadísticas</button>
+    </div>
+    <div id="tabSpaAdminProfesionales">
+      <div class="card">
+        <div class="card-title">Profesionales de Spa</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="spNombre"></div>
+          <div class="form-group"><label>Especialidad</label><input type="text" id="spEspecialidad" placeholder="Ej: Masajes, Faciales"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarProfesionalSpa()">Agregar Profesional</button>
+        <div class="table-wrap" style="margin-top:16px;"><table>
+          <thead><tr><th>Nombre</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbodyProfesionalesSpa"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabSpaAdminServicios" class="hidden">
+      <div class="card">
+        <div class="card-title">Servicios de Spa</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="ssNombre" placeholder="Ej: Masaje descontracturante"></div>
+          <div class="form-group"><label>Precio *</label><input type="number" id="ssPrecio" step="0.01" value="0"></div>
+          <div class="form-group"><label>Duración (min)</label><input type="number" id="ssDuracion" value="60"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarServicioSpa()">Agregar Servicio</button>
+        <div class="table-wrap" style="margin-top:16px;"><table>
+          <thead><tr><th>Servicio</th><th>Precio</th><th>Duración</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbodyServiciosSpa"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabSpaAdminTurnos" class="hidden">
+      <div class="card">
+        <div class="card-title">Todos los Turnos</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+          <input type="date" id="saTurnoDesde"><span>a</span><input type="date" id="saTurnoHasta">
+          <button class="btn btn-sm" onclick="cargarTurnosAdmin()">Filtrar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Servicio</th><th>Profesional</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyTurnosAdmin"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabSpaAdminLiquidaciones" class="hidden">
+      <div class="card">
+        <div class="card-title">Liquidación a Profesionales</div>
+        <div class="form-row">
+          <div class="form-group"><label>Profesional *</label><select id="slProfesional"></select></div>
+          <div class="form-group"><label>Desde *</label><input type="date" id="slDesde"></div>
+          <div class="form-group"><label>Hasta *</label><input type="date" id="slHasta"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="generarLiquidacionSpa()">Generar Liquidación</button>
+        <div id="resultadoLiquidacionSpa" style="margin-top:16px;"></div>
+      </div>
+    </div>
+    <div id="tabSpaAdminEstadisticas" class="hidden">
+      <div class="card">
+        <div class="card-title">Estadísticas de Spa</div>
+        <div class="form-row">
+          <div class="form-group"><label>Mes</label><input type="month" id="seMes"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn btn-sm" onclick="cargarEstadisticasSpa()">Ver</button></div>
+        </div>
+        <div id="resultadoEstadisticasSpa" style="margin-top:16px;"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -1293,12 +1439,16 @@
           <label>Cantidad</label>
           <input type="number" id="prodCantidad" value="1" min="1">
         </div>
+        <div class="form-group" style="flex:1.5;">
+          <label>Nombre (opcional)</label>
+          <input type="text" id="prodNombreConsumidor" placeholder="¿Quién consume?">
+        </div>
         <div style="display:flex;align-items:flex-end;">
           <button class="btn btn-green btn-sm" onclick="agregarItem()">Agregar</button>
         </div>
       </div>
       <div class="table-wrap"><table id="tablaComanda">
-        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+        <thead><tr><th>Producto</th><th>Nombre</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
         <tbody id="tbodyComanda"></tbody>
       </table></div>
       <div style="text-align:right;margin-top:16px;font-size:1.2rem;font-weight:700;">
@@ -1530,7 +1680,7 @@ function showToast(msg, tipo='info') {
   t.className = 'toast toast-' + tipo;
   t.textContent = msg;
   $('toastContainer').appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  setTimeout(() => t.remove(), 6500);
 }
 function mostrarModal(id) { $(id).classList.remove('hidden'); }
 function cerrarModal(id)  { $(id).classList.add('hidden'); }
@@ -1612,7 +1762,7 @@ function doLogout() {
     currentUser = null; mesasCache = []; productosCache = [];
     $('loginScreen').classList.remove('hidden');
     $('mainApp').classList.add('hidden');
-    ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion'].forEach(id => $(id).classList.add('hidden'));
+    ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion','panelSpaRecepcion','panelSpaConfirma','panelSpaAdmin'].forEach(id => $(id).classList.add('hidden'));
   });
 }
 window.doLogout = doLogout;
@@ -1630,7 +1780,7 @@ function mostrarPanel(rol) {
   badge.textContent = rol;
   badge.className = 'rol-badge rol-' + rol.toLowerCase().replace('_recepcion','');
 
-  ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion'].forEach(id => $(id).classList.add('hidden'));
+  ['panelMozo','panelCaja','panelStock','panelChef','panelAdmin','panelCarhue','panelRecepcion','panelSpaRecepcion','panelSpaConfirma','panelSpaAdmin'].forEach(id => $(id).classList.add('hidden'));
 
   if (rol === 'MOZO') {
     $('panelMozo').classList.remove('hidden');
@@ -1658,6 +1808,19 @@ function mostrarPanel(rol) {
     $('panelRecepcion').classList.remove('hidden');
     cargarHabitaciones();
     verificarReservasPendientes();
+  } else if (rol === 'SPA_RECEPCION') {
+    $('panelSpaRecepcion').classList.remove('hidden');
+    var hoy = new Date();
+    if ($('stFecha')) $('stFecha').valueAsDate = hoy;
+    if ($('stAgendaFecha')) $('stAgendaFecha').valueAsDate = hoy;
+    cargarSelectsSpaTurno();
+  } else if (rol === 'SPA_CONFIRMA') {
+    $('panelSpaConfirma').classList.remove('hidden');
+    if ($('scFecha')) $('scFecha').valueAsDate = new Date();
+    cargarTurnosConfirma();
+  } else if (rol === 'SPA_ADMIN') {
+    $('panelSpaAdmin').classList.remove('hidden');
+    cargarProfesionalesSpa();
   }
 }
 
@@ -1745,7 +1908,9 @@ window.cargarMesas = cargarMesas;
 
 function renderMesas() {
   var filtro = $('filtroUbicacion').value;
-  var mesas = filtro ? mesasCache.filter(m => m.ubicacion === filtro) : mesasCache;
+  // Ocultar mesas de spa liberadas (creadas solo para cobro de servicios externos)
+  var base = mesasCache.filter(m => !(m.esSpa && (m.estado||'LIBRE').toUpperCase() === 'LIBRE'));
+  var mesas = filtro ? base.filter(m => m.ubicacion === filtro) : base;
   if (!mesas.length) { $('mesasGrid').innerHTML = '<p style="color:var(--muted);">No hay mesas configuradas</p>'; return; }
   $('mesasGrid').innerHTML = mesas.map(m => {
     var est = (m.estado||'LIBRE').toUpperCase();
@@ -2008,7 +2173,7 @@ window.abrirComanda = abrirComanda;
 function renderComanda() {
   var tbody = $('tbodyComanda');
   if (!comandaActual.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Sin items</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Sin items</td></tr>';
     $('totalComanda').textContent = '0.00';
     return;
   }
@@ -2018,6 +2183,7 @@ function renderComanda() {
     total += sub;
     return `<tr>
       <td>${esc(item.nombre)}</td>
+      <td>${esc(item.nombreConsumidor||'-')}</td>
       <td>${item.cantidad}</td>
       <td>$${(item.precio||0).toFixed(2)}</td>
       <td>$${sub.toFixed(2)}</td>
@@ -2035,9 +2201,10 @@ async function agregarItem() {
   var precio = parseFloat(opt.dataset.precio) || 0;
   var sector = opt.dataset.sector || 'COCINA';
   var nombre = opt.text.split(' ($')[0];
+  var nombreConsumidor = $('prodNombreConsumidor')?.value?.trim() || '';
 
-  // Buscar si ya existe
-  var idx = comandaActual.findIndex(i => i.productoId === opt.value);
+  // Buscar si ya existe (mismo producto y mismo consumidor)
+  var idx = comandaActual.findIndex(i => i.productoId === opt.value && (i.nombreConsumidor||'') === nombreConsumidor);
   try {
     if (idx >= 0) {
       var item = comandaActual[idx];
@@ -2050,18 +2217,20 @@ async function agregarItem() {
         comandaId: comandaActivaId,
         productoId: opt.value,
         nombre: nombre,
+        nombreConsumidor: nombreConsumidor,
         cantidad: cant,
         precio: precio,
         subtotal: cant*precio,
         sector: sector
       });
-      comandaActual.push({ docId:ref.id, comandaId:comandaActivaId, productoId:opt.value, nombre, cantidad:cant, precio, subtotal:cant*precio, sector });
+      comandaActual.push({ docId:ref.id, comandaId:comandaActivaId, productoId:opt.value, nombre, nombreConsumidor, cantidad:cant, precio, subtotal:cant*precio, sector });
     }
     // Actualizar total comanda
     var total = comandaActual.reduce((a,i) => a + (i.cantidad*i.precio), 0);
     await updateDoc(doc(db,'comandas',comandaActivaId), { total });
     renderComanda();
     $('prodCantidad').value = '1';
+    if ($('prodNombreConsumidor')) $('prodNombreConsumidor').value = '';
     sel.value = '';
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -2200,7 +2369,7 @@ async function pasarAFacturacion(mesa, total) {
 
 function imprimirTicketConsumo(mesa, total) {
   var fecha = new Date().toLocaleString('es-AR');
-  var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}${i.nombreConsumidor?' <i style="font-size:10px;">('+esc(i.nombreConsumidor)+')</i>':''}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
   var comensales = mesa.cantidadComensales || 1;
   var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', EPECUEN_PC:'Hotel Epecuén (P.Completa)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
   var tipoLabel = tipoLabels[mesa.tipoCliente] || mesa.tipoCliente || '';
@@ -2233,7 +2402,7 @@ function imprimirTicketNoFiscal(data) {
   var fecha = new Date().toLocaleString('es-AR');
   var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
   var medioLabel = medioLabels[data.medioPago] || data.medioPago;
-  var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}${i.nombreConsumidor?' <i style="font-size:10px;">('+esc(i.nombreConsumidor)+')</i>':''}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
 
   // Datos del cliente para el ticket
   var dc = data.datosCliente || { tipo: 'CONSUMIDOR_FINAL' };
@@ -4616,6 +4785,7 @@ async function crearReserva() {
   var localidadRes = $('resLocalidad')?.value?.trim()||'';
   var provinciaRes = $('resProvincia')?.value?.trim()||'';
   var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
+  var vehiculoRes = $('resVehiculo')?.value?.trim()||'';
 
   // Recoger acompañantes
   var acompanantes = [];
@@ -4640,7 +4810,6 @@ async function crearReserva() {
   if (tieneSeña) {
     if (esAR && !dni) { showToast('DNI del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!esAR && !pasaporte) { showToast('Pasaporte/Cédula del huésped es obligatorio para confirmar reserva','warning'); return; }
-    if (!email) { showToast('Email del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!fechaNac) { showToast('Fecha de nacimiento es obligatoria para confirmar reserva','warning'); return; }
   }
 
@@ -4659,7 +4828,7 @@ async function crearReserva() {
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
       configCamas, festejo, restriccionAlim, pedidosEsp,
-      localidad: localidadRes, provincia: provinciaRes, antecedentesSalud,
+      localidad: localidadRes, provincia: provinciaRes, antecedentesSalud, vehiculo: vehiculoRes,
       acompanantes,
       estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
@@ -5280,7 +5449,7 @@ async function realizarCheckIn(resId) {
       <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
       <div style="margin:10px 0;padding:10px;background:var(--surface);border-radius:10px;">
         <div class="form-row" style="margin-bottom:6px;">
-          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" value="${esc(res.vehiculo||'')}" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
         </div>
         <div class="form-row" style="margin-bottom:6px;">
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Localidad</label><input type="text" id="checkInLocalidad" value="${esc(res.localidad||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
@@ -5426,15 +5595,15 @@ async function realizarCheckIn(resId) {
         if (res.dni) {
           var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
           if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp(), localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'' });
-          else await addDoc(collection(db,'huespedes'), { apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni, telefono:res.telefono||'', email:res.email||'', nacionalidad:res.nacionalidad||'AR', fechaNac:res.fechaNac||'', localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+          else await addDoc(collection(db,'huespedes'), { apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni, telefono:res.telefono||'', email:res.email||'', nacionalidad:res.nacionalidad||'AR', fechaNac:res.fechaNac||'', localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'', tipoHuesped:'COMUN', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
         }
         // Save empresa alojados to huespedes DB
         if (esEmpresaRes && updateData.alojados) {
           for (var aloj of updateData.alojados) {
             if (aloj.dni) {
               var existeAloj = await getDocs(query(collection(db,'huespedes'), where('dni','==',aloj.dni)));
-              if (!existeAloj.empty) await updateDoc(doc(db,'huespedes',existeAloj.docs[0].id), { ultimaVisita:serverTimestamp() });
-              else await addDoc(collection(db,'huespedes'), { apellido:aloj.apellido, nombre:aloj.nombre, dni:aloj.dni, telefono:aloj.telefono||'', email:aloj.email||'', nacionalidad:aloj.nacionalidad||'AR', fechaNac:aloj.fechaNac||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+              if (!existeAloj.empty) await updateDoc(doc(db,'huespedes',existeAloj.docs[0].id), { ultimaVisita:serverTimestamp(), tipoHuesped:'EMPRESA', empresaRazonSocial:res.razonSocial||'', empresaCuit:res.cuitEmpresa||'' });
+              else await addDoc(collection(db,'huespedes'), { apellido:aloj.apellido, nombre:aloj.nombre, dni:aloj.dni, telefono:aloj.telefono||'', email:aloj.email||'', nacionalidad:aloj.nacionalidad||'AR', fechaNac:aloj.fechaNac||'', tipoHuesped:'EMPRESA', empresaRazonSocial:res.razonSocial||'', empresaCuit:res.cuitEmpresa||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
             }
           }
         }
@@ -5568,7 +5737,8 @@ function buscarHuespedPorDni(val) {
   var q = (val||'').trim();
   var cont = $('resHuespedSugerencias');
   if (!cont || q.length < 3) { if (cont) cont.style.display='none'; return; }
-  var res = huespedCache.filter(h => (h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase()));
+  // Huéspedes comunes: excluir los cargados como empresa (esos se buscan por CUIT/nombre empresa)
+  var res = huespedCache.filter(h => (h.tipoHuesped||'COMUN') !== 'EMPRESA' && ((h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase())));
   if (!res.length) { cont.style.display='none'; return; }
   cont.innerHTML = res.slice(0,5).map(h => '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;" onmousedown="seleccionarHuesped(\''+esc(h.id)+'\')">'
     + '<strong>'+esc(h.apellido)+', '+esc(h.nombre)+'</strong> <span style="color:var(--muted);">DNI: '+esc(h.dni||'')+' | '+esc(h.telefono||'')+'</span>'
@@ -5589,6 +5759,7 @@ function seleccionarHuesped(hId) {
   if ($('resLocalidad')) $('resLocalidad').value = h.localidad||'';
   if ($('resProvincia')) $('resProvincia').value = h.provincia||'';
   if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value = h.antecedentesSalud||'';
+  if ($('resVehiculo')) $('resVehiculo').value = h.vehiculo||'';
   if (h.nacionalidad) { $('resNacionalidad').value = h.nacionalidad; toggleDocReserva(); }
   if (h.pasaporte && $('resPasaporte')) $('resPasaporte').value = h.pasaporte;
   var cont = $('resHuespedSugerencias');
@@ -5916,6 +6087,7 @@ function poblarFiltroConsHab() {
   habitacionesCache.forEach(h => { sel.innerHTML += `<option value="${h.numero}">${h.numero}</option>`; });
 }
 
+var _consumosHabActual = [];
 async function cargarConsumosHab() {
   try {
     var habFiltro = $('filtroConsHab').value;
@@ -5927,34 +6099,117 @@ async function cargarConsumosHab() {
     }
     var desde = Timestamp.fromDate(new Date(fechaFiltro+'T00:00:00'));
     var hasta = Timestamp.fromDate(new Date(fechaFiltro+'T23:59:59'));
-    var constraints = [where('fecha','>=',desde), where('fecha','<=',hasta)];
-    if (habFiltro) constraints.push(where('habitacionNro','==',habFiltro));
-    var q2 = query(collection(db,'consumosHabitacion'), ...constraints);
+    // Solo filtramos por fecha en Firestore (evita índice compuesto). La habitación se filtra en el cliente.
+    var q2 = query(collection(db,'consumosHabitacion'), where('fecha','>=',desde), where('fecha','<=',hasta));
     var snap = await getDocs(q2);
+    var docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (habFiltro) docs = docs.filter(c => c.habitacionNro === habFiltro);
+    _consumosHabActual = docs;
     var tbody = $('tbodyConsumosHab');
     var totalDia = 0;
-    tbody.innerHTML = snap.docs.map(d => {
-      var c = d.data();
+    var tipoLabels = { RESTAURANTE:'Restaurante', SPA:'Spa', BAR:'Bar', EXTRA:'Extra' };
+    tbody.innerHTML = docs.map(c => {
       totalDia += c.total||0;
-      var tipoLabels = { RESTAURANTE:'Restaurante', SPA:'Spa', BAR:'Bar', EXTRA:'Extra' };
       return `<tr>
+        <td><input type="checkbox" class="cons-sel-chk" data-id="${esc(c.id)}" data-total="${c.total||0}"></td>
         <td>${fmtFecha(c.fecha)}</td>
         <td><strong>${esc(c.habitacionNro)}</strong></td>
         <td>${esc(c.concepto)} <span style="font-size:0.75rem;color:var(--muted);">(${tipoLabels[c.tipo]||c.tipo})</span></td>
+        <td>${esc(c.nombreConsumidor||'-')}</td>
         <td>${c.cantidad||1}</td>
         <td>$${(c.precioUnit||0).toFixed(2)}</td>
         <td><strong>$${(c.total||0).toFixed(2)}</strong></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin consumos para esta fecha</td></tr>';
-    if (snap.docs.length > 0) {
-      tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="5" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin consumos para esta fecha</td></tr>';
+    if (docs.length > 0) {
+      tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="7" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
     }
+    // El botón de cobro separado solo aplica al filtrar una habitación específica
+    var btn = $('btnCobrarConsSel');
+    if (btn) btn.style.display = (habFiltro && docs.length > 0) ? 'block' : 'none';
+    var chkAll = $('consSelAll'); if (chkAll) chkAll.checked = false;
   } catch(e) {
     var tb = $('tbodyConsumosHab');
-    if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No hay consumos para mostrar</td></tr>';
+    if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">No hay consumos para mostrar</td></tr>';
   }
 }
 window.cargarConsumosHab = cargarConsumosHab;
+
+function toggleConsSelAll(chk) {
+  document.querySelectorAll('.cons-sel-chk').forEach(c => c.checked = chk.checked);
+}
+window.toggleConsSelAll = toggleConsSelAll;
+
+// Cobro separado de consumos (mismo proceso que checkout, solo consumos seleccionados)
+async function cobrarConsumosSeleccionados() {
+  var habFiltro = $('filtroConsHab').value;
+  if (!habFiltro) { showToast('Seleccioná una habitación para cobrar consumos','warning'); return; }
+  var seleccionados = Array.from(document.querySelectorAll('.cons-sel-chk:checked')).map(chk => chk.getAttribute('data-id'));
+  if (!seleccionados.length) { showToast('Seleccioná al menos un consumo','warning'); return; }
+  var items = _consumosHabActual.filter(c => seleccionados.includes(c.id));
+  var total = items.reduce((a,c) => a + (c.total||0), 0);
+  var cuerpo = `<div style="padding:16px;">
+    <p style="margin-bottom:10px;">Cobro de consumos — Hab. <strong>${esc(habFiltro)}</strong> — <strong>${items.length}</strong> ítem(s)</p>
+    <div style="max-height:140px;overflow-y:auto;font-size:0.82rem;margin-bottom:10px;">
+      ${items.map(c => '<div style="display:flex;justify-content:space-between;"><span>'+esc(c.concepto)+(c.nombreConsumidor?' ('+esc(c.nombreConsumidor)+')':'')+'</span><span>$'+(c.total||0).toLocaleString('es-AR')+'</span></div>').join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-bottom:10px;"><span>TOTAL</span><span>$${total.toLocaleString('es-AR')}</span></div>
+    <div class="form-group"><label>Medio de Pago</label>
+      <select id="cobroConsMedio" onchange="var t=$('cobroConsIdTxRow'); if(t) t.style.display=(this.value==='EFECTIVO')?'none':'block';">
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+        <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+        <option value="TRANSFERENCIA">Transferencia</option>
+      </select></div>
+    <div class="form-group" id="cobroConsIdTxRow" style="display:none;margin-top:8px;"><label>N° Cupón / ID Transacción</label><input type="text" id="cobroConsIdTx" placeholder="ID de transacción"></div>
+  </div>`;
+  confirmarAccion('Cobrar Consumos — Hab. '+habFiltro, cuerpo, 'Cobrar e Imprimir', async (ok) => {
+    if (!ok) return;
+    var medio = document.getElementById('cobroConsMedio').value;
+    var idTx = document.getElementById('cobroConsIdTx')?.value?.trim()||'';
+    if (medio !== 'EFECTIVO' && !idTx) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
+    var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+    if (cajaSnap.empty) { showToast('Debés abrir la caja antes de cobrar consumos','warning'); return; }
+    try {
+      await addDoc(collection(db,'cobrosConsumos'), {
+        habitacionNro: habFiltro, total, medioPago: medio, idTransaccion: idTx,
+        items: items.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, nombreConsumidor:c.nombreConsumidor||'' })),
+        fecha: serverTimestamp(), usuario: currentUser ? currentUser.usuario : ''
+      });
+      for (var it of items) { try { await deleteDoc(doc(db,'consumosHabitacion',it.id)); } catch(ee) {} }
+      imprimirTicketCobroConsumos(habFiltro, items, total, medio, idTx);
+      showToast('Consumos cobrados: $'+total.toLocaleString('es-AR'),'success');
+      await cargarConsumosHab();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cobrarConsumosSeleccionados = cobrarConsumosSeleccionados;
+
+function imprimirTicketCobroConsumos(habNro, items, total, medio, idTx) {
+  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
+  var itemsHTML = items.map(c => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(c.concepto||'Consumo')}${c.nombreConsumidor?' ('+esc(c.nombreConsumidor)+')':''}</span><span>$${(c.total||0).toLocaleString('es-AR')}</span></div>`).join('');
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:2px solid #000;padding-top:6px;margin-top:6px;}
+  </style></head><body>
+    <h2>Hotel Epecuén</h2>
+    <h3 style="font-size:11px;">TICKET NO FISCAL — PAGO DE CONSUMOS</h3>
+    <p style="text-align:center;font-size:10px;">${new Date().toLocaleString('es-AR')}</p>
+    <hr>
+    <p><b>Habitación:</b> ${esc(habNro)}</p>
+    <hr>
+    <p style="font-weight:bold;">CONSUMOS</p>
+    ${itemsHTML}
+    <div class="total"><span>TOTAL</span><span>$ ${total.toLocaleString('es-AR')}</span></div>
+    <hr>
+    <p><b>Medio de Pago:</b> ${medioLabels[medio]||medio}</p>
+    ${idTx ? '<p><b>ID Transacción:</b> '+esc(idTx)+'</p>' : ''}
+    <hr>
+    <p style="text-align:center;font-size:10px;color:#666;">Documento no fiscal — Hotel Epecuén</p>
+  </body></html>`;
+  imprimirHTML(html);
+}
 
 function imprimirConsumosHab() {
   var habFiltro = $('filtroConsHab').value;
@@ -6113,6 +6368,11 @@ async function cerrarCajaRec() {
   var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desdeAp))));
   var cierresData = cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO');
   cierresData.forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.totalGeneral||0); });
+  // Cobros separados de consumos durante este período
+  try {
+    var cobrosSnap = await getDocs(query(collection(db,'cobrosConsumos'), where('fecha','>=', Timestamp.fromDate(desdeAp))));
+    cobrosSnap.docs.map(d => d.data()).forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.total||0); });
+  } catch(ee) {}
   var totalCobros = Object.values(detalleMp).reduce((a,b)=>a+b,0);
   // Movimientos de caja (egresos e ingresos)
   var movSnap = await getDocs(query(collection(db,'movimientosCaja'), where('cajaId','==',cajaDoc.id)));
@@ -7001,24 +7261,579 @@ async function registrarConsumoHabitacion(mesa, items, total) {
       reservaId = habData.reservaId || '';
     }
   }
-  var concepto = items.map(i => i.cantidad+'x '+i.nombre).join(', ');
+  // Agrupar por consumidor: en habitación compartida, cada persona genera su propio registro
+  var grupos = {};
+  items.forEach(i => {
+    var k = i.nombreConsumidor || '';
+    if (!grupos[k]) grupos[k] = [];
+    grupos[k].push(i);
+  });
   try {
-    await addDoc(collection(db,'consumosHabitacion'), {
-      habitacionNro: habNro,
-      reservaId: reservaId,
-      concepto: concepto.length > 100 ? concepto.substring(0,97)+'...' : concepto,
-      items: items.map(i => ({ nombre:i.nombre, cantidad:i.cantidad, precio:i.precio })),
-      cantidad: items.length,
-      precioUnit: total,
-      total: total,
-      tipo: 'RESTAURANTE',
-      voucherId: mesa.voucherId || '',
-      usuario: currentUser.usuario,
-      fecha: serverTimestamp(),
-      mesaNombre: mesa.nombre || ''
-    });
+    for (var nombreCons of Object.keys(grupos)) {
+      var gItems = grupos[nombreCons];
+      var gTotal = gItems.reduce((a,i) => a + (i.cantidad*i.precio), 0);
+      var concepto = gItems.map(i => i.cantidad+'x '+i.nombre).join(', ');
+      await addDoc(collection(db,'consumosHabitacion'), {
+        habitacionNro: habNro,
+        reservaId: reservaId,
+        concepto: concepto.length > 100 ? concepto.substring(0,97)+'...' : concepto,
+        nombreConsumidor: nombreCons,
+        items: gItems.map(i => ({ nombre:i.nombre, cantidad:i.cantidad, precio:i.precio, nombreConsumidor:i.nombreConsumidor||'' })),
+        cantidad: gItems.length,
+        precioUnit: gTotal,
+        total: gTotal,
+        tipo: 'RESTAURANTE',
+        voucherId: mesa.voucherId || '',
+        usuario: currentUser.usuario,
+        fecha: serverTimestamp(),
+        mesaNombre: mesa.nombre || ''
+      });
+    }
   } catch(e) { console.log('Error registrando consumo habitacion:', e.message); }
 }
+
+// ══════════════════════════════════════
+// MÓDULO SPA
+// ══════════════════════════════════════
+var spaProfesionalesCache = [];
+var spaServiciosCache = [];
+
+async function cargarSelectsSpaTurno() {
+  try {
+    var snapP = await getDocs(collection(db,'spaProfesionales'));
+    spaProfesionalesCache = snapP.docs.map(d => ({ id:d.id, ...d.data() }));
+    var snapS = await getDocs(collection(db,'spaServicios'));
+    spaServiciosCache = snapS.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+  var selS = $('stServicio');
+  if (selS) {
+    var activos = spaServiciosCache.filter(s => s.activo !== false);
+    selS.innerHTML = '<option value="">Seleccionar...</option>' + activos.map(s => `<option value="${s.id}" data-precio="${s.precio||0}">${esc(s.nombre)} ($${(s.precio||0).toFixed(2)})</option>`).join('');
+  }
+  var selP = $('stProfesional');
+  if (selP) {
+    var activosP = spaProfesionalesCache.filter(p => p.activo !== false);
+    selP.innerHTML = '<option value="">Seleccionar...</option>' + activosP.map(p => `<option value="${p.id}">${esc(p.nombre)}${p.especialidad?' — '+esc(p.especialidad):''}</option>`).join('');
+  }
+}
+window.cargarSelectsSpaTurno = cargarSelectsSpaTurno;
+
+function toggleSpaTipoCliente() {
+  var tipo = $('stTipoCliente').value;
+  $('stGrupoHab').style.display = tipo === 'ALOJADO' ? '' : 'none';
+  $('stGrupoTelExterno').style.display = tipo === 'EXTERNO' ? '' : 'none';
+}
+window.toggleSpaTipoCliente = toggleSpaTipoCliente;
+
+function tabSpaRec(t, btn) {
+  document.querySelectorAll('#panelSpaRecepcion .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('tabSpaRecNuevo').classList.toggle('hidden', t !== 'nuevo');
+  $('tabSpaRecAgenda').classList.toggle('hidden', t !== 'agenda');
+  if (t === 'nuevo') cargarSelectsSpaTurno();
+  if (t === 'agenda') {
+    if ($('stAgendaFecha') && !$('stAgendaFecha').value) $('stAgendaFecha').valueAsDate = new Date();
+    cargarAgendaSpa();
+  }
+}
+window.tabSpaRec = tabSpaRec;
+
+async function crearTurnoSpa() {
+  var fecha = $('stFecha').value;
+  var hora = $('stHora').value;
+  var tipoCliente = $('stTipoCliente').value;
+  var hab = $('stHabitacion').value.trim();
+  var nombreCliente = $('stNombreCliente').value.trim();
+  var telefono = $('stTelefono')?.value?.trim() || '';
+  var selS = $('stServicio'), optS = selS.options[selS.selectedIndex];
+  var selP = $('stProfesional'), optP = selP.options[selP.selectedIndex];
+  var notas = $('stNotas').value.trim();
+  if (!fecha || !hora) { showToast('Completá fecha y hora','warning'); return; }
+  if (!nombreCliente) { showToast('Completá el nombre del cliente','warning'); return; }
+  if (tipoCliente === 'ALOJADO' && !hab) { showToast('Completá la habitación','warning'); return; }
+  if (!optS || !optS.value) { showToast('Seleccioná un servicio','warning'); return; }
+  if (!optP || !optP.value) { showToast('Seleccioná la profesional','warning'); return; }
+  try {
+    await addDoc(collection(db,'spaTurnos'), {
+      fecha, hora, tipoCliente,
+      habitacionNro: tipoCliente === 'ALOJADO' ? hab : '',
+      nombreCliente, telefono,
+      servicioId: optS.value,
+      servicioNombre: optS.text.split(' ($')[0],
+      servicioPrecio: parseFloat(optS.dataset.precio) || 0,
+      profesionalId: optP.value,
+      profesionalNombre: optP.text.split(' — ')[0],
+      notas,
+      estado: 'PENDIENTE',
+      usuarioCreo: currentUser.usuario,
+      fechaCreacion: serverTimestamp()
+    });
+    showToast('Turno cargado — '+fecha+' '+hora,'success');
+    $('stNombreCliente').value=''; $('stHabitacion').value=''; if($('stTelefono'))$('stTelefono').value=''; $('stNotas').value=''; $('stHora').value='';
+    selS.value=''; selP.value='';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.crearTurnoSpa = crearTurnoSpa;
+
+var _estadoSpaColors = { PENDIENTE:'var(--gold)', CONFIRMADO:'var(--green)', CANCELACION_SOLICITADA:'var(--blue)', CANCELADO:'var(--red)' };
+var _estadoSpaLabels = { PENDIENTE:'Pendiente', CONFIRMADO:'Confirmado', CANCELACION_SOLICITADA:'Cancelación Solicitada', CANCELADO:'Cancelado' };
+function badgeEstadoSpa(est) {
+  return `<span style="background:${_estadoSpaColors[est]||'var(--muted)'};color:#fff;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:700;">${_estadoSpaLabels[est]||est}</span>`;
+}
+
+async function cargarAgendaSpa() {
+  var fecha = $('stAgendaFecha').value;
+  var tbody = $('tbodyAgendaSpa');
+  if (!fecha) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Seleccioná una fecha</td></tr>'; return; }
+  try {
+    var snap = await getDocs(query(collection(db,'spaTurnos'), where('fecha','==',fecha)));
+    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    if (!turnos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin turnos para esta fecha</td></tr>'; return; }
+    tbody.innerHTML = turnos.map(t => `<tr>
+      <td><strong>${esc(t.hora)}</strong></td>
+      <td>${esc(t.nombreCliente)}</td>
+      <td>${t.tipoCliente === 'ALOJADO' ? 'Alojado' : 'Externo'}</td>
+      <td>${esc(t.habitacionNro||'-')}</td>
+      <td>${esc(t.servicioNombre)}</td>
+      <td>${esc(t.profesionalNombre)}</td>
+      <td>${badgeEstadoSpa(t.estado)}</td>
+    </tr>`).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
+}
+window.cargarAgendaSpa = cargarAgendaSpa;
+
+// ── SPA CONFIRMA (Encargado) ──
+async function cargarTurnosConfirma() {
+  var fecha = $('scFecha').value;
+  var tbody = $('tbodyConfirmaSpa');
+  if (!fecha) { fecha = new Date().toISOString().split('T')[0]; $('scFecha').value = fecha; }
+  try {
+    var snap = await getDocs(query(collection(db,'spaTurnos'), where('fecha','==',fecha)));
+    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    if (!turnos.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin turnos para esta fecha</td></tr>'; return; }
+    tbody.innerHTML = turnos.map(t => {
+      var acciones = '';
+      if (t.estado === 'PENDIENTE') {
+        acciones = `<button class="btn btn-green btn-xs" onclick="confirmarTurnoSpa('${t.id}')">Confirmar</button> `
+          + `<button class="btn btn-blue btn-xs" onclick="solicitarCancelacionTurno('${t.id}')" style="margin-left:4px;">Avisar Cancelación</button>`;
+      } else if (t.estado === 'CONFIRMADO') {
+        acciones = `<button class="btn btn-ghost btn-xs" onclick="imprimirTicketSpaPorId('${t.id}')">Reimprimir</button>`;
+      } else if (t.estado === 'CANCELACION_SOLICITADA') {
+        acciones = '<span style="font-size:0.72rem;color:var(--muted);">Esperando admin</span>';
+      }
+      return `<tr>
+        <td><strong>${esc(t.hora)}</strong></td>
+        <td>${esc(t.nombreCliente)}</td>
+        <td>${t.tipoCliente === 'ALOJADO' ? 'Alojado' : 'Externo'}</td>
+        <td>${esc(t.habitacionNro||'-')}</td>
+        <td>${esc(t.servicioNombre)}</td>
+        <td>${esc(t.profesionalNombre)}</td>
+        <td>${badgeEstadoSpa(t.estado)}</td>
+        <td>${acciones}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
+}
+window.cargarTurnosConfirma = cargarTurnosConfirma;
+
+async function confirmarTurnoSpa(id) {
+  try {
+    var snap = await getDoc(doc(db,'spaTurnos',id));
+    if (!snap.exists()) { showToast('Turno no encontrado','error'); return; }
+    var t = { id:snap.id, ...snap.data() };
+    if (t.estado !== 'PENDIENTE') { showToast('El turno ya fue procesado','warning'); return; }
+    var cuerpo = `<div style="padding:16px;">
+      <p>Confirmar que el servicio <strong>${esc(t.servicioNombre)}</strong> fue realizado por <strong>${esc(t.profesionalNombre)}</strong>.</p>
+      <p style="margin-top:8px;font-size:0.85rem;color:var(--muted);">Cliente: ${esc(t.nombreCliente)} — ${t.tipoCliente === 'ALOJADO' ? 'Hab. '+esc(t.habitacionNro) : 'Externo'}</p>
+      <p style="margin-top:8px;font-size:0.85rem;">${t.tipoCliente === 'ALOJADO' ? 'Se cargará a consumos de la habitación como Servicio de Spa.' : 'Se emitirá en Caja para cobrar (Externo).'}</p>
+    </div>`;
+    confirmarAccion('Confirmar Servicio Spa', cuerpo, 'Confirmar y Emitir', async (ok) => {
+      if (!ok) return;
+      try {
+        await updateDoc(doc(db,'spaTurnos',id), { estado:'CONFIRMADO', fechaConfirmacion:serverTimestamp(), usuarioConfirmo:currentUser.usuario });
+        if (t.tipoCliente === 'ALOJADO') {
+          await registrarConsumoSpaHabitacion(t);
+        } else {
+          await emitirServicioSpaExterno(t);
+        }
+        imprimirTicketSpa(t);
+        showToast('Servicio confirmado','success');
+        cargarTurnosConfirma();
+      } catch(e) { showToast('Error: '+e.message,'error'); }
+    });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.confirmarTurnoSpa = confirmarTurnoSpa;
+
+async function registrarConsumoSpaHabitacion(t) {
+  try {
+    var reservaId = '';
+    var habSnap = await getDocs(query(collection(db,'habitaciones'), where('numero','==',t.habitacionNro)));
+    if (!habSnap.empty) reservaId = habSnap.docs[0].data().reservaId || '';
+    await addDoc(collection(db,'consumosHabitacion'), {
+      habitacionNro: t.habitacionNro,
+      reservaId: reservaId,
+      concepto: 'Servicio de Spa: ' + t.servicioNombre,
+      nombreConsumidor: t.nombreCliente,
+      items: [{ nombre:t.servicioNombre, cantidad:1, precio:t.servicioPrecio }],
+      cantidad: 1,
+      precioUnit: t.servicioPrecio,
+      total: t.servicioPrecio,
+      tipo: 'SPA',
+      turnoSpaId: t.id,
+      profesionalNombre: t.profesionalNombre,
+      usuario: currentUser.usuario,
+      fecha: serverTimestamp()
+    });
+  } catch(e) { console.log('Error registrando consumo spa:', e.message); }
+}
+
+async function emitirServicioSpaExterno(t) {
+  try {
+    var cmdRef = await addDoc(collection(db,'comandas'), {
+      mesaId: '', mesaNombre: 'Spa — ' + t.nombreCliente,
+      tipoCliente: 'EXTERNO', nroHabitacion: '', nombreCliente: t.nombreCliente,
+      cantidadComensales: 1, estado: 'FACTURACION', total: t.servicioPrecio,
+      esSpa: true, turnoSpaId: t.id, usuario: currentUser.usuario, fechaAbierta: serverTimestamp()
+    });
+    await addDoc(collection(db,'comandasDetalle'), {
+      comandaId: cmdRef.id, productoId: 'SPA_'+t.servicioId,
+      nombre: 'Servicio Spa: ' + t.servicioNombre, cantidad: 1,
+      precio: t.servicioPrecio, subtotal: t.servicioPrecio, sector: 'SPA'
+    });
+    await addDoc(collection(db,'mesas'), {
+      nombre: 'Spa — ' + t.nombreCliente, ubicacion: 'Spa', estado: 'FACTURACION',
+      comandaId: cmdRef.id, tipoCliente: 'EXTERNO', nombreCliente: t.nombreCliente,
+      cantidadComensales: 1, esSpa: true, turnoSpaId: t.id
+    });
+  } catch(e) { console.log('Error emitiendo servicio spa externo:', e.message); }
+}
+
+function imprimirTicketSpa(t) {
+  var fecha = new Date().toLocaleString('es-AR');
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}
+    body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}
+    hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #000;padding-top:4px;margin-top:4px;}
+    .firma{margin-top:16px;border-top:1px solid #000;text-align:center;font-size:11px;padding-top:4px;}
+  </style></head><body>
+    <h2>EPECUÉN Hotel & Spa</h2>
+    <h3 style="font-size:11px;">Comprobante de Servicio de Spa</h3>
+    <p style="text-align:center;font-size:10px;">${fecha}</p>
+    <hr>
+    <p style="font-size:11px;"><b>Cliente:</b> ${esc(t.nombreCliente)}</p>
+    <p style="font-size:11px;"><b>Tipo:</b> ${t.tipoCliente === 'ALOJADO' ? 'Huésped Alojado (Hab. '+esc(t.habitacionNro)+')' : 'Externo'}</p>
+    <p style="font-size:11px;"><b>Servicio:</b> ${esc(t.servicioNombre)}</p>
+    <p style="font-size:11px;"><b>Profesional:</b> ${esc(t.profesionalNombre)}</p>
+    <p style="font-size:11px;"><b>Fecha turno:</b> ${esc(t.fecha)} ${esc(t.hora)}</p>
+    <hr>
+    <div class="total"><span>TOTAL</span><span>$${(t.servicioPrecio||0).toFixed(2)}</span></div>
+    ${t.tipoCliente === 'ALOJADO' ? '<p style="font-size:10px;text-align:center;margin-top:6px;">Cargado a consumos de la habitación</p>' : '<p style="font-size:10px;text-align:center;margin-top:6px;">A cobrar en Caja</p>'}
+    <div class="firma"><p>Firma del cliente</p><p style="margin-top:16px;">_____________________</p></div>
+  </body></html>`;
+  imprimirHTML(html);
+}
+
+async function imprimirTicketSpaPorId(id) {
+  try {
+    var snap = await getDoc(doc(db,'spaTurnos',id));
+    if (snap.exists()) imprimirTicketSpa({ id:snap.id, ...snap.data() });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.imprimirTicketSpaPorId = imprimirTicketSpaPorId;
+
+async function solicitarCancelacionTurno(id) {
+  var cuerpo = `<div style="padding:16px;"><p>Avisar al Admin de Spa que este turno debe cancelarse (aviso de la profesional).</p>
+    <div class="form-group" style="margin-top:10px;"><label>Motivo</label><input type="text" id="motivoCancelSpa" placeholder="Motivo del aviso"></div></div>`;
+  confirmarAccion('Avisar Cancelación', cuerpo, 'Enviar Aviso', async (ok) => {
+    if (!ok) return;
+    var motivo = $('motivoCancelSpa')?.value?.trim() || '';
+    try {
+      await updateDoc(doc(db,'spaTurnos',id), { estado:'CANCELACION_SOLICITADA', motivoAvisoCancelacion:motivo, usuarioAviso:currentUser.usuario, fechaAviso:serverTimestamp() });
+      showToast('Aviso enviado al Admin de Spa','success');
+      cargarTurnosConfirma();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.solicitarCancelacionTurno = solicitarCancelacionTurno;
+
+// ── SPA ADMIN ──
+function tabSpaAdmin(t, btn) {
+  document.querySelectorAll('#panelSpaAdmin .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tabSpaAdminProfesionales','tabSpaAdminServicios','tabSpaAdminTurnos','tabSpaAdminLiquidaciones','tabSpaAdminEstadisticas'].forEach(id => $(id).classList.add('hidden'));
+  var map = { profesionales:'tabSpaAdminProfesionales', servicios:'tabSpaAdminServicios', turnos:'tabSpaAdminTurnos', liquidaciones:'tabSpaAdminLiquidaciones', estadisticas:'tabSpaAdminEstadisticas' };
+  $(map[t]).classList.remove('hidden');
+  if (t === 'profesionales') cargarProfesionalesSpa();
+  if (t === 'servicios') cargarServiciosSpa();
+  if (t === 'turnos') {
+    if ($('saTurnoDesde') && !$('saTurnoDesde').value) { var d=new Date(); d.setDate(d.getDate()-7); $('saTurnoDesde').valueAsDate=d; $('saTurnoHasta').valueAsDate=new Date(); }
+    cargarTurnosAdmin();
+  }
+  if (t === 'liquidaciones') cargarSelectLiquidacionProf();
+  if (t === 'estadisticas') { if ($('seMes') && !$('seMes').value) $('seMes').value = new Date().toISOString().slice(0,7); }
+}
+window.tabSpaAdmin = tabSpaAdmin;
+
+async function cargarProfesionalesSpa() {
+  try {
+    var snap = await getDocs(collection(db,'spaProfesionales'));
+    spaProfesionalesCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var tbody = $('tbodyProfesionalesSpa');
+    if (!spaProfesionalesCache.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Sin profesionales</td></tr>'; return; }
+    tbody.innerHTML = spaProfesionalesCache.map(p => `<tr>
+      <td><strong>${esc(p.nombre)}</strong></td>
+      <td>${esc(p.especialidad||'-')}</td>
+      <td>${p.activo !== false ? '<span style="color:var(--green);">Activo</span>' : '<span style="color:var(--red);">Inactivo</span>'}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="toggleProfesionalSpa('${p.id}',${p.activo !== false})">${p.activo !== false ? 'Desactivar' : 'Activar'}</button></td>
+    </tr>`).join('');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarProfesionalesSpa = cargarProfesionalesSpa;
+
+async function agregarProfesionalSpa() {
+  var nombre = $('spNombre').value.trim();
+  var especialidad = $('spEspecialidad').value.trim();
+  if (!nombre) { showToast('Completá el nombre','warning'); return; }
+  try {
+    await addDoc(collection(db,'spaProfesionales'), { nombre, especialidad, activo:true, fechaAlta:serverTimestamp() });
+    $('spNombre').value=''; $('spEspecialidad').value='';
+    showToast('Profesional agregada','success');
+    cargarProfesionalesSpa();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarProfesionalSpa = agregarProfesionalSpa;
+
+async function toggleProfesionalSpa(id, activoActual) {
+  try {
+    await updateDoc(doc(db,'spaProfesionales',id), { activo: !activoActual });
+    cargarProfesionalesSpa();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.toggleProfesionalSpa = toggleProfesionalSpa;
+
+async function cargarServiciosSpa() {
+  try {
+    var snap = await getDocs(collection(db,'spaServicios'));
+    spaServiciosCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var tbody = $('tbodyServiciosSpa');
+    if (!spaServiciosCache.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin servicios</td></tr>'; return; }
+    tbody.innerHTML = spaServiciosCache.map(s => `<tr>
+      <td><strong>${esc(s.nombre)}</strong></td>
+      <td>$${(s.precio||0).toFixed(2)}</td>
+      <td>${s.duracionMin||'-'} min</td>
+      <td>${s.activo !== false ? '<span style="color:var(--green);">Activo</span>' : '<span style="color:var(--red);">Inactivo</span>'}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="toggleServicioSpa('${s.id}',${s.activo !== false})">${s.activo !== false ? 'Desactivar' : 'Activar'}</button></td>
+    </tr>`).join('');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarServiciosSpa = cargarServiciosSpa;
+
+async function agregarServicioSpa() {
+  var nombre = $('ssNombre').value.trim();
+  var precio = parseFloat($('ssPrecio').value) || 0;
+  var duracionMin = parseInt($('ssDuracion').value) || 0;
+  if (!nombre) { showToast('Completá el nombre','warning'); return; }
+  if (precio <= 0) { showToast('Ingresá un precio válido','warning'); return; }
+  try {
+    await addDoc(collection(db,'spaServicios'), { nombre, precio, duracionMin, activo:true, fechaAlta:serverTimestamp() });
+    $('ssNombre').value=''; $('ssPrecio').value='0'; $('ssDuracion').value='60';
+    showToast('Servicio agregado','success');
+    cargarServiciosSpa();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarServicioSpa = agregarServicioSpa;
+
+async function toggleServicioSpa(id, activoActual) {
+  try {
+    await updateDoc(doc(db,'spaServicios',id), { activo: !activoActual });
+    cargarServiciosSpa();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.toggleServicioSpa = toggleServicioSpa;
+
+var _turnosAdminCache = [];
+async function cargarTurnosAdmin() {
+  var desde = $('saTurnoDesde').value, hasta = $('saTurnoHasta').value;
+  var tbody = $('tbodyTurnosAdmin');
+  try {
+    var snap = await getDocs(collection(db,'spaTurnos'));
+    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (desde) turnos = turnos.filter(t => (t.fecha||'') >= desde);
+    if (hasta) turnos = turnos.filter(t => (t.fecha||'') <= hasta);
+    turnos.sort((a,b) => ((b.fecha||'')+(b.hora||'')).localeCompare((a.fecha||'')+(a.hora||'')));
+    _turnosAdminCache = turnos;
+    if (!turnos.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin turnos en el rango</td></tr>'; return; }
+    tbody.innerHTML = turnos.map(t => {
+      var acc = '';
+      if (t.estado === 'PENDIENTE' || t.estado === 'CANCELACION_SOLICITADA') {
+        acc = `<button class="btn btn-red btn-xs" onclick="cancelarTurnoAdmin('${t.id}')">Cancelar</button>`;
+      }
+      return `<tr>
+        <td>${esc(t.fecha)}</td>
+        <td>${esc(t.hora)}</td>
+        <td>${esc(t.nombreCliente)}${t.tipoCliente==='ALOJADO'?' (Hab. '+esc(t.habitacionNro)+')':''}</td>
+        <td>${t.tipoCliente === 'ALOJADO' ? 'Alojado' : 'Externo'}</td>
+        <td>${esc(t.servicioNombre)}</td>
+        <td>${esc(t.profesionalNombre)}</td>
+        <td>${badgeEstadoSpa(t.estado)}${t.estado==='CANCELADO'&&t.liquidadoIgual?' <span style="font-size:0.68rem;color:var(--gold);">(liquidado)</span>':''}</td>
+        <td>${acc}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
+}
+window.cargarTurnosAdmin = cargarTurnosAdmin;
+
+async function cancelarTurnoAdmin(id) {
+  var t = _turnosAdminCache.find(x => x.id === id);
+  if (!t) { showToast('Turno no encontrado','error'); return; }
+  var esAlojado = t.tipoCliente === 'ALOJADO';
+  var cuerpo = `<div style="padding:16px;">
+    <p>Cancelar el turno de <strong>${esc(t.nombreCliente)}</strong> — ${esc(t.servicioNombre)}.</p>
+    <div class="form-group" style="margin-top:10px;"><label>Motivo</label><input type="text" id="motivoCancelAdmin" value="${esc(t.motivoAvisoCancelacion||'')}"></div>
+    ${esAlojado ? `<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;"><input type="checkbox" id="chkLiquidarIgual" checked> Liquidar igual a la habitación (servicio cancelado se cobra)</label>` : ''}
+  </div>`;
+  confirmarAccion('Cancelar Turno', cuerpo, 'Cancelar Turno', async (ok) => {
+    if (!ok) return;
+    var motivo = $('motivoCancelAdmin')?.value?.trim() || '';
+    var liquidarIgual = esAlojado ? ($('chkLiquidarIgual')?.checked || false) : false;
+    try {
+      await updateDoc(doc(db,'spaTurnos',id), { estado:'CANCELADO', motivoCancelacion:motivo, liquidadoIgual:liquidarIgual, usuarioCancelo:currentUser.usuario, fechaCancelacion:serverTimestamp() });
+      if (liquidarIgual && esAlojado) {
+        await registrarConsumoSpaHabitacion(t);
+        showToast('Turno cancelado y liquidado a la Hab. '+t.habitacionNro,'success');
+      } else {
+        showToast('Turno cancelado','success');
+      }
+      cargarTurnosAdmin();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cancelarTurnoAdmin = cancelarTurnoAdmin;
+
+async function cargarSelectLiquidacionProf() {
+  try {
+    var snap = await getDocs(collection(db,'spaProfesionales'));
+    spaProfesionalesCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+  var sel = $('slProfesional');
+  if (sel) sel.innerHTML = '<option value="">Seleccionar...</option>' + spaProfesionalesCache.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  if ($('slDesde') && !$('slDesde').value) { var d=new Date(); d.setDate(1); $('slDesde').valueAsDate=d; $('slHasta').valueAsDate=new Date(); }
+}
+window.cargarSelectLiquidacionProf = cargarSelectLiquidacionProf;
+
+async function generarLiquidacionSpa() {
+  var profId = $('slProfesional').value;
+  var desde = $('slDesde').value, hasta = $('slHasta').value;
+  if (!profId) { showToast('Seleccioná una profesional','warning'); return; }
+  if (!desde || !hasta) { showToast('Completá el rango de fechas','warning'); return; }
+  var prof = spaProfesionalesCache.find(p => p.id === profId);
+  try {
+    var snap = await getDocs(query(collection(db,'spaTurnos'), where('profesionalId','==',profId)));
+    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .filter(t => (t.fecha||'') >= desde && (t.fecha||'') <= hasta)
+      .filter(t => t.estado === 'CONFIRMADO' || (t.estado === 'CANCELADO' && t.liquidadoIgual))
+      .sort((a,b) => (a.fecha+a.hora).localeCompare(b.fecha+b.hora));
+    var total = turnos.reduce((a,t) => a + (t.servicioPrecio||0), 0);
+    var cont = $('resultadoLiquidacionSpa');
+    if (!turnos.length) { cont.innerHTML = '<p style="color:var(--muted);">No hay servicios realizados en el rango.</p>'; return; }
+    var filas = turnos.map(t => `<tr><td>${esc(t.fecha)}</td><td>${esc(t.hora)}</td><td>${esc(t.servicioNombre)}</td><td>${esc(t.nombreCliente)}</td><td>${t.estado==='CANCELADO'?'Cancelado (liq.)':'Realizado'}</td><td>$${(t.servicioPrecio||0).toFixed(2)}</td></tr>`).join('');
+    cont.innerHTML = `<div class="card">
+      <div class="card-title">Liquidación — ${esc(prof?prof.nombre:'')} (${desde} a ${hasta})</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Cliente</th><th>Estado</th><th>Monto</th></tr></thead>
+        <tbody>${filas}<tr style="font-weight:700;background:rgba(46,204,113,0.1);"><td colspan="5" style="text-align:right;">TOTAL (${turnos.length} servicios)</td><td>$${total.toFixed(2)}</td></tr></tbody>
+      </table></div>
+      <button class="btn btn-gold btn-sm" style="margin-top:12px;" onclick="imprimirReciboLiquidacionSpa('${profId}','${desde}','${hasta}')">Imprimir Recibo de Pago</button>
+    </div>`;
+    // Guardar liquidación
+    await addDoc(collection(db,'spaLiquidaciones'), {
+      profesionalId: profId, profesionalNombre: prof?prof.nombre:'', desde, hasta,
+      cantidadServicios: turnos.length, total,
+      turnos: turnos.map(t => ({ fecha:t.fecha, servicio:t.servicioNombre, monto:t.servicioPrecio||0 })),
+      usuario: currentUser.usuario, fecha: serverTimestamp()
+    });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.generarLiquidacionSpa = generarLiquidacionSpa;
+
+async function imprimirReciboLiquidacionSpa(profId, desde, hasta) {
+  var prof = spaProfesionalesCache.find(p => p.id === profId);
+  try {
+    var snap = await getDocs(query(collection(db,'spaTurnos'), where('profesionalId','==',profId)));
+    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .filter(t => (t.fecha||'') >= desde && (t.fecha||'') <= hasta)
+      .filter(t => t.estado === 'CONFIRMADO' || (t.estado === 'CANCELADO' && t.liquidadoIgual))
+      .sort((a,b) => (a.fecha+a.hora).localeCompare(b.fecha+b.hora));
+    var total = turnos.reduce((a,t) => a + (t.servicioPrecio||0), 0);
+    var items = turnos.map(t => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(t.fecha)} ${esc(t.servicioNombre)}</span><span>$${(t.servicioPrecio||0).toFixed(2)}</span></div>`).join('');
+    var html = `<!DOCTYPE html><html><head><style>
+      @page{size:80mm auto;margin:4mm}
+      body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+      h2,h3{text-align:center;margin:0;}
+      hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+      .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #000;padding-top:4px;margin-top:4px;}
+      .firma{margin-top:16px;border-top:1px solid #000;text-align:center;font-size:11px;padding-top:4px;}
+    </style></head><body>
+      <h2>EPECUÉN Hotel & Spa</h2>
+      <h3 style="font-size:11px;">Recibo de Pago a Profesional</h3>
+      <p style="text-align:center;font-size:10px;">${new Date().toLocaleString('es-AR')}</p>
+      <hr>
+      <p style="font-size:11px;"><b>Profesional:</b> ${esc(prof?prof.nombre:'')}</p>
+      <p style="font-size:11px;"><b>Período:</b> ${esc(desde)} a ${esc(hasta)}</p>
+      <p style="font-size:11px;"><b>Servicios:</b> ${turnos.length}</p>
+      <hr>
+      ${items}
+      <div class="total"><span>TOTAL A PAGAR</span><span>$${total.toFixed(2)}</span></div>
+      <div class="firma"><p>Firma de la profesional</p><p style="margin-top:16px;">_____________________</p></div>
+    </body></html>`;
+    imprimirHTML(html);
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.imprimirReciboLiquidacionSpa = imprimirReciboLiquidacionSpa;
+
+async function cargarEstadisticasSpa() {
+  var mes = $('seMes').value;
+  var cont = $('resultadoEstadisticasSpa');
+  if (!mes) { showToast('Seleccioná un mes','warning'); return; }
+  try {
+    var snap = await getDocs(collection(db,'spaTurnos'));
+    var turnos = snap.docs.map(d => d.data()).filter(t => (t.fecha||'').startsWith(mes));
+    var realizados = turnos.filter(t => t.estado === 'CONFIRMADO');
+    var cancelados = turnos.filter(t => t.estado === 'CANCELADO');
+    var totalFacturado = realizados.reduce((a,t) => a + (t.servicioPrecio||0), 0);
+    // Por profesional
+    var porProf = {};
+    realizados.forEach(t => { porProf[t.profesionalNombre] = (porProf[t.profesionalNombre]||0) + 1; });
+    var profRank = Object.entries(porProf).sort((a,b) => b[1]-a[1]);
+    // Por servicio
+    var porServ = {};
+    realizados.forEach(t => { porServ[t.servicioNombre] = (porServ[t.servicioNombre]||0) + 1; });
+    var servRank = Object.entries(porServ).sort((a,b) => b[1]-a[1]);
+    cont.innerHTML = `
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val">${turnos.length}</div><div class="stat-lbl">Turnos totales</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--green)">${realizados.length}</div><div class="stat-lbl">Realizados</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--red)">${cancelados.length}</div><div class="stat-lbl">Cancelados</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--gold)">$${totalFacturado.toFixed(0)}</div><div class="stat-lbl">Facturado</div></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <div class="card-title">Profesionales con más turnos</div>
+        <div class="table-wrap"><table><thead><tr><th>Profesional</th><th>Turnos</th></tr></thead><tbody>
+        ${profRank.length ? profRank.map(([n,c]) => `<tr><td>${esc(n)}</td><td>${c}</td></tr>`).join('') : '<tr><td colspan="2" style="color:var(--muted);text-align:center;">Sin datos</td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <div class="card-title">Servicios más realizados</div>
+        <div class="table-wrap"><table><thead><tr><th>Servicio</th><th>Cantidad</th></tr></thead><tbody>
+        ${servRank.length ? servRank.map(([n,c]) => `<tr><td>${esc(n)}</td><td>${c}</td></tr>`).join('') : '<tr><td colspan="2" style="color:var(--muted);text-align:center;">Sin datos</td></tr>'}
+        </tbody></table></div>
+      </div>`;
+  } catch(e) { cont.innerHTML = '<p style="color:var(--red);">Error: '+esc(e.message)+'</p>'; }
+}
+window.cargarEstadisticasSpa = cargarEstadisticasSpa;
 
 // ══════════════════════════════════════
 // INIT — Crear datos base si Firestore está vacío
@@ -7035,7 +7850,10 @@ async function inicializarDatosBase() {
         { usuario:'chef',      contrasena:'chef123',      rol:'CHEF',             nombre:'Chef Principal' },
         { usuario:'admin',     contrasena:'admin123',     rol:'ADMIN',            nombre:'Administrador' },
         { usuario:'carhue',    contrasena:'123',          rol:'CARHUE_RECEPCION', nombre:'Recepcion Hotel Carhue' },
-        { usuario:'recepcion', contrasena:'recepcion123', rol:'RECEPCION',        nombre:'Recepción Epecuén' }
+        { usuario:'recepcion', contrasena:'recepcion123', rol:'RECEPCION',        nombre:'Recepción Epecuén' },
+        { usuario:'spa',       contrasena:'spa123',       rol:'SPA_RECEPCION',    nombre:'Recepción Spa' },
+        { usuario:'spaconfirma', contrasena:'spa123',     rol:'SPA_CONFIRMA',     nombre:'Encargado Spa' },
+        { usuario:'spaadmin',  contrasena:'spa123',       rol:'SPA_ADMIN',        nombre:'Admin Spa' }
       ];
       for (var u of usuarios) await addDoc(collection(db,'usuarios'), u);
       console.log('Usuarios base creados');
@@ -7051,6 +7869,16 @@ async function inicializarDatosBase() {
       if (recSnap.empty) {
         await addDoc(collection(db,'usuarios'), { usuario:'recepcion', contrasena:'recepcion123', rol:'RECEPCION', nombre:'Recepción Epecuén' });
         console.log('Usuario recepcion creado');
+      }
+      // Verificar usuarios de spa
+      var spaUsers = [
+        { usuario:'spa',       contrasena:'spa123', rol:'SPA_RECEPCION', nombre:'Recepción Spa' },
+        { usuario:'spaconfirma', contrasena:'spa123', rol:'SPA_CONFIRMA', nombre:'Encargado Spa' },
+        { usuario:'spaadmin',  contrasena:'spa123', rol:'SPA_ADMIN', nombre:'Admin Spa' }
+      ];
+      for (var su of spaUsers) {
+        var suSnap = await getDocs(query(collection(db,'usuarios'), where('usuario','==',su.usuario)));
+        if (suSnap.empty) { await addDoc(collection(db,'usuarios'), su); console.log('Usuario '+su.usuario+' creado'); }
       }
     }
 
