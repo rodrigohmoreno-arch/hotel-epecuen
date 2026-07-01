@@ -986,7 +986,7 @@
           <div class="form-group hidden" id="resGrupoPasaporte"><label>Pasaporte / Cédula *</label><input type="text" id="resPasaporte"></div>
         </div>
         <div class="form-row" id="resDatosHuesped3">
-          <div class="form-group"><label>Email *</label><input type="email" id="resEmail"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="resEmail"></div>
           <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
         <div class="form-row" id="resDatosHuesped4">
@@ -995,6 +995,7 @@
         <div class="form-row" id="resDatosHuesped5">
           <div class="form-group"><label>Localidad</label><input type="text" id="resLocalidad" placeholder="Localidad"></div>
           <div class="form-group"><label>Provincia</label><input type="text" id="resProvincia" placeholder="Provincia"></div>
+          <div class="form-group"><label>Vehículo (patente/modelo)</label><input type="text" id="resVehiculo" placeholder="Ej: ABC123 - Ford Ranger"></div>
         </div>
         <div class="form-row" id="resDatosHuesped6">
           <div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
@@ -1194,9 +1195,10 @@
           <div class="form-group"><label>Habitación</label><select id="filtroConsHab" onchange="cargarConsumosHab()"><option value="">Todas</option></select></div>
           <div class="form-group"><label>Fecha</label><input type="date" id="filtroConsHabFecha" onchange="cargarConsumosHab()"></div>
           <button class="btn btn-sm" onclick="imprimirConsumosHab()" style="margin-top:auto;">Imprimir Consumos</button>
+          <button class="btn btn-gold btn-sm" id="btnCobrarConsSel" onclick="cobrarConsumosSeleccionados()" style="margin-top:auto;display:none;">Cobrar Consumos Seleccionados</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
+          <thead><tr><th style="width:32px;"><input type="checkbox" id="consSelAll" onchange="toggleConsSelAll(this)"></th><th>Fecha</th><th>Hab.</th><th>Concepto</th><th>Consumió</th><th>Cant.</th><th>P.Unit</th><th>Total</th></tr></thead>
           <tbody id="tbodyConsumosHab"></tbody>
         </table></div>
       </div>
@@ -1293,12 +1295,16 @@
           <label>Cantidad</label>
           <input type="number" id="prodCantidad" value="1" min="1">
         </div>
+        <div class="form-group" style="flex:1.5;">
+          <label>Nombre (opcional)</label>
+          <input type="text" id="prodNombreConsumidor" placeholder="¿Quién consume?">
+        </div>
         <div style="display:flex;align-items:flex-end;">
           <button class="btn btn-green btn-sm" onclick="agregarItem()">Agregar</button>
         </div>
       </div>
       <div class="table-wrap"><table id="tablaComanda">
-        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+        <thead><tr><th>Producto</th><th>Nombre</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
         <tbody id="tbodyComanda"></tbody>
       </table></div>
       <div style="text-align:right;margin-top:16px;font-size:1.2rem;font-weight:700;">
@@ -1530,7 +1536,7 @@ function showToast(msg, tipo='info') {
   t.className = 'toast toast-' + tipo;
   t.textContent = msg;
   $('toastContainer').appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  setTimeout(() => t.remove(), 6500);
 }
 function mostrarModal(id) { $(id).classList.remove('hidden'); }
 function cerrarModal(id)  { $(id).classList.add('hidden'); }
@@ -2008,7 +2014,7 @@ window.abrirComanda = abrirComanda;
 function renderComanda() {
   var tbody = $('tbodyComanda');
   if (!comandaActual.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Sin items</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Sin items</td></tr>';
     $('totalComanda').textContent = '0.00';
     return;
   }
@@ -2018,6 +2024,7 @@ function renderComanda() {
     total += sub;
     return `<tr>
       <td>${esc(item.nombre)}</td>
+      <td>${esc(item.nombreConsumidor||'-')}</td>
       <td>${item.cantidad}</td>
       <td>$${(item.precio||0).toFixed(2)}</td>
       <td>$${sub.toFixed(2)}</td>
@@ -2035,9 +2042,10 @@ async function agregarItem() {
   var precio = parseFloat(opt.dataset.precio) || 0;
   var sector = opt.dataset.sector || 'COCINA';
   var nombre = opt.text.split(' ($')[0];
+  var nombreConsumidor = $('prodNombreConsumidor')?.value?.trim() || '';
 
-  // Buscar si ya existe
-  var idx = comandaActual.findIndex(i => i.productoId === opt.value);
+  // Buscar si ya existe (mismo producto y mismo consumidor)
+  var idx = comandaActual.findIndex(i => i.productoId === opt.value && (i.nombreConsumidor||'') === nombreConsumidor);
   try {
     if (idx >= 0) {
       var item = comandaActual[idx];
@@ -2050,18 +2058,20 @@ async function agregarItem() {
         comandaId: comandaActivaId,
         productoId: opt.value,
         nombre: nombre,
+        nombreConsumidor: nombreConsumidor,
         cantidad: cant,
         precio: precio,
         subtotal: cant*precio,
         sector: sector
       });
-      comandaActual.push({ docId:ref.id, comandaId:comandaActivaId, productoId:opt.value, nombre, cantidad:cant, precio, subtotal:cant*precio, sector });
+      comandaActual.push({ docId:ref.id, comandaId:comandaActivaId, productoId:opt.value, nombre, nombreConsumidor, cantidad:cant, precio, subtotal:cant*precio, sector });
     }
     // Actualizar total comanda
     var total = comandaActual.reduce((a,i) => a + (i.cantidad*i.precio), 0);
     await updateDoc(doc(db,'comandas',comandaActivaId), { total });
     renderComanda();
     $('prodCantidad').value = '1';
+    if ($('prodNombreConsumidor')) $('prodNombreConsumidor').value = '';
     sel.value = '';
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -2200,7 +2210,7 @@ async function pasarAFacturacion(mesa, total) {
 
 function imprimirTicketConsumo(mesa, total) {
   var fecha = new Date().toLocaleString('es-AR');
-  var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${i.nombre}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var items = comandaActual.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}${i.nombreConsumidor?' <i style="font-size:10px;">('+esc(i.nombreConsumidor)+')</i>':''}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
   var comensales = mesa.cantidadComensales || 1;
   var tipoLabels = { EPECUEN_MAP:'Hotel Epecuén (MAP)', EPECUEN_SIN_MAP:'Hotel Epecuén (Sin MAP)', EPECUEN_PC:'Hotel Epecuén (P.Completa)', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Servicio a Habitación', EXTERNO:'Externo - Consumidor Final' };
   var tipoLabel = tipoLabels[mesa.tipoCliente] || mesa.tipoCliente || '';
@@ -2233,7 +2243,7 @@ function imprimirTicketNoFiscal(data) {
   var fecha = new Date().toLocaleString('es-AR');
   var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
   var medioLabel = medioLabels[data.medioPago] || data.medioPago;
-  var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
+  var items = data.items.map(i => `<div style="display:flex;justify-content:space-between;font-size:12px;margin:3px 0;"><span>${i.cantidad}x ${esc(i.nombre)}${i.nombreConsumidor?' <i style="font-size:10px;">('+esc(i.nombreConsumidor)+')</i>':''}</span><span>$${(i.cantidad*i.precio).toFixed(2)}</span></div>`).join('');
 
   // Datos del cliente para el ticket
   var dc = data.datosCliente || { tipo: 'CONSUMIDOR_FINAL' };
@@ -4616,6 +4626,7 @@ async function crearReserva() {
   var localidadRes = $('resLocalidad')?.value?.trim()||'';
   var provinciaRes = $('resProvincia')?.value?.trim()||'';
   var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
+  var vehiculoRes = $('resVehiculo')?.value?.trim()||'';
 
   // Recoger acompañantes
   var acompanantes = [];
@@ -4640,7 +4651,6 @@ async function crearReserva() {
   if (tieneSeña) {
     if (esAR && !dni) { showToast('DNI del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!esAR && !pasaporte) { showToast('Pasaporte/Cédula del huésped es obligatorio para confirmar reserva','warning'); return; }
-    if (!email) { showToast('Email del huésped es obligatorio para confirmar reserva','warning'); return; }
     if (!fechaNac) { showToast('Fecha de nacimiento es obligatoria para confirmar reserva','warning'); return; }
   }
 
@@ -4659,7 +4669,7 @@ async function crearReserva() {
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
       configCamas, festejo, restriccionAlim, pedidosEsp,
-      localidad: localidadRes, provincia: provinciaRes, antecedentesSalud,
+      localidad: localidadRes, provincia: provinciaRes, antecedentesSalud, vehiculo: vehiculoRes,
       acompanantes,
       estado: estadoReserva,
       cotizacionUsada: configHotel.cotizacionDolar || 0,
@@ -5280,7 +5290,7 @@ async function realizarCheckIn(resId) {
       <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
       <div style="margin:10px 0;padding:10px;background:var(--surface);border-radius:10px;">
         <div class="form-row" style="margin-bottom:6px;">
-          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
+          <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" value="${esc(res.vehiculo||'')}" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
         </div>
         <div class="form-row" style="margin-bottom:6px;">
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Localidad</label><input type="text" id="checkInLocalidad" value="${esc(res.localidad||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
@@ -5426,15 +5436,15 @@ async function realizarCheckIn(resId) {
         if (res.dni) {
           var huesSnap = await getDocs(query(collection(db,'huespedes'), where('dni','==',res.dni)));
           if (!huesSnap.empty) await updateDoc(doc(db,'huespedes',huesSnap.docs[0].id), { ultimaVisita:serverTimestamp(), localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'' });
-          else await addDoc(collection(db,'huespedes'), { apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni, telefono:res.telefono||'', email:res.email||'', nacionalidad:res.nacionalidad||'AR', fechaNac:res.fechaNac||'', localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+          else await addDoc(collection(db,'huespedes'), { apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni, telefono:res.telefono||'', email:res.email||'', nacionalidad:res.nacionalidad||'AR', fechaNac:res.fechaNac||'', localidad:localidadCI||'', provincia:provinciaCI||'', antecedentesSalud:antecedentesSaludCI||'', vehiculo:vehiculo||'', tipoHuesped:'COMUN', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
         }
         // Save empresa alojados to huespedes DB
         if (esEmpresaRes && updateData.alojados) {
           for (var aloj of updateData.alojados) {
             if (aloj.dni) {
               var existeAloj = await getDocs(query(collection(db,'huespedes'), where('dni','==',aloj.dni)));
-              if (!existeAloj.empty) await updateDoc(doc(db,'huespedes',existeAloj.docs[0].id), { ultimaVisita:serverTimestamp() });
-              else await addDoc(collection(db,'huespedes'), { apellido:aloj.apellido, nombre:aloj.nombre, dni:aloj.dni, telefono:aloj.telefono||'', email:aloj.email||'', nacionalidad:aloj.nacionalidad||'AR', fechaNac:aloj.fechaNac||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
+              if (!existeAloj.empty) await updateDoc(doc(db,'huespedes',existeAloj.docs[0].id), { ultimaVisita:serverTimestamp(), tipoHuesped:'EMPRESA', empresaRazonSocial:res.razonSocial||'', empresaCuit:res.cuitEmpresa||'' });
+              else await addDoc(collection(db,'huespedes'), { apellido:aloj.apellido, nombre:aloj.nombre, dni:aloj.dni, telefono:aloj.telefono||'', email:aloj.email||'', nacionalidad:aloj.nacionalidad||'AR', fechaNac:aloj.fechaNac||'', tipoHuesped:'EMPRESA', empresaRazonSocial:res.razonSocial||'', empresaCuit:res.cuitEmpresa||'', ultimaVisita:serverTimestamp(), fechaAlta:serverTimestamp() });
             }
           }
         }
@@ -5568,7 +5578,8 @@ function buscarHuespedPorDni(val) {
   var q = (val||'').trim();
   var cont = $('resHuespedSugerencias');
   if (!cont || q.length < 3) { if (cont) cont.style.display='none'; return; }
-  var res = huespedCache.filter(h => (h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase()));
+  // Huéspedes comunes: excluir los cargados como empresa (esos se buscan por CUIT/nombre empresa)
+  var res = huespedCache.filter(h => (h.tipoHuesped||'COMUN') !== 'EMPRESA' && ((h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase())));
   if (!res.length) { cont.style.display='none'; return; }
   cont.innerHTML = res.slice(0,5).map(h => '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;" onmousedown="seleccionarHuesped(\''+esc(h.id)+'\')">'
     + '<strong>'+esc(h.apellido)+', '+esc(h.nombre)+'</strong> <span style="color:var(--muted);">DNI: '+esc(h.dni||'')+' | '+esc(h.telefono||'')+'</span>'
@@ -5589,6 +5600,7 @@ function seleccionarHuesped(hId) {
   if ($('resLocalidad')) $('resLocalidad').value = h.localidad||'';
   if ($('resProvincia')) $('resProvincia').value = h.provincia||'';
   if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value = h.antecedentesSalud||'';
+  if ($('resVehiculo')) $('resVehiculo').value = h.vehiculo||'';
   if (h.nacionalidad) { $('resNacionalidad').value = h.nacionalidad; toggleDocReserva(); }
   if (h.pasaporte && $('resPasaporte')) $('resPasaporte').value = h.pasaporte;
   var cont = $('resHuespedSugerencias');
@@ -5916,6 +5928,7 @@ function poblarFiltroConsHab() {
   habitacionesCache.forEach(h => { sel.innerHTML += `<option value="${h.numero}">${h.numero}</option>`; });
 }
 
+var _consumosHabActual = [];
 async function cargarConsumosHab() {
   try {
     var habFiltro = $('filtroConsHab').value;
@@ -5927,34 +5940,117 @@ async function cargarConsumosHab() {
     }
     var desde = Timestamp.fromDate(new Date(fechaFiltro+'T00:00:00'));
     var hasta = Timestamp.fromDate(new Date(fechaFiltro+'T23:59:59'));
-    var constraints = [where('fecha','>=',desde), where('fecha','<=',hasta)];
-    if (habFiltro) constraints.push(where('habitacionNro','==',habFiltro));
-    var q2 = query(collection(db,'consumosHabitacion'), ...constraints);
+    // Solo filtramos por fecha en Firestore (evita índice compuesto). La habitación se filtra en el cliente.
+    var q2 = query(collection(db,'consumosHabitacion'), where('fecha','>=',desde), where('fecha','<=',hasta));
     var snap = await getDocs(q2);
+    var docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (habFiltro) docs = docs.filter(c => c.habitacionNro === habFiltro);
+    _consumosHabActual = docs;
     var tbody = $('tbodyConsumosHab');
     var totalDia = 0;
-    tbody.innerHTML = snap.docs.map(d => {
-      var c = d.data();
+    var tipoLabels = { RESTAURANTE:'Restaurante', SPA:'Spa', BAR:'Bar', EXTRA:'Extra' };
+    tbody.innerHTML = docs.map(c => {
       totalDia += c.total||0;
-      var tipoLabels = { RESTAURANTE:'Restaurante', SPA:'Spa', BAR:'Bar', EXTRA:'Extra' };
       return `<tr>
+        <td><input type="checkbox" class="cons-sel-chk" data-id="${esc(c.id)}" data-total="${c.total||0}"></td>
         <td>${fmtFecha(c.fecha)}</td>
         <td><strong>${esc(c.habitacionNro)}</strong></td>
         <td>${esc(c.concepto)} <span style="font-size:0.75rem;color:var(--muted);">(${tipoLabels[c.tipo]||c.tipo})</span></td>
+        <td>${esc(c.nombreConsumidor||'-')}</td>
         <td>${c.cantidad||1}</td>
         <td>$${(c.precioUnit||0).toFixed(2)}</td>
         <td><strong>$${(c.total||0).toFixed(2)}</strong></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin consumos para esta fecha</td></tr>';
-    if (snap.docs.length > 0) {
-      tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="5" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin consumos para esta fecha</td></tr>';
+    if (docs.length > 0) {
+      tbody.innerHTML += `<tr style="background:rgba(46,204,113,0.1);font-weight:700;"><td colspan="7" style="text-align:right;">TOTAL DEL DÍA</td><td>$${totalDia.toFixed(2)}</td></tr>`;
     }
+    // El botón de cobro separado solo aplica al filtrar una habitación específica
+    var btn = $('btnCobrarConsSel');
+    if (btn) btn.style.display = (habFiltro && docs.length > 0) ? 'block' : 'none';
+    var chkAll = $('consSelAll'); if (chkAll) chkAll.checked = false;
   } catch(e) {
     var tb = $('tbodyConsumosHab');
-    if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No hay consumos para mostrar</td></tr>';
+    if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">No hay consumos para mostrar</td></tr>';
   }
 }
 window.cargarConsumosHab = cargarConsumosHab;
+
+function toggleConsSelAll(chk) {
+  document.querySelectorAll('.cons-sel-chk').forEach(c => c.checked = chk.checked);
+}
+window.toggleConsSelAll = toggleConsSelAll;
+
+// Cobro separado de consumos (mismo proceso que checkout, solo consumos seleccionados)
+async function cobrarConsumosSeleccionados() {
+  var habFiltro = $('filtroConsHab').value;
+  if (!habFiltro) { showToast('Seleccioná una habitación para cobrar consumos','warning'); return; }
+  var seleccionados = Array.from(document.querySelectorAll('.cons-sel-chk:checked')).map(chk => chk.getAttribute('data-id'));
+  if (!seleccionados.length) { showToast('Seleccioná al menos un consumo','warning'); return; }
+  var items = _consumosHabActual.filter(c => seleccionados.includes(c.id));
+  var total = items.reduce((a,c) => a + (c.total||0), 0);
+  var cuerpo = `<div style="padding:16px;">
+    <p style="margin-bottom:10px;">Cobro de consumos — Hab. <strong>${esc(habFiltro)}</strong> — <strong>${items.length}</strong> ítem(s)</p>
+    <div style="max-height:140px;overflow-y:auto;font-size:0.82rem;margin-bottom:10px;">
+      ${items.map(c => '<div style="display:flex;justify-content:space-between;"><span>'+esc(c.concepto)+(c.nombreConsumidor?' ('+esc(c.nombreConsumidor)+')':'')+'</span><span>$'+(c.total||0).toLocaleString('es-AR')+'</span></div>').join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-bottom:10px;"><span>TOTAL</span><span>$${total.toLocaleString('es-AR')}</span></div>
+    <div class="form-group"><label>Medio de Pago</label>
+      <select id="cobroConsMedio" onchange="var t=$('cobroConsIdTxRow'); if(t) t.style.display=(this.value==='EFECTIVO')?'none':'block';">
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+        <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+        <option value="TRANSFERENCIA">Transferencia</option>
+      </select></div>
+    <div class="form-group" id="cobroConsIdTxRow" style="display:none;margin-top:8px;"><label>N° Cupón / ID Transacción</label><input type="text" id="cobroConsIdTx" placeholder="ID de transacción"></div>
+  </div>`;
+  confirmarAccion('Cobrar Consumos — Hab. '+habFiltro, cuerpo, 'Cobrar e Imprimir', async (ok) => {
+    if (!ok) return;
+    var medio = document.getElementById('cobroConsMedio').value;
+    var idTx = document.getElementById('cobroConsIdTx')?.value?.trim()||'';
+    if (medio !== 'EFECTIVO' && !idTx) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
+    var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+    if (cajaSnap.empty) { showToast('Debés abrir la caja antes de cobrar consumos','warning'); return; }
+    try {
+      await addDoc(collection(db,'cobrosConsumos'), {
+        habitacionNro: habFiltro, total, medioPago: medio, idTransaccion: idTx,
+        items: items.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, nombreConsumidor:c.nombreConsumidor||'' })),
+        fecha: serverTimestamp(), usuario: currentUser ? currentUser.usuario : ''
+      });
+      for (var it of items) { try { await deleteDoc(doc(db,'consumosHabitacion',it.id)); } catch(ee) {} }
+      imprimirTicketCobroConsumos(habFiltro, items, total, medio, idTx);
+      showToast('Consumos cobrados: $'+total.toLocaleString('es-AR'),'success');
+      await cargarConsumosHab();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
+window.cobrarConsumosSeleccionados = cobrarConsumosSeleccionados;
+
+function imprimirTicketCobroConsumos(habNro, items, total, medio, idTx) {
+  var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
+  var itemsHTML = items.map(c => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(c.concepto||'Consumo')}${c.nombreConsumidor?' ('+esc(c.nombreConsumidor)+')':''}</span><span>$${(c.total||0).toLocaleString('es-AR')}</span></div>`).join('');
+  var html = `<!DOCTYPE html><html><head><style>
+    @page{size:80mm auto;margin:4mm}body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
+    h2,h3{text-align:center;margin:0;}hr{border:none;border-top:1px dashed #000;margin:4px 0;}
+    .total{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;border-top:2px solid #000;padding-top:6px;margin-top:6px;}
+  </style></head><body>
+    <h2>Hotel Epecuén</h2>
+    <h3 style="font-size:11px;">TICKET NO FISCAL — PAGO DE CONSUMOS</h3>
+    <p style="text-align:center;font-size:10px;">${new Date().toLocaleString('es-AR')}</p>
+    <hr>
+    <p><b>Habitación:</b> ${esc(habNro)}</p>
+    <hr>
+    <p style="font-weight:bold;">CONSUMOS</p>
+    ${itemsHTML}
+    <div class="total"><span>TOTAL</span><span>$ ${total.toLocaleString('es-AR')}</span></div>
+    <hr>
+    <p><b>Medio de Pago:</b> ${medioLabels[medio]||medio}</p>
+    ${idTx ? '<p><b>ID Transacción:</b> '+esc(idTx)+'</p>' : ''}
+    <hr>
+    <p style="text-align:center;font-size:10px;color:#666;">Documento no fiscal — Hotel Epecuén</p>
+  </body></html>`;
+  imprimirHTML(html);
+}
 
 function imprimirConsumosHab() {
   var habFiltro = $('filtroConsHab').value;
@@ -6113,6 +6209,11 @@ async function cerrarCajaRec() {
   var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desdeAp))));
   var cierresData = cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO');
   cierresData.forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.totalGeneral||0); });
+  // Cobros separados de consumos durante este período
+  try {
+    var cobrosSnap = await getDocs(query(collection(db,'cobrosConsumos'), where('fecha','>=', Timestamp.fromDate(desdeAp))));
+    cobrosSnap.docs.map(d => d.data()).forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.total||0); });
+  } catch(ee) {}
   var totalCobros = Object.values(detalleMp).reduce((a,b)=>a+b,0);
   // Movimientos de caja (egresos e ingresos)
   var movSnap = await getDocs(query(collection(db,'movimientosCaja'), where('cajaId','==',cajaDoc.id)));
@@ -7001,22 +7102,34 @@ async function registrarConsumoHabitacion(mesa, items, total) {
       reservaId = habData.reservaId || '';
     }
   }
-  var concepto = items.map(i => i.cantidad+'x '+i.nombre).join(', ');
+  // Agrupar por consumidor: en habitación compartida, cada persona genera su propio registro
+  var grupos = {};
+  items.forEach(i => {
+    var k = i.nombreConsumidor || '';
+    if (!grupos[k]) grupos[k] = [];
+    grupos[k].push(i);
+  });
   try {
-    await addDoc(collection(db,'consumosHabitacion'), {
-      habitacionNro: habNro,
-      reservaId: reservaId,
-      concepto: concepto.length > 100 ? concepto.substring(0,97)+'...' : concepto,
-      items: items.map(i => ({ nombre:i.nombre, cantidad:i.cantidad, precio:i.precio })),
-      cantidad: items.length,
-      precioUnit: total,
-      total: total,
-      tipo: 'RESTAURANTE',
-      voucherId: mesa.voucherId || '',
-      usuario: currentUser.usuario,
-      fecha: serverTimestamp(),
-      mesaNombre: mesa.nombre || ''
-    });
+    for (var nombreCons of Object.keys(grupos)) {
+      var gItems = grupos[nombreCons];
+      var gTotal = gItems.reduce((a,i) => a + (i.cantidad*i.precio), 0);
+      var concepto = gItems.map(i => i.cantidad+'x '+i.nombre).join(', ');
+      await addDoc(collection(db,'consumosHabitacion'), {
+        habitacionNro: habNro,
+        reservaId: reservaId,
+        concepto: concepto.length > 100 ? concepto.substring(0,97)+'...' : concepto,
+        nombreConsumidor: nombreCons,
+        items: gItems.map(i => ({ nombre:i.nombre, cantidad:i.cantidad, precio:i.precio, nombreConsumidor:i.nombreConsumidor||'' })),
+        cantidad: gItems.length,
+        precioUnit: gTotal,
+        total: gTotal,
+        tipo: 'RESTAURANTE',
+        voucherId: mesa.voucherId || '',
+        usuario: currentUser.usuario,
+        fecha: serverTimestamp(),
+        mesaNombre: mesa.nombre || ''
+      });
+    }
   } catch(e) { console.log('Error registrando consumo habitacion:', e.message); }
 }
 
