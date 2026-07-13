@@ -967,6 +967,9 @@
         <div style="padding:12px;background:rgba(245,183,49,0.08);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:16px;font-size:0.85rem;color:var(--gold);">
           <strong>Importante:</strong> Sin seña confirmada la reserva queda como PRE-RESERVA (no se asigna habitación). Para confirmar la reserva debe registrarse la seña.
         </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;padding:8px 12px;background:rgba(139,92,246,0.06);border-radius:10px;border:1px solid rgba(139,92,246,0.4);"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa / Grupo</label>
+        </div>
         <div class="form-row" id="resDatosHuesped1">
           <div class="form-group"><label>Apellido *</label><input type="text" id="resApellido"></div>
           <div class="form-group"><label>Nombre *</label><input type="text" id="resNombre"></div>
@@ -1011,9 +1014,7 @@
           </div>
           <div id="listaAcompanantes"></div>
         </div>
-        <div style="padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa / Grupo</label>
-          <div id="resEmpresaCampos" class="hidden" style="margin-top:10px;">
+          <div id="resEmpresaCampos" class="hidden" style="padding:10px;background:rgba(139,92,246,0.06);border-radius:10px;border-left:3px solid rgba(139,92,246,0.5);margin-bottom:16px;">
             <div class="form-row">
               <div class="form-group"><label>Nombre Empresa / Grupo *</label><input type="text" id="resRazonSocial" placeholder="Buscar empresa..." oninput="buscarEmpresaAutocomplete(this)"><div id="resEmpresaSugerencias" style="display:none;position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:150px;overflow-y:auto;width:100%;box-shadow:var(--shadow);"></div></div>
               <div class="form-group"><label>CUIT *</label><input type="text" id="resCuitEmpresa" placeholder="Ej: 30-12345678-9"></div>
@@ -1029,7 +1030,6 @@
             </div>
             <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Los datos de los alojados se cargan al momento del check-in. Al checkout la estadía se factura a la empresa, los consumos del restaurante a los huéspedes alojados.</p>
           </div>
-        </div>
         <div class="form-row" id="resHabIndividualRow">
           <div class="form-group"><label>Habitación *</label>
             <input type="text" id="buscarHabReserva" placeholder="Buscar habitación..." oninput="filtrarHabReserva()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
@@ -1291,8 +1291,8 @@
               <option value="ALOJADO">Huésped Alojado</option>
               <option value="EXTERNO">Externo</option>
             </select></div>
-          <div class="form-group" id="stGrupoHab"><label>Habitación *</label>
-            <input type="text" id="stHabitacion" placeholder="N° habitación"></div>
+          <div class="form-group" id="stGrupoHab"><label>Habitación (ocupadas) *</label>
+            <select id="stHabitacion"><option value="">Seleccionar...</option></select></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="stNombreCliente" placeholder="Nombre y apellido"></div>
@@ -1350,6 +1350,7 @@
       <div class="card">
         <div class="card-title">Profesionales de Spa</div>
         <div class="form-row">
+          <div class="form-group"><label>Apellido *</label><input type="text" id="spApellido"></div>
           <div class="form-group"><label>Nombre *</label><input type="text" id="spNombre"></div>
           <div class="form-group"><label>Especialidad</label><input type="text" id="spEspecialidad" placeholder="Ej: Masajes, Faciales"></div>
         </div>
@@ -1493,6 +1494,7 @@
             <select id="abrirHabitacion" onchange="onHabSelectChange()" style="width:100%;"><option value="">Seleccionar...</option></select></div>
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="abrirNombreCliente" readonly style="background:var(--surface);"></div>
         </div>
+        <div id="abrirHabAlerta" style="display:none;padding:10px;background:rgba(224,82,82,0.12);border:1px solid var(--red);border-radius:8px;margin-bottom:10px;font-size:0.85rem;font-weight:700;color:var(--red);"></div>
       </div>
       <div id="abrirCamposCarhue" class="hidden">
         <div class="form-row">
@@ -1660,6 +1662,7 @@ let recetaActual = [];
 let mesaAbierta = null;
 let comandaActual = [];
 let comandaActivaId = null;
+let comandaAlertaCocina = '';
 let mesaParaFacturar = null;
 let ticketImpreso = false;
 let comandaEnFacturacion = false;
@@ -2004,10 +2007,31 @@ async function buscarVoucherCarhue() {
 }
 window.buscarVoucherCarhue = buscarVoucherCarhue;
 
+var _alertaHabActual = '';
+async function verificarRestriccionesHab(habNro) {
+  _alertaHabActual = '';
+  var alertDiv = $('abrirHabAlerta');
+  if (alertDiv) { alertDiv.style.display = 'none'; alertDiv.textContent = ''; }
+  if (!habNro) return;
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('habitacionNro','==',habNro), where('estado','==','CHECKIN')));
+    if (snap.empty) return;
+    var r = snap.docs[0].data();
+    var avisos = [];
+    if (r.restriccionAlim) avisos.push('Huésped ' + r.restriccionAlim);
+    if (r.antecedentesSalud) avisos.push('Salud: ' + r.antecedentesSalud);
+    if (r.pedidosEsp) avisos.push('Pedido especial: ' + r.pedidosEsp);
+    if (!avisos.length) return;
+    _alertaHabActual = avisos.join(' | ');
+    if (alertDiv) { alertDiv.textContent = '⚠️ ' + _alertaHabActual; alertDiv.style.display = 'block'; }
+    showToast('⚠️ Hab. '+habNro+': '+_alertaHabActual,'warning');
+  } catch(e) {}
+}
 function onHabSelectChange() {
   var sel = $('abrirHabitacion');
   var opt = sel.options[sel.selectedIndex];
   $('abrirNombreCliente').value = (opt && opt.dataset.huesped) ? opt.dataset.huesped : '';
+  verificarRestriccionesHab(opt && opt.value ? opt.value : '');
   // Auto-set tipo de consumo based on room's contracted pension
   var pension = (opt && opt.value) ? (opt.dataset.pension || '') : '';
   var tipoSel = $('abrirTipoCliente');
@@ -2104,6 +2128,7 @@ async function confirmarAbrirMesa() {
       cantidadComensales: com,
       voucherId: voucherId || '',
       voucherPension: voucherPension || '',
+      alertaCocina: (tipo !== 'EXTERNO' && tipo !== 'CARHUE') ? _alertaHabActual : '',
       estado: 'ABIERTA',
       total: 0,
       usuario: currentUser.usuario,
@@ -2145,6 +2170,14 @@ async function abrirComanda(mesaId) {
   var tipo = mesa.tipoCliente || '';
   var labels = { EPECUEN_MAP:'Epecuén MAP', EPECUEN_SIN_MAP:'Epecuén Sin MAP', EPECUEN_PC:'Epecuén P.Completa', CARHUE:'Hotel Carhue', SERVICIO_HABITACION:'Serv. Habitación', CONSUMO_HABITACION:'Consumo Hab.', EXTERNO:'Externo - Cons. Final' };
   $('comandaClienteInfo').textContent = (labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '');
+  comandaAlertaCocina = '';
+  try {
+    var cAlertSnap = await getDoc(doc(db,'comandas',comandaActivaId));
+    if (cAlertSnap.exists()) comandaAlertaCocina = cAlertSnap.data().alertaCocina || '';
+  } catch(e) {}
+  if (comandaAlertaCocina) {
+    $('comandaClienteInfo').innerHTML = esc((labels[tipo]||tipo) + (mesa.nombreCliente ? ' — ' + mesa.nombreCliente : '')) + ' <span style="color:var(--red);font-weight:700;">⚠️ ' + esc(comandaAlertaCocina) + '</span>';
+  }
 
   // Cargar items
   try {
@@ -2466,6 +2499,7 @@ function imprimirComanda(sector) {
     <hr>
     <p><b>Mesa:</b> ${esc(mesa?.nombre||'')}</p>
     ${mesa?.nombreCliente ? `<p><b>Cliente:</b> ${esc(mesa.nombreCliente)}</p>` : ''}
+    ${sector === 'COCINA' && comandaAlertaCocina ? `<p style="font-size:14px;font-weight:bold;border:2px solid #000;padding:4px;text-align:center;">⚠ IMPORTANTE: ${esc(comandaAlertaCocina.toUpperCase())}</p>` : ''}
     <hr>
     ${items.map(i => `<div class="item">▸ ${i.cantidad}x ${esc(i.nombre)}</div>`).join('')}
     <hr>
@@ -5613,7 +5647,7 @@ async function realizarCheckIn(resId) {
         await cargarReservasActivas();
         await cargarHabitaciones();
       } catch(e) { showToast('Error: '+e.message,'error'); }
-    });
+    }, '92vw');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.realizarCheckIn = realizarCheckIn;
@@ -5807,7 +5841,7 @@ async function imprimirFichaHuesped(resId) {
         + (p.antSalud ? '<tr><td style="padding:4px;border:1px solid #ccc;" colspan="4"><strong>Antecedentes de Salud:</strong> '+esc(p.antSalud)+'</td></tr>' : '')
         + '</table>'
         + '<div style="margin-top:12px;font-size:9px;line-height:1.4;font-style:italic;border:1px solid #ccc;padding:8px;background:#f9f9f9;">'+leyendaTermal+'</div>'
-        + '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:flex-end;">'
+        + '<div style="margin-top:60px;display:flex;justify-content:space-between;align-items:flex-end;">'
         + '<div style="border-top:1px solid #000;width:45%;text-align:center;padding-top:4px;font-size:10px;">Firma del Huésped</div>'
         + '<div style="border-top:1px solid #000;width:45%;text-align:center;padding-top:4px;font-size:10px;">Aclaración</div>'
         + '</div></div>';
@@ -6155,24 +6189,28 @@ async function cobrarConsumosSeleccionados() {
     </div>
     <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;margin-bottom:10px;"><span>TOTAL</span><span>$${total.toLocaleString('es-AR')}</span></div>
     <div class="form-group"><label>Medio de Pago</label>
-      <select id="cobroConsMedio" onchange="var t=$('cobroConsIdTxRow'); if(t) t.style.display=(this.value==='EFECTIVO')?'none':'block';">
+      <select id="cobroConsMedio" onchange="toggleCobroConsCampos(this.value)">
         <option value="EFECTIVO">Efectivo</option>
         <option value="TARJETA_DEBITO">Tarjeta Débito</option>
         <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
         <option value="TRANSFERENCIA">Transferencia</option>
       </select></div>
-    <div class="form-group" id="cobroConsIdTxRow" style="display:none;margin-top:8px;"><label>N° Cupón / ID Transacción</label><input type="text" id="cobroConsIdTx" placeholder="ID de transacción"></div>
+    <div id="cobroConsIdTxRow" style="display:none;margin-top:8px;">
+      <div class="form-group"><label>N° Cupón / ID Transacción</label><input type="text" id="cobroConsIdTx" placeholder="ID de transacción"></div>
+      <div class="form-group" style="margin-top:8px;"><label>N° Factura / Comprobante</label><input type="text" id="cobroConsNroFactura" placeholder="Número de factura"></div>
+    </div>
   </div>`;
   confirmarAccion('Cobrar Consumos — Hab. '+habFiltro, cuerpo, 'Cobrar e Imprimir', async (ok) => {
     if (!ok) return;
     var medio = document.getElementById('cobroConsMedio').value;
     var idTx = document.getElementById('cobroConsIdTx')?.value?.trim()||'';
+    var nroFactura = document.getElementById('cobroConsNroFactura')?.value?.trim()||'';
     if (medio !== 'EFECTIVO' && !idTx) { showToast('Completá el N° cupón / ID transacción','warning'); return; }
     var cajaSnap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
     if (cajaSnap.empty) { showToast('Debés abrir la caja antes de cobrar consumos','warning'); return; }
     try {
       await addDoc(collection(db,'cobrosConsumos'), {
-        habitacionNro: habFiltro, total, medioPago: medio, idTransaccion: idTx,
+        habitacionNro: habFiltro, total, medioPago: medio, idTransaccion: idTx, nroFactura: nroFactura,
         items: items.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, nombreConsumidor:c.nombreConsumidor||'' })),
         fecha: serverTimestamp(), usuario: currentUser ? currentUser.usuario : ''
       });
@@ -6184,6 +6222,11 @@ async function cobrarConsumosSeleccionados() {
   });
 }
 window.cobrarConsumosSeleccionados = cobrarConsumosSeleccionados;
+function toggleCobroConsCampos(medio) {
+  var t = document.getElementById('cobroConsIdTxRow');
+  if (t) t.style.display = (medio === 'EFECTIVO') ? 'none' : 'block';
+}
+window.toggleCobroConsCampos = toggleCobroConsCampos;
 
 function imprimirTicketCobroConsumos(habNro, items, total, medio, idTx) {
   var medioLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'Tarjeta Débito', TARJETA_CREDITO:'Tarjeta Crédito', TRANSFERENCIA:'Transferencia' };
@@ -7272,7 +7315,7 @@ async function registrarConsumoHabitacion(mesa, items, total) {
     for (var nombreCons of Object.keys(grupos)) {
       var gItems = grupos[nombreCons];
       var gTotal = gItems.reduce((a,i) => a + (i.cantidad*i.precio), 0);
-      var concepto = gItems.map(i => i.cantidad+'x '+i.nombre).join(', ');
+      var concepto = (nombreCons ? nombreCons + ' — ' : '') + gItems.map(i => i.cantidad+'x '+i.nombre).join(', ');
       await addDoc(collection(db,'consumosHabitacion'), {
         habitacionNro: habNro,
         reservaId: reservaId,
@@ -7315,6 +7358,14 @@ async function cargarSelectsSpaTurno() {
     var activosP = spaProfesionalesCache.filter(p => p.activo !== false);
     selP.innerHTML = '<option value="">Seleccionar...</option>' + activosP.map(p => `<option value="${p.id}">${esc(p.nombre)}${p.especialidad?' — '+esc(p.especialidad):''}</option>`).join('');
   }
+  var selH = $('stHabitacion');
+  if (selH) {
+    try {
+      var snapH = await getDocs(query(collection(db,'habitaciones'), where('estado','==','OCUPADA')));
+      var ocupadas = snapH.docs.map(d => d.data()).sort((a,b) => String(a.numero).localeCompare(String(b.numero),'es',{numeric:true}));
+      selH.innerHTML = '<option value="">Seleccionar...</option>' + ocupadas.map(h => `<option value="${esc(String(h.numero))}">Hab. ${esc(String(h.numero))}${h.huespedActual?' — '+esc(h.huespedActual):''}</option>`).join('');
+    } catch(e) { selH.innerHTML = '<option value="">Sin habitaciones ocupadas</option>'; }
+  }
 }
 window.cargarSelectsSpaTurno = cargarSelectsSpaTurno;
 
@@ -7342,7 +7393,8 @@ async function crearTurnoSpa() {
   var fecha = $('stFecha').value;
   var hora = $('stHora').value;
   var tipoCliente = $('stTipoCliente').value;
-  var hab = $('stHabitacion').value.trim();
+  var hab = ($('stHabitacion').value||'').trim();
+  if (tipoCliente === 'ALOJADO' && !hab) { showToast('Seleccioná una habitación ocupada','warning'); return; }
   var nombreCliente = $('stNombreCliente').value.trim();
   var telefono = $('stTelefono')?.value?.trim() || '';
   var selS = $('stServicio'), optS = selS.options[selS.selectedIndex];
@@ -7532,6 +7584,7 @@ function imprimirTicketSpa(t) {
     <div class="total"><span>TOTAL</span><span>$${(t.servicioPrecio||0).toFixed(2)}</span></div>
     ${t.tipoCliente === 'ALOJADO' ? '<p style="font-size:10px;text-align:center;margin-top:6px;">Cargado a consumos de la habitación</p>' : '<p style="font-size:10px;text-align:center;margin-top:6px;">A cobrar en Caja</p>'}
     <div class="firma"><p>Firma del cliente</p><p style="margin-top:16px;">_____________________</p></div>
+    <p style="font-size:13px;font-weight:bold;text-align:center;margin-top:10px;">POR FAVOR, ASISTIR AL TURNO PUNTUALMENTE, SIN ACCESORIOS Y EL PELO RECOGIDO.</p>
   </body></html>`;
   imprimirHTML(html);
 }
@@ -7584,7 +7637,7 @@ async function cargarProfesionalesSpa() {
     var tbody = $('tbodyProfesionalesSpa');
     if (!spaProfesionalesCache.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Sin profesionales</td></tr>'; return; }
     tbody.innerHTML = spaProfesionalesCache.map(p => `<tr>
-      <td><strong>${esc(p.nombre)}</strong></td>
+      <td><strong>${esc(p.apellido ? p.apellido+', '+(p.nombrePila||'') : p.nombre)}</strong></td>
       <td>${esc(p.especialidad||'-')}</td>
       <td>${p.activo !== false ? '<span style="color:var(--green);">Activo</span>' : '<span style="color:var(--red);">Inactivo</span>'}</td>
       <td><button class="btn btn-ghost btn-xs" onclick="toggleProfesionalSpa('${p.id}',${p.activo !== false})">${p.activo !== false ? 'Desactivar' : 'Activar'}</button></td>
@@ -7594,12 +7647,13 @@ async function cargarProfesionalesSpa() {
 window.cargarProfesionalesSpa = cargarProfesionalesSpa;
 
 async function agregarProfesionalSpa() {
-  var nombre = $('spNombre').value.trim();
+  var apellido = $('spApellido').value.trim();
+  var nombrePila = $('spNombre').value.trim();
   var especialidad = $('spEspecialidad').value.trim();
-  if (!nombre) { showToast('Completá el nombre','warning'); return; }
+  if (!apellido || !nombrePila) { showToast('Completá apellido y nombre','warning'); return; }
   try {
-    await addDoc(collection(db,'spaProfesionales'), { nombre, especialidad, activo:true, fechaAlta:serverTimestamp() });
-    $('spNombre').value=''; $('spEspecialidad').value='';
+    await addDoc(collection(db,'spaProfesionales'), { nombre: nombrePila+' '+apellido, nombrePila, apellido, especialidad, activo:true, fechaAlta:serverTimestamp() });
+    $('spApellido').value=''; $('spNombre').value=''; $('spEspecialidad').value='';
     showToast('Profesional agregada','success');
     cargarProfesionalesSpa();
   } catch(e) { showToast('Error: '+e.message,'error'); }
