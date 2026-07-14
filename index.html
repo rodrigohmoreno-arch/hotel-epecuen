@@ -1350,9 +1350,9 @@
       <div class="card">
         <div class="card-title">Profesionales de Spa</div>
         <div class="form-row">
-          <div class="form-group"><label>Apellido *</label><input type="text" id="spApellido"></div>
-          <div class="form-group"><label>Nombre *</label><input type="text" id="spNombre"></div>
-          <div class="form-group"><label>Especialidad</label><input type="text" id="spEspecialidad" placeholder="Ej: Masajes, Faciales"></div>
+          <div class="form-group"><label>Apellido *</label><input type="text" id="spaProfApellido"></div>
+          <div class="form-group"><label>Nombre *</label><input type="text" id="spaProfNombre"></div>
+          <div class="form-group"><label>Especialidad</label><input type="text" id="spaProfEspecialidad" placeholder="Ej: Masajes, Faciales"></div>
         </div>
         <button class="btn btn-gold btn-sm" onclick="agregarProfesionalSpa()">Agregar Profesional</button>
         <div class="table-wrap" style="margin-top:16px;"><table>
@@ -5814,7 +5814,7 @@ async function imprimirFichaHuesped(resId) {
     var fechaIngreso = res.fechaIn||new Date().toISOString().slice(0,10);
     var personas = [];
     if (!res.esEmpresa) {
-      personas.push({ apellido:res.apellido||'', nombre:res.nombre||'', dni:res.dni||'', telefono:res.telefono||'', email:res.email||'', fechaNac:res.fechaNac||'', nacionalidad:res.nacionalidad||'AR', localidad, provincia, antSalud, vehiculo });
+      personas.push({ apellido:res.apellido||res.huesped||'', nombre:res.nombre||'', dni:res.dni||'', telefono:res.telefono||'', email:res.email||'', fechaNac:res.fechaNac||'', nacionalidad:res.nacionalidad||'AR', localidad, provincia, antSalud, vehiculo });
       if (res.acompanantes) res.acompanantes.forEach(a => personas.push({ apellido:a.apellido||'', nombre:a.nombre||'', dni:a.dni||'', telefono:a.telefono||'', email:a.email||'', fechaNac:a.fechaNac||'', nacionalidad:a.nacionalidad||'AR', localidad:'', provincia:'', antSalud:'', vehiculo:'' }));
     } else {
       var alojItems = document.querySelectorAll('#listaAlojadosCheckIn .alojado-checkin-item');
@@ -7647,13 +7647,13 @@ async function cargarProfesionalesSpa() {
 window.cargarProfesionalesSpa = cargarProfesionalesSpa;
 
 async function agregarProfesionalSpa() {
-  var apellido = $('spApellido').value.trim();
-  var nombrePila = $('spNombre').value.trim();
-  var especialidad = $('spEspecialidad').value.trim();
+  var apellido = $('spaProfApellido').value.trim();
+  var nombrePila = $('spaProfNombre').value.trim();
+  var especialidad = $('spaProfEspecialidad').value.trim();
   if (!apellido || !nombrePila) { showToast('Completá apellido y nombre','warning'); return; }
   try {
     await addDoc(collection(db,'spaProfesionales'), { nombre: nombrePila+' '+apellido, nombrePila, apellido, especialidad, activo:true, fechaAlta:serverTimestamp() });
-    $('spApellido').value=''; $('spNombre').value=''; $('spEspecialidad').value='';
+    $('spaProfApellido').value=''; $('spaProfNombre').value=''; $('spaProfEspecialidad').value='';
     showToast('Profesional agregada','success');
     cargarProfesionalesSpa();
   } catch(e) { showToast('Error: '+e.message,'error'); }
