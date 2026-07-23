@@ -328,6 +328,11 @@
       <button class="tab" onclick="tabStock('ingredientes',this)">Ingredientes</button>
       <button class="tab" onclick="tabStock('nuevoPlato',this)">Nuevo Plato</button>
       <button class="tab" onclick="tabStock('historial',this)">Historial</button>
+      <button class="tab" onclick="tabStock('compras',this)">Compras</button>
+      <button class="tab" onclick="tabStock('articulos',this)">Art. Internos</button>
+      <button class="tab" onclick="tabStock('proveedores',this)">Proveedores</button>
+      <button class="tab" onclick="tabStock('pagosProv',this)">Pagos Prov.</button>
+      <button class="tab" onclick="tabStock('liqSpa',this)">Liquid. Spa</button>
     </div>
     <div id="tabStockLista">
       <div class="card">
@@ -343,6 +348,7 @@
         <div class="card-title">Registrar Movimiento</div>
         <div class="form-row">
           <div class="form-group"><label>Producto</label>
+            <input type="text" id="stockProdBuscar" placeholder="Buscar producto..." onkeyup="filtrarSelectStock()" style="margin-bottom:6px;">
             <select id="stockProdSelect"></select></div>
           <div class="form-group"><label>Tipo</label>
             <select id="stockTipo">
@@ -447,6 +453,133 @@
         </table></div>
       </div>
     </div>
+    <!-- Stock: Compras -->
+    <div id="tabStockCompras" class="hidden">
+      <div class="card">
+        <div class="card-title">Nueva Compra — Factura / Remito</div>
+        <div class="form-row">
+          <div class="form-group"><label>Comprobante *</label>
+            <select id="cmpTipoComprobante"><option value="FACTURA">Factura</option><option value="REMITO">Remito</option></select></div>
+          <div class="form-group"><label>N° Comprobante *</label><input type="text" id="cmpNroComprobante" placeholder="Ej: 0001-00012345"></div>
+          <div class="form-group"><label>Proveedor *</label><select id="cmpProveedor"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>Fecha *</label><input type="date" id="cmpFecha"></div>
+        </div>
+        <div style="margin:12px 0;">
+          <strong style="font-size:0.9rem;">Ítems de la compra</strong>
+          <p style="font-size:0.8rem;color:var(--muted);margin:4px 0 8px;">El precio de costo es final (IVA incluido). Al registrar la compra se actualiza el stock y el precio de costo de cada ítem.</p>
+          <div id="cmpItemsContainer"></div>
+          <button class="btn btn-blue btn-xs" onclick="agregarItemCompra()">+ Agregar Ítem</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+          <strong id="cmpTotalLabel">Total: $0</strong>
+          <button class="btn btn-gold btn-sm" onclick="registrarCompra()">Registrar Compra</button>
+        </div>
+        <datalist id="dlProductos"></datalist>
+        <datalist id="dlIngredientes"></datalist>
+        <datalist id="dlArticulos"></datalist>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Compras Registradas</div>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Las compras confirmadas quedan bloqueadas. Si hubo un error, solicitá el desbloqueo al admin.</p>
+        <div id="listaComprasStock"></div>
+      </div>
+    </div>
+    <!-- Stock: Artículos Internos -->
+    <div id="tabStockArticulos" class="hidden">
+      <div class="card">
+        <div class="card-title">Nuevo Artículo Interno</div>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Artículos de limpieza, librería y mantenimiento (uso interno, no se venden en restaurante).</p>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="artNombre" placeholder="Ej: Papel higiénico"></div>
+          <div class="form-group"><label>Categoría *</label>
+            <select id="artCategoria"><option value="LIMPIEZA">Limpieza</option><option value="LIBRERIA">Librería</option><option value="MANTENIMIENTO">Mantenimiento</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stock Inicial</label><input type="number" id="artStockInicial" min="0" value="0"></div>
+          <div class="form-group"><label>Stock Mínimo *</label><input type="number" id="artStockMin" min="0" value="1"></div>
+          <div class="form-group"><label>Stock Máximo *</label><input type="number" id="artStockMax" min="0" value="10"></div>
+          <div class="form-group"><label>Costo Unit. (final)</label><input type="number" id="artCosto" step="0.01" min="0" value="0"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarArticuloInterno()">Agregar Artículo</button>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Stock de Artículos Internos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Artículo</th><th>Categoría</th><th>Stock</th><th>Mín.</th><th>Máx.</th><th>Costo Unit.</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyArticulosStock"></tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Egreso / Entrega de Artículos</div>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Registrá la entrega de artículos (ej: 2 papel higiénico para habitaciones). Genera el remito de entrega y da de baja el stock.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Artículo *</label><select id="egArticulo"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>Cantidad *</label><input type="number" id="egCantidad" min="1" value="1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Destino / Sector *</label><input type="text" id="egDestino" placeholder="Ej: Habitaciones, Recepción"></div>
+          <div class="form-group"><label>Motivo</label><input type="text" id="egMotivo" placeholder="Ej: Reposición semanal"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="registrarEgresoArticulo()">Registrar Egreso + Remito</button>
+      </div>
+    </div>
+    <!-- Stock: Proveedores -->
+    <div id="tabStockProveedores" class="hidden">
+      <div class="card">
+        <div class="card-title">Alta de Proveedor</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre Empresa *</label><input type="text" id="provEmpresa"></div>
+          <div class="form-group"><label>CUIT *</label><input type="text" id="provCuit" placeholder="XX-XXXXXXXX-X"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Dirección</label><input type="text" id="provDireccion"></div>
+          <div class="form-group"><label>Localidad</label><input type="text" id="provLocalidad"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Persona de Contacto / Referencia</label><input type="text" id="provContacto"></div>
+          <div class="form-group"><label>Celular</label><input type="text" id="provCelular"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="agregarProveedor()">Agregar Proveedor</button>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Proveedores</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Empresa</th><th>CUIT</th><th>Dirección</th><th>Localidad</th><th>Contacto</th><th>Celular</th></tr></thead>
+          <tbody id="tbodyProveedores"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Stock: Pagos a Proveedores -->
+    <div id="tabStockPagosProv" class="hidden">
+      <div class="card">
+        <div class="card-title">Registrar Pago a Proveedor</div>
+        <div class="form-row">
+          <div class="form-group"><label>Proveedor *</label><select id="ppProveedor"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>Fecha *</label><input type="date" id="ppFecha"></div>
+          <div class="form-group"><label>Monto *</label><input type="number" id="ppMonto" step="0.01" min="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Medio de Pago *</label>
+            <select id="ppMedioPago"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="TARJETA_DEBITO">Débito</option><option value="TARJETA_CREDITO">Crédito</option><option value="CHEQUE">Cheque</option></select></div>
+          <div class="form-group"><label>Comprobante / Referencia</label><input type="text" id="ppComprobante"></div>
+          <div class="form-group"><label>Observaciones</label><input type="text" id="ppObs"></div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="registrarPagoProveedor()">Registrar Pago</button>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Pagos del Día</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+          <input type="date" id="ppFiltroFecha" onchange="cargarPagosProvStock()">
+          <button class="btn btn-sm" onclick="cargarPagosProvStock()">Actualizar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Proveedor</th><th>Monto</th><th>Medio Pago</th><th>Comprobante</th><th>Observaciones</th></tr></thead>
+          <tbody id="tbodyPagosProvStock"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Stock: Liquidaciones Spa -->
+    <div id="tabStockLiqSpa" class="hidden"></div>
   </div>
 
   <!-- PANEL CHEF -->
@@ -517,6 +650,10 @@
       <button class="tab" onclick="tabAdmin('adminReporteCarhue',this)">Reporte Carhue</button>
       <button class="tab" onclick="tabAdmin('adminHistorial',this)">Historial Huéspedes</button>
       <button class="tab" onclick="tabAdmin('adminCtaCte',this)">Ctas. Corrientes</button>
+      <button class="tab" onclick="tabAdmin('adminClienteHab',this)">Cliente Habitual</button>
+      <button class="tab" onclick="tabAdmin('adminCompras',this)">Compras</button>
+      <button class="tab" onclick="tabAdmin('adminArticulos',this)">Art. Internos</button>
+      <button class="tab" onclick="tabAdmin('adminPagosProv',this)">Pagos Proveedores</button>
     </div>
     <!-- Admin Mesas -->
     <div id="tabAdminMesas">
@@ -881,6 +1018,70 @@
         <div id="liquidacionResultado"></div>
       </div>
     </div>
+    <!-- Admin Cliente Habitual -->
+    <div id="tabAdminClienteHab" class="hidden"></div>
+    <!-- Admin Compras -->
+    <div id="tabAdminCompras" class="hidden">
+      <div class="card">
+        <div class="card-title">Compras — Facturas / Remitos de Ingreso</div>
+        <div class="filtros" style="margin-bottom:12px;">
+          <div class="form-group"><label>Desde</label><input type="date" id="filtroComprasDesde"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="filtroComprasHasta"></div>
+          <div class="form-group"><label>Proveedor</label><select id="filtroComprasProv" style="min-width:180px;"><option value="">— Todos —</option></select></div>
+          <button class="btn btn-gold btn-sm" onclick="cargarComprasAdmin()">Buscar</button>
+        </div>
+        <div id="listaComprasAdmin"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Solicitudes de Desbloqueo</div>
+        <div id="listaSolicitudesDesbloqueo"></div>
+      </div>
+    </div>
+    <!-- Admin Artículos Internos -->
+    <div id="tabAdminArticulos" class="hidden">
+      <div class="card">
+        <div class="card-title">Artículos Internos — Stock y Gastos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Artículo</th><th>Categoría</th><th>Stock</th><th>Mín.</th><th>Máx.</th><th>Costo Unit.</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyArtAdmin"></tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Movimientos de Artículos Internos</div>
+        <div class="filtros" style="margin-bottom:12px;">
+          <div class="form-group"><label>Desde</label><input type="date" id="filtroArtMovDesde"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="filtroArtMovHasta"></div>
+          <button class="btn btn-gold btn-sm" onclick="cargarMovArtAdmin()">Buscar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Artículo</th><th>Tipo</th><th>Cantidad</th><th>Destino/Motivo</th><th>Costo</th><th>Usuario</th></tr></thead>
+          <tbody id="tbodyArtMovAdmin"></tbody>
+        </table></div>
+        <div id="resumenGastosArt" style="margin-top:12px;"></div>
+      </div>
+    </div>
+    <!-- Admin Pagos Proveedores -->
+    <div id="tabAdminPagosProv" class="hidden">
+      <div class="card">
+        <div class="card-title">Pagos a Proveedores</div>
+        <div class="filtros" style="margin-bottom:12px;">
+          <div class="form-group"><label>Período</label>
+            <select id="filtroPagosProvPeriodo">
+              <option value="DIA">Día</option>
+              <option value="MES" selected>Mes</option>
+              <option value="ANIO">Año</option>
+            </select></div>
+          <div class="form-group"><label>Fecha</label><input type="date" id="filtroPagosProvFecha"></div>
+          <div class="form-group"><label>Proveedor</label><select id="filtroPagosProvProv" style="min-width:180px;"><option value="">— Todos —</option></select></div>
+          <button class="btn btn-gold btn-sm" onclick="cargarPagosProvAdmin()">Buscar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Proveedor</th><th>Monto</th><th>Medio Pago</th><th>Comprobante</th><th>Observaciones</th><th>Usuario</th></tr></thead>
+          <tbody id="tbodyPagosProvAdmin"></tbody>
+        </table></div>
+        <div id="estadisticaPagosProv" style="margin-top:16px;"></div>
+      </div>
+    </div>
   </div>
 
   <!-- PANEL CARHUE -->
@@ -997,7 +1198,23 @@
           <div class="form-group"><label>Fecha de Nacimiento *</label><input type="date" id="resFechaNac"></div>
         </div>
         <div class="form-row" id="resDatosHuesped4">
-          <div class="form-group"><label>Teléfono *</label><input type="text" id="resTelefono"></div>
+          <div class="form-group"><label>Teléfono *</label>
+            <div style="display:flex;gap:6px;">
+              <select id="resTelPais" style="width:110px;flex:none;">
+                <option value="54">+54 (AR)</option>
+                <option value="55">+55 (BR)</option>
+                <option value="56">+56 (CL)</option>
+                <option value="598">+598 (UY)</option>
+                <option value="595">+595 (PY)</option>
+                <option value="591">+591 (BO)</option>
+                <option value="51">+51 (PE)</option>
+                <option value="57">+57 (CO)</option>
+                <option value="1">+1 (US)</option>
+                <option value="">Otro</option>
+              </select>
+              <input type="text" id="resTelefono" placeholder="Cód. área (2-4 díg.) + número (6-8 díg.)" style="flex:1;">
+            </div>
+          </div>
         </div>
         <div class="form-row" id="resDatosHuesped5">
           <div class="form-group"><label>Localidad</label><input type="text" id="resLocalidad" placeholder="Localidad"></div>
@@ -1005,6 +1222,15 @@
           <div class="form-group"><label>Vehículo (patente/modelo)</label><input type="text" id="resVehiculo" placeholder="Ej: ABC123 - Ford Ranger"></div>
         </div>
         <div class="form-row" id="resDatosHuesped6">
+          <div class="form-group"><label>Restricción Alimentaria</label>
+            <select id="resRestriccionAlim">
+              <option value="">Ninguna</option>
+              <option value="CELIACO">Celíaco</option>
+              <option value="VEGANO">Vegano</option>
+              <option value="VEGETARIANO">Vegetariano</option>
+              <option value="ALERGICO">Alérgico</option>
+              <option value="OTRO">Otro (especificar en notas)</option>
+            </select></div>
           <div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
         </div>
         <div id="seccionAcompanantes" style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
@@ -1043,7 +1269,9 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Fecha Check-in *</label><input type="date" id="resFechaIn"></div>
-          <div class="form-group"><label>Fecha Check-out *</label><input type="date" id="resFechaOut"></div>
+          <div class="form-group"><label>Fecha Check-out *</label><input type="date" id="resFechaOut">
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resLateCheckout"> Late Checkout</label>
+          </div>
         </div>
         <div class="form-row" id="resRowAdultosMenores">
           <div class="form-group"><label>Adultos</label><input type="number" id="resAdultos" value="1" min="1"></div>
@@ -1076,18 +1304,6 @@
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA">Tarjeta</option>
-            </select></div>
-          <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="resFestejo" placeholder="Ej: Cumpleaños, Aniversario"></div>
-        </div>
-        <div class="form-row" id="resRowRestriccion">
-          <div class="form-group"><label>Restricción Alimentaria</label>
-            <select id="resRestriccionAlim">
-              <option value="">Ninguna</option>
-              <option value="CELIACO">Celíaco</option>
-              <option value="VEGANO">Vegano</option>
-              <option value="VEGETARIANO">Vegetariano</option>
-              <option value="ALERGICO">Alérgico</option>
-              <option value="OTRO">Otro (especificar en notas)</option>
             </select></div>
           <div class="form-group"><label>Pedidos Especiales Habitación</label><input type="text" id="resPedidosEsp" placeholder="Ej: Cuna, Decoración sorpresa"></div>
         </div>
@@ -1181,7 +1397,7 @@
     </div>
     <!-- Tab Cliente Habitual -->
     <div id="tabRecClienteHabitual" class="hidden">
-      <div class="card">
+      <div class="card" id="cardClienteHabitual">
         <div class="card-title">Registro de Cliente Habitual</div>
         <div class="filtros" style="margin-bottom:16px;">
           <div class="form-group"><label>Buscar por DNI/Pasaporte</label><input type="text" id="buscarClienteHabDni" placeholder="DNI o Pasaporte..." onkeyup="buscarClienteHabitual()"></div>
@@ -1292,7 +1508,8 @@
               <option value="EXTERNO">Externo</option>
             </select></div>
           <div class="form-group" id="stGrupoHab"><label>Habitación (ocupadas) *</label>
-            <select id="stHabitacion"><option value="">Seleccionar...</option></select></div>
+            <select id="stHabitacion" onchange="onSpaHabChange()"><option value="">Seleccionar...</option></select>
+            <div id="stSaludAlerta" style="display:none;margin-top:6px;padding:8px 10px;background:rgba(232,69,60,0.1);border-radius:8px;font-size:0.82rem;color:var(--red);font-weight:600;"></div></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Nombre Cliente *</label><input type="text" id="stNombreCliente" placeholder="Nombre y apellido"></div>
@@ -1390,7 +1607,7 @@
       </div>
     </div>
     <div id="tabSpaAdminLiquidaciones" class="hidden">
-      <div class="card">
+      <div class="card" id="cardLiquidacionSpa">
         <div class="card-title">Liquidación a Profesionales</div>
         <div class="form-row">
           <div class="form-group"><label>Profesional *</label><select id="slProfesional"></select></div>
@@ -1845,12 +2062,17 @@ window.tabMozo = tabMozo;
 function tabStock(t, btn) {
   document.querySelectorAll('#panelStock .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabStockLista','tabStockIngreso','tabStockNuevo','tabStockIngredientes','tabStockNuevoPlato','tabStockHistorial'].forEach(id => $(id).classList.add('hidden'));
-  var map = { lista:'tabStockLista', ingreso:'tabStockIngreso', nuevo:'tabStockNuevo', ingredientes:'tabStockIngredientes', nuevoPlato:'tabStockNuevoPlato', historial:'tabStockHistorial' };
+  ['tabStockLista','tabStockIngreso','tabStockNuevo','tabStockIngredientes','tabStockNuevoPlato','tabStockHistorial','tabStockCompras','tabStockArticulos','tabStockProveedores','tabStockPagosProv','tabStockLiqSpa'].forEach(id => $(id).classList.add('hidden'));
+  var map = { lista:'tabStockLista', ingreso:'tabStockIngreso', nuevo:'tabStockNuevo', ingredientes:'tabStockIngredientes', nuevoPlato:'tabStockNuevoPlato', historial:'tabStockHistorial', compras:'tabStockCompras', articulos:'tabStockArticulos', proveedores:'tabStockProveedores', pagosProv:'tabStockPagosProv', liqSpa:'tabStockLiqSpa' };
   $(map[t]).classList.remove('hidden');
   if (t === 'ingreso') poblarSelectStock();
   if (t === 'ingredientes') cargarIngredientes();
   if (t === 'historial') cargarHistorialStock();
+  if (t === 'compras') iniciarTabCompras();
+  if (t === 'articulos') cargarArticulosInternos();
+  if (t === 'proveedores') cargarProveedores();
+  if (t === 'pagosProv') iniciarTabPagosProv();
+  if (t === 'liqSpa') { var liqCard = $('cardLiquidacionSpa'); if (liqCard && liqCard.parentElement !== $('tabStockLiqSpa')) $('tabStockLiqSpa').appendChild(liqCard); cargarSelectLiquidacionProf(); }
 }
 window.tabStock = tabStock;
 
@@ -1867,8 +2089,8 @@ window.tabChef = tabChef;
 function tabAdmin(t, btn) {
   document.querySelectorAll('#panelAdmin .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminPromociones','tabAdminVouchers','tabAdminReporteCarhue','tabAdminHistorial','tabAdminCtaCte'].forEach(id => $(id).classList.add('hidden'));
-  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminPromociones:'tabAdminPromociones', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue', adminHistorial:'tabAdminHistorial', adminCtaCte:'tabAdminCtaCte' };
+  ['tabAdminMesas','tabAdminProductos','tabAdminUsuarios','tabAdminCierres','tabAdminAuditoria','tabAdminHab','tabAdminTarifas','tabAdminConfig','tabAdminMarketing','tabAdminPromociones','tabAdminVouchers','tabAdminReporteCarhue','tabAdminHistorial','tabAdminCtaCte','tabAdminClienteHab','tabAdminCompras','tabAdminArticulos','tabAdminPagosProv'].forEach(id => $(id).classList.add('hidden'));
+  var map = { mesas:'tabAdminMesas', productos:'tabAdminProductos', usuarios:'tabAdminUsuarios', cierres:'tabAdminCierres', auditoria:'tabAdminAuditoria', adminHab:'tabAdminHab', adminTarifas:'tabAdminTarifas', adminConfig:'tabAdminConfig', adminMarketing:'tabAdminMarketing', adminPromociones:'tabAdminPromociones', adminVouchers:'tabAdminVouchers', adminReporteCarhue:'tabAdminReporteCarhue', adminHistorial:'tabAdminHistorial', adminCtaCte:'tabAdminCtaCte', adminClienteHab:'tabAdminClienteHab', adminCompras:'tabAdminCompras', adminArticulos:'tabAdminArticulos', adminPagosProv:'tabAdminPagosProv' };
   $(map[t]).classList.remove('hidden');
   if (t === 'mesas') cargarMesasAdmin();
   if (t === 'productos') cargarProductosAdmin();
@@ -1884,6 +2106,10 @@ function tabAdmin(t, btn) {
   if (t === 'adminReporteCarhue') cargarReporteCarhue();
   if (t === 'adminHistorial') cargarHistorialHuespedes();
   if (t === 'adminCtaCte') cargarCtasCorrientes();
+  if (t === 'adminClienteHab') $('tabAdminClienteHab').appendChild($('cardClienteHabitual'));
+  if (t === 'adminCompras') cargarComprasAdmin();
+  if (t === 'adminArticulos') cargarArticulosAdmin();
+  if (t === 'adminPagosProv') cargarPagosProvAdmin();
 }
 window.tabAdmin = tabAdmin;
 
@@ -2117,6 +2343,37 @@ async function confirmarAbrirMesa() {
     if (!hab) { showToast('Completá el N° de Habitación','warning'); $('abrirHabitacion').focus(); return; }
     if (!nombre) { showToast('Completá el Nombre del Cliente','warning'); $('abrirNombreCliente').focus(); return; }
   }
+  var comensalesMAP = 0;
+  if (tipo === 'EPECUEN_MAP' && hab) {
+    try {
+      var resMapSnap = await getDocs(query(collection(db,'reservas'), where('habitacionNro','==',hab), where('estado','==','CHECKIN')));
+      var cupoMAP = 0;
+      if (!resMapSnap.empty) {
+        var rMap = resMapSnap.docs[0].data();
+        cupoMAP = rMap.comensalesMAP || ((rMap.adultos||1) + (rMap.menores||0));
+      }
+      var hoyMap = new Date().toISOString().slice(0,10);
+      var cmdMapSnap = await getDocs(query(collection(db,'comandas'), where('nroHabitacion','==',hab), where('tipoCliente','==','EPECUEN_MAP')));
+      var usadosHoy = 0;
+      cmdMapSnap.docs.forEach(d => {
+        var c = d.data();
+        var f = c.fechaAbierta?.toDate ? c.fechaAbierta.toDate().toISOString().slice(0,10) : '';
+        if (f === hoyMap) usadosHoy += (c.comensalesMAP != null ? c.comensalesMAP : (c.cantidadComensales||0));
+      });
+      var restante = cupoMAP - usadosHoy;
+      if (restante <= 0) {
+        showToast('⚠️ ALERTA: La Hab. '+hab+' ya utilizó su media pensión hoy ('+usadosHoy+'/'+cupoMAP+' comensales). Este consumo será cobrado como consumo por utilización de la media pensión en el día.','error');
+        if (!confirm('⚠️ La habitación '+hab+' ya utilizó su media pensión hoy ('+usadosHoy+' de '+cupoMAP+' comensales MAP).\n\nEl consumo se abrirá SIN MAP y será cobrado como consumo a la habitación. ¿Continuar?')) return;
+        tipo = 'EPECUEN_SIN_MAP';
+      } else if (com > restante) {
+        comensalesMAP = restante;
+        showToast('⚠️ Hab. '+hab+': solo quedan '+restante+' de '+cupoMAP+' cupos MAP hoy. El excedente ('+(com-restante)+' comensal(es)) pasa como consumo a la habitación.','warning');
+      } else {
+        comensalesMAP = com;
+        if (usadosHoy > 0) showToast('Hab. '+hab+': MAP disponible '+restante+' de '+cupoMAP+' comensales (ya usados hoy: '+usadosHoy+')','warning');
+      }
+    } catch(e) {}
+  }
   try {
     // Crear comanda
     var cmdRef = await addDoc(collection(db,'comandas'), {
@@ -2126,6 +2383,7 @@ async function confirmarAbrirMesa() {
       nroHabitacion: hab,
       nombreCliente: nombre,
       cantidadComensales: com,
+      comensalesMAP: comensalesMAP,
       voucherId: voucherId || '',
       voucherPension: voucherPension || '',
       alertaCocina: (tipo !== 'EXTERNO' && tipo !== 'CARHUE') ? _alertaHabActual : '',
@@ -2719,11 +2977,19 @@ async function cargarStock() {
   }).join('');
 }
 
-function poblarSelectStock() {
+function poblarSelectStock(filtro) {
   var sel = $('stockProdSelect');
+  var f = (filtro||'').toLowerCase();
   sel.innerHTML = '<option value="">Seleccionar...</option>';
-  productosCache.forEach(p => { sel.innerHTML += `<option value="${p.id}">${esc(p.nombre)}</option>`; });
+  productosCache.filter(p => !f || (p.nombre||'').toLowerCase().includes(f)).forEach(p => { sel.innerHTML += `<option value="${p.id}">${esc(p.nombre)}</option>`; });
 }
+
+function filtrarSelectStock() {
+  poblarSelectStock($('stockProdBuscar').value.trim());
+  var sel = $('stockProdSelect');
+  if (sel.options.length === 2) sel.selectedIndex = 1;
+}
+window.filtrarSelectStock = filtrarSelectStock;
 
 async function registrarMovimientoStock() {
   var id = $('stockProdSelect').value;
@@ -2781,6 +3047,527 @@ async function cargarHistorialStock() {
     }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin movimientos</td></tr>';
   } catch(e) {}
 }
+
+// ── PROVEEDORES ──
+let proveedoresCache = [];
+let articulosCache = [];
+
+async function cargarProveedores() {
+  try {
+    var snap = await getDocs(collection(db,'proveedores'));
+    proveedoresCache = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (a.empresa||'').localeCompare(b.empresa||''));
+    var tbody = $('tbodyProveedores');
+    if (tbody) tbody.innerHTML = proveedoresCache.map(p => `<tr>
+      <td><strong>${esc(p.empresa)}</strong></td><td>${esc(p.cuit)}</td><td>${esc(p.direccion||'-')}</td><td>${esc(p.localidad||'-')}</td><td>${esc(p.contacto||'-')}</td><td>${esc(p.celular||'-')}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin proveedores</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+async function agregarProveedor() {
+  var empresa = $('provEmpresa').value.trim();
+  var cuit = $('provCuit').value.trim();
+  if (!empresa || !cuit) { showToast('Completá nombre de empresa y CUIT','warning'); return; }
+  try {
+    await addDoc(collection(db,'proveedores'), {
+      empresa, cuit,
+      direccion: $('provDireccion').value.trim(),
+      localidad: $('provLocalidad').value.trim(),
+      contacto: $('provContacto').value.trim(),
+      celular: $('provCelular').value.trim(),
+      usuario: currentUser.usuario, fechaCreacion: serverTimestamp()
+    });
+    showToast('Proveedor agregado','success');
+    ['provEmpresa','provCuit','provDireccion','provLocalidad','provContacto','provCelular'].forEach(id => $(id).value='');
+    await cargarProveedores();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarProveedor = agregarProveedor;
+
+function poblarSelectProveedores(selId) {
+  var sel = $(selId);
+  if (!sel) return;
+  var primera = sel.options[0] ? sel.options[0].outerHTML : '<option value="">Seleccionar...</option>';
+  sel.innerHTML = primera + proveedoresCache.map(p => `<option value="${p.id}">${esc(p.empresa)} (${esc(p.cuit)})</option>`).join('');
+}
+
+// ── COMPRAS (FACTURA / REMITO) ──
+async function iniciarTabCompras() {
+  if ($('cmpFecha') && !$('cmpFecha').value) $('cmpFecha').value = new Date().toISOString().slice(0,10);
+  await Promise.all([cargarProductos(), cargarIngredientesCache(), cargarArticulosCache(), cargarProveedores()]);
+  poblarSelectProveedores('cmpProveedor');
+  poblarDatalistsCompra();
+  if (!$('cmpItemsContainer').children.length) agregarItemCompra();
+  cargarComprasStock();
+}
+
+async function cargarIngredientesCache() {
+  try {
+    var snap = await getDocs(collection(db,'ingredientes'));
+    ingredientesCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+}
+
+async function cargarArticulosCache() {
+  try {
+    var snap = await getDocs(collection(db,'articulosInternos'));
+    articulosCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  } catch(e) {}
+}
+
+function poblarDatalistsCompra() {
+  if ($('dlProductos')) $('dlProductos').innerHTML = productosCache.map(p => `<option value="${esc(p.nombre)}">`).join('');
+  if ($('dlIngredientes')) $('dlIngredientes').innerHTML = ingredientesCache.map(i => `<option value="${esc(i.nombre)}">`).join('');
+  if ($('dlArticulos')) $('dlArticulos').innerHTML = articulosCache.map(a => `<option value="${esc(a.nombre)}">`).join('');
+}
+
+function agregarItemCompra() {
+  var cont = $('cmpItemsContainer');
+  var row = document.createElement('div');
+  row.className = 'form-row cmp-item-row';
+  row.style.cssText = 'align-items:flex-end;gap:6px;margin-bottom:8px;';
+  row.innerHTML = `
+    <div class="form-group" style="flex:0.9;"><label>Catálogo</label>
+      <select class="cmpItemTipo" onchange="cambiarTipoItemCompra(this)">
+        <option value="PRODUCTO">Producto</option>
+        <option value="INGREDIENTE">Ingrediente</option>
+        <option value="ARTICULO">Art. Interno</option>
+      </select></div>
+    <div class="form-group" style="flex:1.6;"><label>Ítem (buscar por nombre)</label><input type="text" class="cmpItemNombre" list="dlProductos" placeholder="Escribí para buscar..."></div>
+    <div class="form-group" style="flex:0.6;"><label>Cantidad</label><input type="number" class="cmpItemCant" min="0.01" step="0.01" value="1" onchange="calcularTotalCompra()"></div>
+    <div class="form-group" style="flex:0.8;"><label>Costo Unit. Final (c/IVA)</label><input type="number" class="cmpItemCosto" min="0" step="0.01" onchange="calcularTotalCompra()"></div>
+    <button class="btn btn-red btn-xs" style="margin-bottom:14px;" onclick="this.parentElement.remove();calcularTotalCompra();">✕</button>`;
+  cont.appendChild(row);
+}
+window.agregarItemCompra = agregarItemCompra;
+
+function cambiarTipoItemCompra(sel) {
+  var input = sel.closest('.cmp-item-row').querySelector('.cmpItemNombre');
+  var map = { PRODUCTO:'dlProductos', INGREDIENTE:'dlIngredientes', ARTICULO:'dlArticulos' };
+  input.setAttribute('list', map[sel.value]);
+  input.value = '';
+}
+window.cambiarTipoItemCompra = cambiarTipoItemCompra;
+
+function calcularTotalCompra() {
+  var total = 0;
+  document.querySelectorAll('.cmp-item-row').forEach(row => {
+    total += (parseFloat(row.querySelector('.cmpItemCant').value)||0) * (parseFloat(row.querySelector('.cmpItemCosto').value)||0);
+  });
+  $('cmpTotalLabel').textContent = 'Total: $' + total.toLocaleString('es-AR');
+}
+window.calcularTotalCompra = calcularTotalCompra;
+
+function buscarItemCatalogo(tipo, nombre) {
+  var n = nombre.toLowerCase();
+  var lista = tipo === 'PRODUCTO' ? productosCache : tipo === 'INGREDIENTE' ? ingredientesCache : articulosCache;
+  return lista.find(x => (x.nombre||'').toLowerCase() === n);
+}
+
+async function registrarCompra() {
+  var tipoComp = $('cmpTipoComprobante').value;
+  var nroComp = $('cmpNroComprobante').value.trim();
+  var provId = $('cmpProveedor').value;
+  var fecha = $('cmpFecha').value;
+  if (!nroComp) { showToast('Completá el número de comprobante','warning'); return; }
+  if (!provId) { showToast('Seleccioná el proveedor','warning'); return; }
+  if (!fecha) { showToast('Completá la fecha','warning'); return; }
+  var items = [];
+  var errores = [];
+  document.querySelectorAll('.cmp-item-row').forEach(row => {
+    var tipo = row.querySelector('.cmpItemTipo').value;
+    var nombre = row.querySelector('.cmpItemNombre').value.trim();
+    var cant = parseFloat(row.querySelector('.cmpItemCant').value)||0;
+    var costo = parseFloat(row.querySelector('.cmpItemCosto').value)||0;
+    if (!nombre) return;
+    var item = buscarItemCatalogo(tipo, nombre);
+    if (!item) { errores.push('"'+nombre+'" no existe en el catálogo de '+tipo.toLowerCase()+'s'); return; }
+    if (cant <= 0 || costo <= 0) { errores.push('"'+nombre+'": cantidad y costo deben ser mayores a 0'); return; }
+    var costoAnterior = tipo === 'INGREDIENTE' ? (item.precioCompra||0) : (item.precioCosto||0);
+    items.push({ tipo, refId: item.id, nombre: item.nombre, cantidad: cant, costoUnitario: costo, costoAnterior, subtotal: cant*costo });
+  });
+  if (errores.length) { showToast(errores.join(' | '),'warning'); return; }
+  if (!items.length) { showToast('Agregá al menos un ítem a la compra','warning'); return; }
+  var prov = proveedoresCache.find(p => p.id === provId);
+  try {
+    for (var it of items) {
+      var coll = it.tipo === 'PRODUCTO' ? 'productos' : it.tipo === 'INGREDIENTE' ? 'ingredientes' : 'articulosInternos';
+      var item = buscarItemCatalogo(it.tipo, it.nombre);
+      var stockActual = it.tipo === 'INGREDIENTE' ? (item.stock ?? item.stockActual ?? 0) : (item.stockActual||0);
+      var nuevoStock = stockActual + it.cantidad;
+      var upd = it.tipo === 'INGREDIENTE' ? { stock: nuevoStock, precioCompra: it.costoUnitario } : { stockActual: nuevoStock, precioCosto: it.costoUnitario };
+      await updateDoc(doc(db, coll, it.refId), upd);
+      await addDoc(collection(db,'historialStock'), {
+        productoId: it.refId, nombreProducto: it.nombre,
+        tipo: 'COMPRA_'+tipoComp, cantidad: it.cantidad, stockAnterior: stockActual, stockNuevo: nuevoStock,
+        usuario: currentUser.usuario, fecha: serverTimestamp()
+      });
+    }
+    var total = items.reduce((a,i) => a + i.subtotal, 0);
+    await addDoc(collection(db,'compras'), {
+      tipoComprobante: tipoComp, nroComprobante: nroComp,
+      proveedorId: provId, proveedorNombre: prov?.empresa||'', proveedorCuit: prov?.cuit||'',
+      fecha, items, total,
+      estado: 'CONFIRMADA',
+      usuario: currentUser.usuario, fechaRegistro: serverTimestamp()
+    });
+    showToast('Compra registrada. Stock y precios de costo actualizados.','success');
+    $('cmpNroComprobante').value='';
+    $('cmpItemsContainer').innerHTML='';
+    agregarItemCompra();
+    calcularTotalCompra();
+    await Promise.all([cargarProductos(), cargarIngredientesCache(), cargarArticulosCache()]);
+    poblarDatalistsCompra();
+    cargarComprasStock();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarCompra = registrarCompra;
+
+function renderCompraCard(c, esAdmin) {
+  var estadoColor = c.estado === 'CONFIRMADA' ? 'var(--red)' : c.estado === 'DESBLOQUEADA' ? 'var(--gold)' : 'var(--muted)';
+  var estadoLbl = c.estado === 'CONFIRMADA' ? '🔒 BLOQUEADA' : c.estado === 'DESBLOQUEADA' ? '🔓 DESBLOQUEADA' : c.estado;
+  var itemsHtml = (c.items||[]).map(i => {
+    var diff = i.costoAnterior > 0 ? i.costoUnitario - i.costoAnterior : 0;
+    var pct = i.costoAnterior > 0 ? (diff / i.costoAnterior * 100) : 0;
+    var diffHtml = '';
+    if (esAdmin && i.costoAnterior > 0 && diff !== 0) {
+      var color = pct > 20 ? 'var(--red)' : diff > 0 ? 'var(--gold)' : 'var(--green)';
+      diffHtml = ` <span style="color:${color};font-weight:600;">(${diff>0?'+':''}$${diff.toLocaleString('es-AR')} / ${pct>0?'+':''}${pct.toFixed(1)}% vs última compra${pct>20?' ⚠️ AUMENTO EXCESIVO':''})</span>`;
+    }
+    return `<div style="display:flex;justify-content:space-between;font-size:0.83rem;margin:3px 0;"><span>${esc(i.nombre)} <span style="color:var(--muted);">(${esc(i.tipo)})</span> × ${i.cantidad}</span><span>$${(i.costoUnitario||0).toLocaleString('es-AR')} c/u = $${(i.subtotal||0).toLocaleString('es-AR')}${diffHtml}</span></div>`;
+  }).join('');
+  var acciones = '';
+  if (!esAdmin) {
+    if (c.estado === 'CONFIRMADA' && !c.solicitudPendiente) acciones = `<button class="btn btn-sm" onclick="solicitarDesbloqueoCompra('${c.id}')">Solicitar Desbloqueo</button>`;
+    else if (c.solicitudPendiente) acciones = '<span style="font-size:0.8rem;color:var(--gold);">Desbloqueo solicitado — pendiente de admin</span>';
+    else if (c.estado === 'DESBLOQUEADA') acciones = `<button class="btn btn-red btn-sm" onclick="anularCompra('${c.id}')">Anular Compra (revierte stock)</button>`;
+  }
+  return `<div class="reserva-card" style="margin-bottom:10px;">
+    <div class="reserva-header">
+      <div><strong>${esc(c.tipoComprobante)} ${esc(c.nroComprobante)}</strong> — ${esc(c.proveedorNombre)}</div>
+      <span class="badge" style="background:${estadoColor}20;color:${estadoColor};">${estadoLbl}</span>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);margin:4px 0;">Fecha: ${esc(c.fecha)} — Cargada por: ${esc(c.usuario)}</div>
+    ${itemsHtml}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;"><strong>Total: $${(c.total||0).toLocaleString('es-AR')}</strong><div>${acciones}</div></div>
+  </div>`;
+}
+
+async function cargarComprasStock() {
+  try {
+    var snap = await getDocs(query(collection(db,'compras'), orderBy('fechaRegistro','desc'), limit(30)));
+    var compras = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    $('listaComprasStock').innerHTML = compras.map(c => renderCompraCard(c, false)).join('') || '<p style="color:var(--muted);padding:12px;">Sin compras registradas</p>';
+  } catch(e) { $('listaComprasStock').innerHTML = '<p style="color:var(--muted);padding:12px;">Sin compras registradas</p>'; }
+}
+
+async function solicitarDesbloqueoCompra(compraId) {
+  var motivo = prompt('Motivo de la solicitud de desbloqueo (obligatorio):');
+  if (!motivo || !motivo.trim()) { showToast('Debés indicar el motivo','warning'); return; }
+  try {
+    await addDoc(collection(db,'solicitudesDesbloqueo'), {
+      compraId, motivo: motivo.trim(), estado: 'PENDIENTE',
+      solicitante: currentUser.usuario, fecha: serverTimestamp()
+    });
+    await updateDoc(doc(db,'compras',compraId), { solicitudPendiente: true });
+    showToast('Solicitud enviada al admin','success');
+    cargarComprasStock();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.solicitarDesbloqueoCompra = solicitarDesbloqueoCompra;
+
+async function anularCompra(compraId) {
+  if (!confirm('¿Anular esta compra? Se revierte el stock de todos los ítems y queda registrada como ANULADA. Luego podés cargarla de nuevo correctamente.')) return;
+  try {
+    var snap = await getDoc(doc(db,'compras',compraId));
+    var c = snap.data();
+    if (c.estado !== 'DESBLOQUEADA') { showToast('La compra no está desbloqueada','warning'); return; }
+    await Promise.all([cargarProductos(), cargarIngredientesCache(), cargarArticulosCache()]);
+    for (var it of (c.items||[])) {
+      var coll = it.tipo === 'PRODUCTO' ? 'productos' : it.tipo === 'INGREDIENTE' ? 'ingredientes' : 'articulosInternos';
+      var item = buscarItemCatalogo(it.tipo, it.nombre);
+      if (!item) continue;
+      var stockActual = it.tipo === 'INGREDIENTE' ? (item.stock ?? item.stockActual ?? 0) : (item.stockActual||0);
+      var nuevoStock = stockActual - it.cantidad;
+      var upd = it.tipo === 'INGREDIENTE' ? { stock: nuevoStock } : { stockActual: nuevoStock };
+      await updateDoc(doc(db, coll, it.refId), upd);
+      await addDoc(collection(db,'historialStock'), {
+        productoId: it.refId, nombreProducto: it.nombre,
+        tipo: 'ANULACION_COMPRA', cantidad: it.cantidad, stockAnterior: stockActual, stockNuevo: nuevoStock,
+        usuario: currentUser.usuario, fecha: serverTimestamp()
+      });
+    }
+    await updateDoc(doc(db,'compras',compraId), { estado: 'ANULADA', anuladaPor: currentUser.usuario, fechaAnulacion: serverTimestamp() });
+    showToast('Compra anulada y stock revertido','success');
+    cargarComprasStock();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.anularCompra = anularCompra;
+
+// ── ADMIN: COMPRAS Y DESBLOQUEOS ──
+async function cargarComprasAdmin() {
+  try {
+    await cargarProveedores();
+    poblarSelectProveedores('filtroComprasProv');
+    var snap = await getDocs(query(collection(db,'compras'), orderBy('fechaRegistro','desc'), limit(100)));
+    var compras = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var desde = $('filtroComprasDesde').value, hasta = $('filtroComprasHasta').value, prov = $('filtroComprasProv').value;
+    if (desde) compras = compras.filter(c => c.fecha >= desde);
+    if (hasta) compras = compras.filter(c => c.fecha <= hasta);
+    if (prov) compras = compras.filter(c => c.proveedorId === prov);
+    $('listaComprasAdmin').innerHTML = compras.map(c => renderCompraCard(c, true)).join('') || '<p style="color:var(--muted);padding:12px;">Sin compras para mostrar</p>';
+    cargarSolicitudesDesbloqueo();
+  } catch(e) { $('listaComprasAdmin').innerHTML = '<p style="color:var(--muted);padding:12px;">Sin compras para mostrar</p>'; }
+}
+window.cargarComprasAdmin = cargarComprasAdmin;
+
+async function cargarSolicitudesDesbloqueo() {
+  try {
+    var snap = await getDocs(query(collection(db,'solicitudesDesbloqueo'), orderBy('fecha','desc'), limit(50)));
+    var sols = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    $('listaSolicitudesDesbloqueo').innerHTML = sols.map(s => `<div class="reserva-card" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:0.85rem;"><strong>${esc(s.solicitante)}</strong> — ${fmtFecha(s.fecha)}</div>
+          <div style="font-size:0.83rem;color:var(--muted);">Motivo: ${esc(s.motivo)}</div>
+        </div>
+        ${s.estado === 'PENDIENTE'
+          ? `<div style="display:flex;gap:6px;"><button class="btn btn-green btn-sm" onclick="resolverDesbloqueo('${s.id}','${s.compraId}',true)">Desbloquear</button><button class="btn btn-red btn-sm" onclick="resolverDesbloqueo('${s.id}','${s.compraId}',false)">Rechazar</button></div>`
+          : `<span class="badge" style="background:var(--muted)20;color:var(--muted);">${esc(s.estado)}${s.resueltoPor?' por '+esc(s.resueltoPor):''}</span>`}
+      </div>
+    </div>`).join('') || '<p style="color:var(--muted);padding:12px;">Sin solicitudes</p>';
+  } catch(e) { $('listaSolicitudesDesbloqueo').innerHTML = '<p style="color:var(--muted);padding:12px;">Sin solicitudes</p>'; }
+}
+
+async function resolverDesbloqueo(solId, compraId, aprobar) {
+  try {
+    await updateDoc(doc(db,'solicitudesDesbloqueo',solId), { estado: aprobar ? 'APROBADA' : 'RECHAZADA', resueltoPor: currentUser.usuario, fechaResolucion: serverTimestamp() });
+    await updateDoc(doc(db,'compras',compraId), { solicitudPendiente: false, ...(aprobar ? { estado: 'DESBLOQUEADA', desbloqueadaPor: currentUser.usuario, fechaDesbloqueo: serverTimestamp() } : {}) });
+    showToast(aprobar ? 'Compra desbloqueada' : 'Solicitud rechazada','success');
+    cargarComprasAdmin();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.resolverDesbloqueo = resolverDesbloqueo;
+
+// ── ARTÍCULOS INTERNOS ──
+function estadoArticulo(a) {
+  var st = a.stockActual||0;
+  if (st <= 0) return ['SIN STOCK','var(--red)'];
+  if (st <= (a.stockMin||0)) return ['FALTANTE','var(--red)'];
+  if (st > (a.stockMax||Infinity)) return ['EXCEDIDO','var(--gold)'];
+  return ['OK','var(--green)'];
+}
+
+function renderTablaArticulos(tbodyId) {
+  var tbody = $(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = articulosCache.map(a => {
+    var est = estadoArticulo(a);
+    return `<tr>
+      <td><strong>${esc(a.nombre)}</strong></td>
+      <td>${esc(a.categoria)}</td>
+      <td>${a.stockActual||0}</td><td>${a.stockMin||0}</td><td>${a.stockMax||0}</td>
+      <td>$${(a.precioCosto||0).toLocaleString('es-AR')}</td>
+      <td><span class="badge" style="background:${est[1]}20;color:${est[1]};">${est[0]}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin artículos</td></tr>';
+}
+
+async function cargarArticulosInternos() {
+  await cargarArticulosCache();
+  articulosCache.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  renderTablaArticulos('tbodyArticulosStock');
+  var sel = $('egArticulo');
+  if (sel) sel.innerHTML = '<option value="">Seleccionar...</option>' + articulosCache.map(a => `<option value="${a.id}">${esc(a.nombre)} (stock: ${a.stockActual||0})</option>`).join('');
+  var faltantes = articulosCache.filter(a => (a.stockActual||0) <= (a.stockMin||0));
+  if (faltantes.length) showToast('⚠️ Artículos con faltante o stock bajo: '+faltantes.map(a => a.nombre).join(', '),'warning');
+}
+
+async function agregarArticuloInterno() {
+  var nombre = $('artNombre').value.trim();
+  if (!nombre) { showToast('Ingresá el nombre del artículo','warning'); return; }
+  try {
+    await addDoc(collection(db,'articulosInternos'), {
+      nombre, categoria: $('artCategoria').value,
+      stockActual: parseFloat($('artStockInicial').value)||0,
+      stockMin: parseFloat($('artStockMin').value)||0,
+      stockMax: parseFloat($('artStockMax').value)||0,
+      precioCosto: parseFloat($('artCosto').value)||0,
+      usuario: currentUser.usuario, fechaCreacion: serverTimestamp()
+    });
+    showToast('Artículo agregado','success');
+    $('artNombre').value=''; $('artStockInicial').value='0'; $('artStockMin').value='1'; $('artStockMax').value='10'; $('artCosto').value='0';
+    await cargarArticulosInternos();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.agregarArticuloInterno = agregarArticuloInterno;
+
+async function registrarEgresoArticulo() {
+  var id = $('egArticulo').value;
+  var cant = parseFloat($('egCantidad').value)||0;
+  var destino = $('egDestino').value.trim();
+  var motivo = $('egMotivo').value.trim();
+  if (!id || cant <= 0) { showToast('Seleccioná el artículo y la cantidad','warning'); return; }
+  if (!destino) { showToast('Completá el destino/sector','warning'); return; }
+  var art = articulosCache.find(a => a.id === id);
+  if (!art) return;
+  if (cant > (art.stockActual||0)) { showToast('Stock insuficiente ('+(art.stockActual||0)+' disponibles)','warning'); return; }
+  try {
+    var nuevo = (art.stockActual||0) - cant;
+    await updateDoc(doc(db,'articulosInternos',id), { stockActual: nuevo });
+    await addDoc(collection(db,'articulosMovimientos'), {
+      articuloId: id, articuloNombre: art.nombre, categoria: art.categoria,
+      tipo: 'EGRESO', cantidad: cant, destino, motivo,
+      costoUnitario: art.precioCosto||0, costoTotal: (art.precioCosto||0)*cant,
+      stockAnterior: art.stockActual||0, stockNuevo: nuevo,
+      usuario: currentUser.usuario, fecha: serverTimestamp()
+    });
+    imprimirRemitoEntrega(art, cant, destino, motivo);
+    showToast('Egreso registrado y remito generado'+(nuevo <= (art.stockMin||0) ? ' — ⚠️ stock bajo mínimo' : ''), nuevo <= (art.stockMin||0) ? 'warning' : 'success');
+    $('egCantidad').value='1'; $('egDestino').value=''; $('egMotivo').value='';
+    await cargarArticulosInternos();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarEgresoArticulo = registrarEgresoArticulo;
+
+function imprimirRemitoEntrega(art, cant, destino, motivo) {
+  var ahora = new Date();
+  var w = window.open('','_blank','width=400,height=600');
+  w.document.write(`<html><head><title>Remito de Entrega</title><style>body{font-family:monospace;font-size:12px;padding:16px;max-width:300px;}h3{text-align:center;margin:4px 0;}hr{border:none;border-top:1px dashed #000;}.row{display:flex;justify-content:space-between;margin:4px 0;}</style></head><body>
+    <h3>EPECUEN Hotel & Spa</h3>
+    <p style="text-align:center;margin:2px 0;">REMITO DE ENTREGA INTERNA</p>
+    <hr>
+    <div class="row"><span>Fecha:</span><span>${ahora.toLocaleString('es-AR')}</span></div>
+    <div class="row"><span>Artículo:</span><span>${esc(art.nombre)}</span></div>
+    <div class="row"><span>Categoría:</span><span>${esc(art.categoria)}</span></div>
+    <div class="row"><span>Cantidad:</span><span>${cant}</span></div>
+    <div class="row"><span>Destino:</span><span>${esc(destino)}</span></div>
+    ${motivo?`<div class="row"><span>Motivo:</span><span>${esc(motivo)}</span></div>`:''}
+    <div class="row"><span>Entregó:</span><span>${esc(currentUser.usuario)}</span></div>
+    <hr>
+    <br><br>
+    <div class="row"><span>Firma recibe: ______________</span></div>
+    </body></html>`);
+  w.document.close();
+  w.print();
+}
+
+async function cargarArticulosAdmin() {
+  await cargarArticulosCache();
+  articulosCache.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  renderTablaArticulos('tbodyArtAdmin');
+  cargarMovArtAdmin();
+}
+window.cargarArticulosAdmin = cargarArticulosAdmin;
+
+async function cargarMovArtAdmin() {
+  try {
+    var snap = await getDocs(query(collection(db,'articulosMovimientos'), orderBy('fecha','desc'), limit(200)));
+    var movs = snap.docs.map(d => d.data());
+    var desde = $('filtroArtMovDesde').value, hasta = $('filtroArtMovHasta').value;
+    movs = movs.filter(m => {
+      var f = m.fecha?.toDate ? m.fecha.toDate().toISOString().slice(0,10) : '';
+      return (!desde || f >= desde) && (!hasta || f <= hasta);
+    });
+    $('tbodyArtMovAdmin').innerHTML = movs.map(m => `<tr>
+      <td>${fmtFecha(m.fecha)}</td><td><strong>${esc(m.articuloNombre)}</strong></td><td>${esc(m.tipo)}</td><td>${m.cantidad}</td>
+      <td>${esc(m.destino||'-')}${m.motivo?' — '+esc(m.motivo):''}</td>
+      <td>$${(m.costoTotal||0).toLocaleString('es-AR')}</td><td style="color:var(--muted);">${esc(m.usuario)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin movimientos</td></tr>';
+    var gastoTotal = movs.reduce((a,m) => a + (m.costoTotal||0), 0);
+    $('resumenGastosArt').innerHTML = `<strong>Gasto total del período (egresos): $${gastoTotal.toLocaleString('es-AR')}</strong>`;
+  } catch(e) { $('tbodyArtMovAdmin').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin movimientos</td></tr>'; }
+}
+window.cargarMovArtAdmin = cargarMovArtAdmin;
+
+// ── PAGOS A PROVEEDORES ──
+async function iniciarTabPagosProv() {
+  if ($('ppFecha') && !$('ppFecha').value) $('ppFecha').value = new Date().toISOString().slice(0,10);
+  if ($('ppFiltroFecha') && !$('ppFiltroFecha').value) $('ppFiltroFecha').value = new Date().toISOString().slice(0,10);
+  await cargarProveedores();
+  poblarSelectProveedores('ppProveedor');
+  cargarPagosProvStock();
+}
+
+async function registrarPagoProveedor() {
+  var provId = $('ppProveedor').value;
+  var fecha = $('ppFecha').value;
+  var monto = parseFloat($('ppMonto').value)||0;
+  if (!provId) { showToast('Seleccioná el proveedor','warning'); return; }
+  if (!fecha) { showToast('Completá la fecha','warning'); return; }
+  if (monto <= 0) { showToast('Ingresá el monto','warning'); return; }
+  var prov = proveedoresCache.find(p => p.id === provId);
+  try {
+    await addDoc(collection(db,'pagosProveedores'), {
+      proveedorId: provId, proveedorNombre: prov?.empresa||'', proveedorCuit: prov?.cuit||'',
+      fecha, monto, medioPago: $('ppMedioPago').value,
+      comprobante: $('ppComprobante').value.trim(), observaciones: $('ppObs').value.trim(),
+      usuario: currentUser.usuario, fechaRegistro: serverTimestamp()
+    });
+    showToast('Pago registrado','success');
+    $('ppMonto').value=''; $('ppComprobante').value=''; $('ppObs').value='';
+    cargarPagosProvStock();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarPagoProveedor = registrarPagoProveedor;
+
+async function cargarPagosProvStock() {
+  try {
+    var fecha = $('ppFiltroFecha').value;
+    var snap = await getDocs(query(collection(db,'pagosProveedores'), where('fecha','==',fecha)));
+    var pagos = snap.docs.map(d => d.data());
+    $('tbodyPagosProvStock').innerHTML = pagos.map(p => `<tr>
+      <td>${esc(p.fecha)}</td><td><strong>${esc(p.proveedorNombre)}</strong></td><td>$${(p.monto||0).toLocaleString('es-AR')}</td>
+      <td>${esc(p.medioPago)}</td><td>${esc(p.comprobante||'-')}</td><td>${esc(p.observaciones||'-')}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>';
+  } catch(e) { $('tbodyPagosProvStock').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>'; }
+}
+window.cargarPagosProvStock = cargarPagosProvStock;
+
+async function cargarPagosProvAdmin() {
+  try {
+    await cargarProveedores();
+    poblarSelectProveedores('filtroPagosProvProv');
+    if ($('filtroPagosProvFecha') && !$('filtroPagosProvFecha').value) $('filtroPagosProvFecha').value = new Date().toISOString().slice(0,10);
+    var periodo = $('filtroPagosProvPeriodo').value;
+    var fechaRef = $('filtroPagosProvFecha').value;
+    var provFiltro = $('filtroPagosProvProv').value;
+    var snap = await getDocs(query(collection(db,'pagosProveedores'), orderBy('fecha','desc'), limit(500)));
+    var pagos = snap.docs.map(d => d.data());
+    pagos = pagos.filter(p => {
+      if (periodo === 'DIA') return p.fecha === fechaRef;
+      if (periodo === 'MES') return p.fecha && p.fecha.slice(0,7) === fechaRef.slice(0,7);
+      return p.fecha && p.fecha.slice(0,4) === fechaRef.slice(0,4);
+    });
+    if (provFiltro) pagos = pagos.filter(p => p.proveedorId === provFiltro);
+    $('tbodyPagosProvAdmin').innerHTML = pagos.map(p => `<tr>
+      <td>${esc(p.fecha)}</td><td><strong>${esc(p.proveedorNombre)}</strong></td><td>$${(p.monto||0).toLocaleString('es-AR')}</td>
+      <td>${esc(p.medioPago)}</td><td>${esc(p.comprobante||'-')}</td><td>${esc(p.observaciones||'-')}</td><td style="color:var(--muted);">${esc(p.usuario)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin pagos en el período</td></tr>';
+    // Estadísticas: proveedores más pagados + artículos comprados
+    var porProv = {};
+    pagos.forEach(p => {
+      if (!porProv[p.proveedorId]) porProv[p.proveedorId] = { nombre: p.proveedorNombre, total: 0, cant: 0 };
+      porProv[p.proveedorId].total += (p.monto||0);
+      porProv[p.proveedorId].cant++;
+    });
+    var ranking = Object.entries(porProv).sort((a,b) => b[1].total - a[1].total);
+    var comprasSnap = await getDocs(query(collection(db,'compras'), orderBy('fechaRegistro','desc'), limit(300)));
+    var comprasTodas = comprasSnap.docs.map(d => d.data());
+    var totalPeriodo = pagos.reduce((a,p) => a + (p.monto||0), 0);
+    var html = `<div class="card-title" style="font-size:0.95rem;">Estadísticas del Período</div>
+      <p style="margin-bottom:10px;"><strong>Total pagado: $${totalPeriodo.toLocaleString('es-AR')}</strong> en ${pagos.length} pago(s)</p>`;
+    if (ranking.length) {
+      html += '<div class="table-wrap"><table><thead><tr><th>#</th><th>Proveedor</th><th>Total Pagado</th><th>Pagos</th><th>Artículos Comprados</th></tr></thead><tbody>';
+      ranking.forEach(([provId, r], i) => {
+        var arts = [...new Set(comprasTodas.filter(c => c.proveedorId === provId).flatMap(c => (c.items||[]).map(it => it.nombre)))];
+        html += `<tr><td>${i+1}</td><td><strong>${esc(r.nombre)}</strong></td><td>$${r.total.toLocaleString('es-AR')}</td><td>${r.cant}</td><td style="font-size:0.8rem;color:var(--muted);">${arts.map(a => esc(a)).join(', ')||'-'}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+    }
+    $('estadisticaPagosProv').innerHTML = html;
+  } catch(e) { $('tbodyPagosProvAdmin').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin pagos en el período</td></tr>'; }
+}
+window.cargarPagosProvAdmin = cargarPagosProvAdmin;
 
 // ══════════════════════════════════════
 // INGREDIENTES
@@ -3791,13 +4578,12 @@ async function cargarHistorialHuespedes() {
     }
   }
   try {
-    // Obtener checkouts del período
-    var snap = await getDocs(query(collection(db,'reservas'),
-      where('estado','==','CHECKOUT'),
-      where('fechaCheckOutReal','>=',Timestamp.fromDate(desde)),
-      where('fechaCheckOutReal','<=',Timestamp.fromDate(hasta))
-    ));
-    var checkouts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    // Obtener checkouts del período (filtro de fechas en memoria para no requerir índice compuesto)
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKOUT')));
+    var checkouts = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(r => {
+      var f = r.fechaCheckOutReal?.toDate ? r.fechaCheckOutReal.toDate() : (r.fechaCheckOutReal ? new Date(r.fechaCheckOutReal) : null);
+      return f && f >= desde && f <= hasta;
+    });
 
     // Obtener cierres de restaurante del período
     var cierresSnap = await getDocs(query(collection(db,'cierres'),
@@ -4176,7 +4962,7 @@ function tabRecepcion(t, btn) {
   if (t === 'reservas') { cargarReservasActivas(); }
   if (t === 'checkin') { cargarListaCheckIn(); cargarListaCheckOut(); }
   if (t === 'huespedes') cargarHuespedes();
-  if (t === 'clienteHabitual') { /* se carga al buscar */ }
+  if (t === 'clienteHabitual') { var chCard = $('cardClienteHabitual'); if (chCard && chCard.parentElement !== $('tabRecClienteHabitual')) $('tabRecClienteHabitual').appendChild(chCard); }
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
   if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
   if (t === 'promociones') { cargarPromosRecepcion(); }
@@ -4673,7 +5459,7 @@ function toggleReservaEmpresa() {
   // Toggle visibility of personal data rows
   ['resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4','resDatosHuesped5','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
   // Hide empresa-unnecessary fields
-  ['resRowAdultosMenores','resRowMonedaDescuento','resRowConfigSena','resRowMedioPagoFestejo','resRowRestriccion'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
+  ['resRowAdultosMenores','resRowMonedaDescuento','resRowConfigSena','resRowMedioPagoFestejo','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
   // Hide acompañantes section for empresa
   var secAcomp = $('seccionAcompanantes');
   if (secAcomp) secAcomp.style.display = checked ? 'none' : '';
@@ -4762,6 +5548,25 @@ function toggleDocAcomp(sel) {
 }
 window.toggleDocAcomp = toggleDocAcomp;
 
+function validarTelefonoAR(telRaw, codPais) {
+  var digits = (telRaw||'').replace(/\D/g,'');
+  if (!digits) return { ok:false, msg:'Completá el teléfono' };
+  if (codPais !== '54') return { ok:true, valor: (codPais?'+'+codPais+' ':'')+digits };
+  if (digits.indexOf('54') === 0 && digits.length > 10) digits = digits.slice(2);
+  if (digits.indexOf('0') === 0) digits = digits.replace(/^0+/,'');
+  if (digits.length < 8 || digits.length > 12) return { ok:false, msg:'Teléfono inválido: cód. área (2-4 díg.) + número local (6-8 díg.)' };
+  if (/^(\d)\1+$/.test(digits)) return { ok:false, msg:'Teléfono inválido: no puede ser un número repetido' };
+  var asc = true, desc = true;
+  for (var i=1; i<digits.length; i++) {
+    if (parseInt(digits[i]) !== parseInt(digits[i-1])+1) asc = false;
+    if (parseInt(digits[i]) !== parseInt(digits[i-1])-1) desc = false;
+  }
+  if (asc || desc) return { ok:false, msg:'Teléfono inválido: no puede ser una secuencia' };
+  return { ok:true, valor:'+54 '+digits };
+}
+
+var _avisoRestriccionMostrado = false;
+
 async function crearReserva() {
   var esEmpresa = $('resEmpresa')?.checked || false;
   var resApellido = $('resApellido').value.trim();
@@ -4792,6 +5597,9 @@ async function crearReserva() {
   }
   if (!resApellido || !resNombre) { showToast('Completá apellido y nombre del huésped','warning'); return; }
   if (!tel) { showToast('Completá el teléfono del huésped','warning'); return; }
+  var telVal = validarTelefonoAR(tel, $('resTelPais')?.value ?? '54');
+  if (!telVal.ok) { showToast(telVal.msg,'warning'); $('resTelefono').focus(); return; }
+  tel = telVal.valor;
   var habSel = $('resHabitacion');
   var opt = habSel.options[habSel.selectedIndex];
   if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
@@ -4813,13 +5621,26 @@ async function crearReserva() {
   var adultos = parseInt($('resAdultos').value)||1;
   var menores = parseInt($('resMenores').value)||0;
   var configCamas = $('resConfigCamas').value;
-  var festejo = $('resFestejo').value.trim();
   var restriccionAlim = $('resRestriccionAlim').value;
   var pedidosEsp = $('resPedidosEsp').value.trim();
   var localidadRes = $('resLocalidad')?.value?.trim()||'';
   var provinciaRes = $('resProvincia')?.value?.trim()||'';
   var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
   var vehiculoRes = $('resVehiculo')?.value?.trim()||'';
+  var lateCheckout = $('resLateCheckout')?.checked || false;
+
+  if ((!restriccionAlim || !antecedentesSalud) && !_avisoRestriccionMostrado) {
+    _avisoRestriccionMostrado = true;
+    var faltantes = [];
+    if (!restriccionAlim) faltantes.push('restricción alimentaria');
+    if (!antecedentesSalud) faltantes.push('antecedente de salud');
+    if (confirm('Atención: No se cargó ' + faltantes.join(' ni ') + ' en la reserva. ¿Desea completar?')) {
+      var destino = !restriccionAlim ? $('resRestriccionAlim') : $('resAntecedentesSalud');
+      destino.scrollIntoView({behavior:'smooth', block:'center'});
+      destino.focus();
+      return;
+    }
+  }
 
   // Recoger acompañantes
   var acompanantes = [];
@@ -4861,7 +5682,8 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
-      configCamas, festejo, restriccionAlim, pedidosEsp,
+      configCamas, restriccionAlim, pedidosEsp, lateCheckout,
+      comensalesMAP: pension === 'MAP' ? (adultos + menores) : 0,
       localidad: localidadRes, provincia: provinciaRes, antecedentesSalud, vehiculo: vehiculoRes,
       acompanantes,
       estado: estadoReserva,
@@ -4903,8 +5725,11 @@ async function crearReserva() {
     $('resFechaNac').value=''; $('resPasaporte').value=''; $('resNacionalidad').value='AR';
     $('resGrupoDni').classList.remove('hidden'); $('resGrupoPasaporte').classList.add('hidden');
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
-    $('resDescuento').value='0'; $('resFestejo').value=''; $('resPedidosEsp').value='';
+    $('resDescuento').value='0'; $('resPedidosEsp').value='';
     $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
+    if ($('resLateCheckout')) $('resLateCheckout').checked = false;
+    if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value='';
+    _avisoRestriccionMostrado = false;
     $('listaAcompanantes').innerHTML='';
     $('resumenReserva').style.display='none';
     await poblarSelectHabReserva();
@@ -5289,6 +6114,7 @@ async function editarReserva(resId) {
     </div>
     <div class="form-row">
       <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="editResFestejo" value="${esc(reserva.festejo||'')}"></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="editResLateCheckout" ${reserva.lateCheckout?'checked':''}> Late Checkout</label></div>
       <div class="form-group"><label>Pedidos Especiales</label><input type="text" id="editResPedidosEsp" value="${esc(reserva.pedidosEsp||'')}"></div>
     </div>
     <div class="form-row">
@@ -5339,6 +6165,7 @@ async function editarReserva(resId) {
         menores: parseInt($('editResMenores')?.value)||0,
         configCamas: $('editResConfigCamas')?.value||reserva.configCamas||'MATRIMONIAL',
         restriccionAlim: $('editResRestriccion')?.value||'',
+        lateCheckout: $('editResLateCheckout')?.checked||false,
         festejo: $('editResFestejo')?.value?.trim()||'',
         pedidosEsp: $('editResPedidosEsp')?.value?.trim()||'',
         localidad: $('editResLocalidad')?.value?.trim()||'',
@@ -5910,21 +6737,63 @@ async function cargarListaCheckOut() {
     var reservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     var cont = $('listaCheckOut');
     if (!reservas.length) { cont.innerHTML = '<p style="color:var(--muted);padding:16px;">No hay habitaciones ocupadas para check-out</p>'; return; }
-    cont.innerHTML = reservas.map(r => `<div class="reserva-card">
+    var hoyStr = new Date().toISOString().slice(0,10);
+    var vencidas = [];
+    cont.innerHTML = reservas.map(r => {
+      var vencida = r.fechaOut && r.fechaOut < hoyStr && !r.estadiaPagadaEnCheckin;
+      if (vencida) vencidas.push(r);
+      return `<div class="reserva-card" ${vencida?'style="border:1px solid var(--red);"':''}>
       <div class="reserva-header">
-        <div><strong>${esc(r.huesped)}</strong> — Hab. ${esc(r.habitacionNro)}</div>
-        <span class="badge" style="background:rgba(232,69,60,0.15);color:var(--red);">OCUPADA</span>
+        <div><strong>${esc(r.huesped)}</strong> — Hab. ${esc(r.habitacionNro)}${r.lateCheckout?' <span class="badge" style="background:rgba(74,144,217,0.15);color:var(--blue);">LATE CHECKOUT</span>':''}</div>
+        <span class="badge" style="background:rgba(232,69,60,0.15);color:var(--red);">${vencida?'CHECKOUT VENCIDO':'OCUPADA'}</span>
       </div>
       <div class="reserva-info">
         <span>In: ${r.fechaIn}</span><span>Out: ${r.fechaOut}</span>
         <span>${r.noches} noches</span><span>Total Estadía: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
-      <div style="margin-top:10px;">
+      ${vencida?'<div style="margin-top:8px;padding:8px 10px;background:rgba(232,69,60,0.1);border-radius:8px;font-size:0.82rem;color:var(--red);font-weight:600;">⚠️ Fecha de checkout vencida y estadía sin abonar — realizá el check-out o agregá días a la estadía</div>':''}
+      <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-gold btn-sm" onclick="iniciarCheckOut('${r.id}')">Realizar Check-Out</button>
+        <button class="btn btn-blue btn-sm" onclick="abrirExtenderEstadia('${r.id}')">Agregar Días</button>
       </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
+    if (vencidas.length) showToast('⚠️ '+vencidas.length+' habitación(es) con checkout vencido y estadía sin abonar','warning');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
+
+async function abrirExtenderEstadia(resId) {
+  try {
+    var resSnap = await getDoc(doc(db,'reservas',resId));
+    var res = resSnap.data();
+    confirmarAccion('Agregar Días de Estadía', `
+      <div style="padding:16px;">
+        <p style="margin-bottom:10px;"><strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}</p>
+        <p style="margin-bottom:10px;color:var(--muted);font-size:0.85rem;">Check-out actual: ${res.fechaOut} (${res.noches} noches — precio noche ${res.moneda==='USD'?'U$D':'$'} ${(res.precioNoche||0).toLocaleString('es-AR')})</p>
+        <div class="form-group">
+          <label>Nueva Fecha Check-out</label>
+          <input type="date" id="extFechaOut" value="${res.fechaOut}" min="${res.fechaOut}" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
+        </div>
+      </div>
+    `, 'Extender Estadía', async function(ok) {
+      if (!ok) return;
+      var nuevaOut = $('extFechaOut').value;
+      if (!nuevaOut || nuevaOut <= res.fechaOut) { showToast('La nueva fecha debe ser posterior a la actual','warning'); return; }
+      var nochesNuevas = Math.ceil((new Date(nuevaOut) - new Date(res.fechaIn)) / 86400000);
+      var nochesExtra = nochesNuevas - (res.noches||0);
+      var totalEstadia = (res.precioNoche||0) * nochesNuevas;
+      var descMonto = totalEstadia * (res.descuento||0) / 100;
+      var totalPagar = totalEstadia - descMonto - (res.sena||0);
+      await updateDoc(doc(db,'reservas',resId), {
+        fechaOut: nuevaOut, noches: nochesNuevas, totalEstadia, totalPagar,
+        extensiones: [...(res.extensiones||[]), { fechaOutAnterior: res.fechaOut, fechaOutNueva: nuevaOut, nochesAgregadas: nochesExtra, usuario: currentUser.usuario, fecha: new Date().toISOString() }]
+      });
+      showToast('Estadía extendida hasta '+nuevaOut+' (+'+nochesExtra+' noche(s))','success');
+      cargarListaCheckOut();
+    }, '480px');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.abrirExtenderEstadia = abrirExtenderEstadia;
 
 async function iniciarCheckOut(resId) {
   try {
@@ -7376,6 +8245,25 @@ function toggleSpaTipoCliente() {
 }
 window.toggleSpaTipoCliente = toggleSpaTipoCliente;
 
+async function onSpaHabChange() {
+  var hab = $('stHabitacion').value;
+  var alertDiv = $('stSaludAlerta');
+  if (alertDiv) { alertDiv.style.display = 'none'; alertDiv.textContent = ''; }
+  if (!hab) return;
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('habitacionNro','==',hab), where('estado','==','CHECKIN')));
+    if (snap.empty) return;
+    var r = snap.docs[0].data();
+    var avisos = [];
+    if (r.antecedentesSalud) avisos.push('Antecedentes de salud: ' + r.antecedentesSalud);
+    if (r.restriccionAlim) avisos.push('Restricción: ' + r.restriccionAlim);
+    if (!avisos.length) return;
+    if (alertDiv) { alertDiv.textContent = '⚠️ ' + avisos.join(' | '); alertDiv.style.display = 'block'; }
+    showToast('⚠️ Hab. '+hab+' — '+avisos.join(' | '),'warning');
+  } catch(e) {}
+}
+window.onSpaHabChange = onSpaHabChange;
+
 function tabSpaRec(t, btn) {
   document.querySelectorAll('#panelSpaRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -7625,7 +8513,7 @@ function tabSpaAdmin(t, btn) {
     if ($('saTurnoDesde') && !$('saTurnoDesde').value) { var d=new Date(); d.setDate(d.getDate()-7); $('saTurnoDesde').valueAsDate=d; $('saTurnoHasta').valueAsDate=new Date(); }
     cargarTurnosAdmin();
   }
-  if (t === 'liquidaciones') cargarSelectLiquidacionProf();
+  if (t === 'liquidaciones') { var liqCard = $('cardLiquidacionSpa'); if (liqCard && liqCard.parentElement !== $('tabSpaAdminLiquidaciones')) $('tabSpaAdminLiquidaciones').appendChild(liqCard); cargarSelectLiquidacionProf(); }
   if (t === 'estadisticas') { if ($('seMes') && !$('seMes').value) $('seMes').value = new Date().toISOString().slice(0,7); }
 }
 window.tabSpaAdmin = tabSpaAdmin;
