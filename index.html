@@ -554,9 +554,12 @@
       <div class="card">
         <div class="card-title">Registrar Pago a Proveedor</div>
         <div class="form-row">
-          <div class="form-group"><label>Proveedor *</label><select id="ppProveedor"><option value="">Seleccionar...</option></select></div>
+          <div class="form-group"><label>Proveedor *</label><select id="ppProveedor" onchange="cargarComprasDeProveedor()"><option value="">Seleccionar...</option></select></div>
           <div class="form-group"><label>Fecha *</label><input type="date" id="ppFecha"></div>
           <div class="form-group"><label>Monto *</label><input type="number" id="ppMonto" step="0.01" min="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Compra asociada (opcional)</label><select id="ppCompra" onchange="onCompraPagoChange()"><option value="">Sin asociar / pago general</option></select></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Medio de Pago *</label>
@@ -573,7 +576,7 @@
           <button class="btn btn-sm" onclick="cargarPagosProvStock()">Actualizar</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Fecha</th><th>Proveedor</th><th>Monto</th><th>Medio Pago</th><th>Comprobante</th><th>Observaciones</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Proveedor</th><th>Monto</th><th>Medio Pago</th><th>Compra Asociada</th><th>Comprobante</th><th>Observaciones</th></tr></thead>
           <tbody id="tbodyPagosProvStock"></tbody>
         </table></div>
       </div>
@@ -1171,6 +1174,9 @@
         <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;padding:8px 12px;background:rgba(139,92,246,0.06);border-radius:10px;border:1px solid rgba(139,92,246,0.4);"><input type="checkbox" id="resEmpresa" onchange="toggleReservaEmpresa()"> Reserva Empresa / Grupo</label>
         </div>
+        <div class="form-row" id="resRowBuscarHuesped">
+          <div class="form-group" style="position:relative;"><label>🔍 Buscar huésped en base de datos (DNI o apellido)</label><input type="text" id="resBuscarHuesped" placeholder="Escribí DNI o apellido para autocompletar..." oninput="buscarHuespedGeneral(this.value)"><div id="resBuscarSugerencias" style="display:none;position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;width:100%;box-shadow:var(--shadow);top:100%;"></div></div>
+        </div>
         <div class="form-row" id="resDatosHuesped1">
           <div class="form-group"><label>Apellido *</label><input type="text" id="resApellido"></div>
           <div class="form-group"><label>Nombre *</label><input type="text" id="resNombre"></div>
@@ -1305,7 +1311,9 @@
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA">Tarjeta</option>
             </select></div>
-          <div class="form-group"><label>Pedidos Especiales Habitación</label><input type="text" id="resPedidosEsp" placeholder="Ej: Cuna, Decoración sorpresa"></div>
+          <div class="form-group"><label>Pedidos Especiales Habitación</label><input type="text" id="resPedidosEsp" placeholder="Ej: Cuna, Decoración sorpresa">
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resFestejoCumple"> 🎂 Festejo de cumpleaños</label>
+          </div>
         </div>
         <div class="form-group" style="margin-bottom:16px;"><label>Notas</label><textarea id="resNotas" rows="2" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;resize:vertical;"></textarea></div>
         <div id="resumenReserva" style="padding:14px;background:var(--card);border-radius:10px;margin-bottom:16px;display:none;"></div>
@@ -1584,11 +1592,12 @@
         <div class="form-row">
           <div class="form-group"><label>Nombre *</label><input type="text" id="ssNombre" placeholder="Ej: Masaje descontracturante"></div>
           <div class="form-group"><label>Precio *</label><input type="number" id="ssPrecio" step="0.01" value="0"></div>
+          <div class="form-group"><label>Precio de Costo</label><input type="number" id="ssCosto" step="0.01" value="0"></div>
           <div class="form-group"><label>Duración (min)</label><input type="number" id="ssDuracion" value="60"></div>
         </div>
         <button class="btn btn-gold btn-sm" onclick="agregarServicioSpa()">Agregar Servicio</button>
         <div class="table-wrap" style="margin-top:16px;"><table>
-          <thead><tr><th>Servicio</th><th>Precio</th><th>Duración</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Servicio</th><th>Precio</th><th>Costo</th><th>Duración</th><th>Estado</th><th></th></tr></thead>
           <tbody id="tbodyServiciosSpa"></tbody>
         </table></div>
       </div>
@@ -1609,6 +1618,11 @@
     <div id="tabSpaAdminLiquidaciones" class="hidden">
       <div class="card" id="cardLiquidacionSpa">
         <div class="card-title">Liquidación a Profesionales</div>
+        <div class="form-row" style="align-items:flex-end;">
+          <div class="form-group"><label>% Liquidación a Profesionales</label><input type="number" id="slPorcentaje" min="0" max="100" step="0.5" value="50"></div>
+          <button class="btn btn-sm" style="margin-bottom:14px;" onclick="guardarPorcentajeLiqSpa()">Guardar %</button>
+        </div>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Los períodos de liquidación son quincenales. Una liquidación generada no se puede volver a generar para el mismo período y profesional.</p>
         <div class="form-row">
           <div class="form-group"><label>Profesional *</label><select id="slProfesional"></select></div>
           <div class="form-group"><label>Desde *</label><input type="date" id="slDesde"></div>
@@ -1616,6 +1630,8 @@
         </div>
         <button class="btn btn-gold btn-sm" onclick="generarLiquidacionSpa()">Generar Liquidación</button>
         <div id="resultadoLiquidacionSpa" style="margin-top:16px;"></div>
+        <div class="card-title" style="margin-top:20px;font-size:0.95rem;">Liquidaciones Generadas</div>
+        <div id="listaLiquidacionesSpa"></div>
       </div>
     </div>
     <div id="tabSpaAdminEstadisticas" class="hidden">
@@ -1841,7 +1857,7 @@
     </div>
     <div class="confirm-body" id="confirmCuerpo"></div>
     <div class="confirm-footer">
-      <button class="btn btn-ghost btn-sm" onclick="resolverConfirm(false)">Cancelar</button>
+      <button class="btn btn-ghost btn-sm" id="confirmBtnCancel" onclick="resolverConfirm(false)">Cancelar</button>
       <button class="btn btn-gold btn-sm" id="confirmBtn" onclick="resolverConfirm(true)">Confirmar</button>
     </div>
   </div>
@@ -1906,10 +1922,11 @@ function mostrarModal(id) { $(id).classList.remove('hidden'); }
 function cerrarModal(id)  { $(id).classList.add('hidden'); }
 window.cerrarModal = cerrarModal;
 
-function confirmarAccion(titulo, cuerpoHtml, textoOk, cb, anchoMax) {
+function confirmarAccion(titulo, cuerpoHtml, textoOk, cb, anchoMax, textoCancel) {
   $('confirmTitulo').textContent = titulo;
   $('confirmCuerpo').innerHTML = cuerpoHtml;
   $('confirmBtn').textContent = textoOk || 'Confirmar';
+  $('confirmBtnCancel').textContent = textoCancel || 'Cancelar';
   var cont = $('modalConfirmContent');
   if (cont) cont.style.maxWidth = anchoMax || '420px';
   _confirmCb = cb;
@@ -1919,6 +1936,7 @@ function resolverConfirm(val) {
   cerrarModal('modalConfirm');
   var cont = $('modalConfirmContent');
   if (cont) cont.style.maxWidth = '420px';
+  $('confirmBtnCancel').textContent = 'Cancelar';
   if (_confirmCb) { var f = _confirmCb; _confirmCb = null; f(val); }
 }
 window.resolverConfirm = resolverConfirm;
@@ -2247,6 +2265,7 @@ async function verificarRestriccionesHab(habNro) {
     if (r.restriccionAlim) avisos.push('Huésped ' + r.restriccionAlim);
     if (r.antecedentesSalud) avisos.push('Salud: ' + r.antecedentesSalud);
     if (r.pedidosEsp) avisos.push('Pedido especial: ' + r.pedidosEsp);
+    if (r.festejoCumple) avisos.push('🎂 La mesa festeja un cumpleaños');
     if (!avisos.length) return;
     _alertaHabActual = avisos.join(' | ');
     if (alertDiv) { alertDiv.textContent = '⚠️ ' + _alertaHabActual; alertDiv.style.display = 'block'; }
@@ -3225,6 +3244,7 @@ window.registrarCompra = registrarCompra;
 function renderCompraCard(c, esAdmin) {
   var estadoColor = c.estado === 'CONFIRMADA' ? 'var(--red)' : c.estado === 'DESBLOQUEADA' ? 'var(--gold)' : 'var(--muted)';
   var estadoLbl = c.estado === 'CONFIRMADA' ? '🔒 BLOQUEADA' : c.estado === 'DESBLOQUEADA' ? '🔓 DESBLOQUEADA' : c.estado;
+  if (c.estadoPago === 'PAGADA') estadoLbl += ' <span style="color:var(--green);">💰 PAGADA' + (c.fechaPago ? ' ('+esc(c.fechaPago)+')' : '') + '</span>';
   var itemsHtml = (c.items||[]).map(i => {
     var diff = i.costoAnterior > 0 ? i.costoUnitario - i.costoAnterior : 0;
     var pct = i.costoAnterior > 0 ? (diff / i.costoAnterior * 100) : 0;
@@ -3488,6 +3508,35 @@ async function iniciarTabPagosProv() {
   cargarPagosProvStock();
 }
 
+var _comprasProveedorCache = [];
+async function cargarComprasDeProveedor() {
+  var provId = $('ppProveedor').value;
+  var sel = $('ppCompra');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Sin asociar / pago general</option>';
+  _comprasProveedorCache = [];
+  if (!provId) return;
+  try {
+    var snap = await getDocs(query(collection(db,'compras'), where('proveedorId','==',provId)));
+    _comprasProveedorCache = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .filter(c => c.estado !== 'ANULADA')
+      .sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    _comprasProveedorCache.forEach(c => {
+      var pagada = c.estadoPago === 'PAGADA';
+      sel.innerHTML += `<option value="${c.id}" ${pagada?'disabled':''}>${esc(c.fecha||'')} — ${esc(c.tipoComprobante||'')} ${esc(c.nroComprobante||'')} — $${(c.total||0).toLocaleString('es-AR')}${pagada?' (YA PAGADA)':''}</option>`;
+    });
+    var pendientes = _comprasProveedorCache.filter(c => c.estadoPago !== 'PAGADA').length;
+    if (_comprasProveedorCache.length) showToast(pendientes + ' compra(s) pendiente(s) de pago de este proveedor','info');
+  } catch(e) {}
+}
+window.cargarComprasDeProveedor = cargarComprasDeProveedor;
+
+function onCompraPagoChange() {
+  var c = _comprasProveedorCache.find(x => x.id === $('ppCompra').value);
+  if (c) $('ppMonto').value = c.total || 0;
+}
+window.onCompraPagoChange = onCompraPagoChange;
+
 async function registrarPagoProveedor() {
   var provId = $('ppProveedor').value;
   var fecha = $('ppFecha').value;
@@ -3496,15 +3545,23 @@ async function registrarPagoProveedor() {
   if (!fecha) { showToast('Completá la fecha','warning'); return; }
   if (monto <= 0) { showToast('Ingresá el monto','warning'); return; }
   var prov = proveedoresCache.find(p => p.id === provId);
+  var compraId = $('ppCompra')?.value || '';
+  var compra = compraId ? _comprasProveedorCache.find(c => c.id === compraId) : null;
   try {
-    await addDoc(collection(db,'pagosProveedores'), {
+    var pagoRef = await addDoc(collection(db,'pagosProveedores'), {
       proveedorId: provId, proveedorNombre: prov?.empresa||'', proveedorCuit: prov?.cuit||'',
       fecha, monto, medioPago: $('ppMedioPago').value,
+      compraId: compraId, compraDetalle: compra ? ((compra.tipoComprobante||'')+' '+(compra.nroComprobante||'')+' ('+(compra.fecha||'')+')') : '',
       comprobante: $('ppComprobante').value.trim(), observaciones: $('ppObs').value.trim(),
       usuario: currentUser.usuario, fechaRegistro: serverTimestamp()
     });
-    showToast('Pago registrado','success');
+    if (compra) {
+      await updateDoc(doc(db,'compras',compraId), { estadoPago: 'PAGADA', pagoId: pagoRef.id, fechaPago: fecha, pagadaPor: currentUser.usuario });
+    }
+    showToast(compra ? 'Pago registrado y asociado a la compra '+(compra.nroComprobante||'') : 'Pago registrado','success');
     $('ppMonto').value=''; $('ppComprobante').value=''; $('ppObs').value='';
+    if ($('ppCompra')) $('ppCompra').value='';
+    cargarComprasDeProveedor();
     cargarPagosProvStock();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -3517,9 +3574,9 @@ async function cargarPagosProvStock() {
     var pagos = snap.docs.map(d => d.data());
     $('tbodyPagosProvStock').innerHTML = pagos.map(p => `<tr>
       <td>${esc(p.fecha)}</td><td><strong>${esc(p.proveedorNombre)}</strong></td><td>$${(p.monto||0).toLocaleString('es-AR')}</td>
-      <td>${esc(p.medioPago)}</td><td>${esc(p.comprobante||'-')}</td><td>${esc(p.observaciones||'-')}</td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>';
-  } catch(e) { $('tbodyPagosProvStock').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>'; }
+      <td>${esc(p.medioPago)}</td><td>${esc(p.compraDetalle||'-')}</td><td>${esc(p.comprobante||'-')}</td><td>${esc(p.observaciones||'-')}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>';
+  } catch(e) { $('tbodyPagosProvStock').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin pagos en la fecha</td></tr>'; }
 }
 window.cargarPagosProvStock = cargarPagosProvStock;
 
@@ -5457,7 +5514,7 @@ function toggleReservaEmpresa() {
   $('resEmpresaCampos').classList.toggle('hidden', !checked);
   $('resHabIndividualRow').style.display = checked ? 'none' : '';
   // Toggle visibility of personal data rows
-  ['resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4','resDatosHuesped5','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
+  ['resRowBuscarHuesped','resDatosHuesped1','resDatosHuesped2','resDatosHuesped3','resDatosHuesped4','resDatosHuesped5','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
   // Hide empresa-unnecessary fields
   ['resRowAdultosMenores','resRowMonedaDescuento','resRowConfigSena','resRowMedioPagoFestejo','resDatosHuesped6'].forEach(id => { var el = $(id); if (el) el.style.display = checked ? 'none' : ''; });
   // Hide acompañantes section for empresa
@@ -5628,18 +5685,24 @@ async function crearReserva() {
   var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
   var vehiculoRes = $('resVehiculo')?.value?.trim()||'';
   var lateCheckout = $('resLateCheckout')?.checked || false;
+  var festejoCumple = $('resFestejoCumple')?.checked || false;
 
   if ((!restriccionAlim || !antecedentesSalud) && !_avisoRestriccionMostrado) {
     _avisoRestriccionMostrado = true;
     var faltantes = [];
     if (!restriccionAlim) faltantes.push('restricción alimentaria');
     if (!antecedentesSalud) faltantes.push('antecedente de salud');
-    if (confirm('Atención: No se cargó ' + faltantes.join(' ni ') + ' en la reserva. ¿Desea completar?')) {
-      var destino = !restriccionAlim ? $('resRestriccionAlim') : $('resAntecedentesSalud');
-      destino.scrollIntoView({behavior:'smooth', block:'center'});
-      destino.focus();
-      return;
-    }
+    var destinoId = !restriccionAlim ? 'resRestriccionAlim' : 'resAntecedentesSalud';
+    confirmarAccion('⚠️ Atención', '<div style="padding:16px;font-size:0.95rem;">No se cargó <strong>' + faltantes.join('</strong> ni <strong>') + '</strong> en la reserva. ¿Desea completar?</div>', 'COMPLETAR', (ok) => {
+      if (ok) {
+        var destino = $(destinoId);
+        destino.scrollIntoView({behavior:'smooth', block:'center'});
+        destino.focus();
+      } else {
+        crearReserva();
+      }
+    }, '440px', 'CANCELAR Y CONTINUAR');
+    return;
   }
 
   // Recoger acompañantes
@@ -5682,7 +5745,7 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
-      configCamas, restriccionAlim, pedidosEsp, lateCheckout,
+      configCamas, restriccionAlim, pedidosEsp, lateCheckout, festejoCumple,
       comensalesMAP: pension === 'MAP' ? (adultos + menores) : 0,
       localidad: localidadRes, provincia: provinciaRes, antecedentesSalud, vehiculo: vehiculoRes,
       acompanantes,
@@ -5728,7 +5791,12 @@ async function crearReserva() {
     $('resDescuento').value='0'; $('resPedidosEsp').value='';
     $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
     if ($('resLateCheckout')) $('resLateCheckout').checked = false;
+    if ($('resFestejoCumple')) $('resFestejoCumple').checked = false;
     if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value='';
+    if ($('resLocalidad')) $('resLocalidad').value='';
+    if ($('resProvincia')) $('resProvincia').value='';
+    if ($('resVehiculo')) $('resVehiculo').value='';
+    if ($('resBuscarHuesped')) $('resBuscarHuesped').value='';
     _avisoRestriccionMostrado = false;
     $('listaAcompanantes').innerHTML='';
     $('resumenReserva').style.display='none';
@@ -6608,6 +6676,27 @@ function buscarHuespedPorDni(val) {
 }
 window.buscarHuespedPorDni = buscarHuespedPorDni;
 
+function buscarHuespedGeneral(val) {
+  var q = (val||'').trim();
+  var cont = $('resBuscarSugerencias');
+  if (!cont || q.length < 2) { if (cont) cont.style.display='none'; return; }
+  var res = huespedCache.filter(h => (h.tipoHuesped||'COMUN') !== 'EMPRESA' && ((h.dni||'').includes(q) || ((h.apellido||'')+' '+(h.nombre||'')).toLowerCase().includes(q.toLowerCase())));
+  if (!res.length) { cont.innerHTML = '<div style="padding:8px 12px;color:var(--muted);font-size:0.82rem;">Sin resultados en la base de huéspedes</div>'; cont.style.display='block'; return; }
+  cont.innerHTML = res.slice(0,8).map(h => '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;" onmousedown="seleccionarHuespedBusqueda(\''+esc(h.id)+'\')">'
+    + '<strong>'+esc(h.apellido)+', '+esc(h.nombre)+'</strong> <span style="color:var(--muted);">DNI: '+esc(h.dni||'')+' | '+esc(h.telefono||'')+'</span>'
+    + (h.ultimaVisita ? ' <span style="color:var(--green);font-size:0.75rem;">Cliente Habitual</span>' : '')+'</div>').join('');
+  cont.style.display = 'block';
+}
+window.buscarHuespedGeneral = buscarHuespedGeneral;
+
+function seleccionarHuespedBusqueda(hId) {
+  seleccionarHuesped(hId);
+  var cont = $('resBuscarSugerencias');
+  if (cont) cont.style.display = 'none';
+  if ($('resBuscarHuesped')) $('resBuscarHuesped').value = '';
+}
+window.seleccionarHuespedBusqueda = seleccionarHuespedBusqueda;
+
 function seleccionarHuesped(hId) {
   var h = huespedCache.find(x => x.id === hId);
   if (!h) return;
@@ -6805,7 +6894,14 @@ async function iniciarCheckOut(resId) {
     var totalConsumos = consumos.reduce((a,c) => a + (c.total||0), 0);
     var estadiaPagada = res.estadiaPagadaEnCheckin || false;
     var saldoFavor = res.saldoFavor || 0;
-    var costoEstadia = estadiaPagada ? 0 : (res.totalPagar||0);
+    // Noches adicionales si la fecha de salida ya pasó (el huésped se quedó más noches)
+    var hoyStr = new Date().toISOString().slice(0,10);
+    var nochesExtra = 0, costoNochesExtra = 0;
+    if (res.fechaOut && hoyStr > res.fechaOut) {
+      nochesExtra = Math.round((new Date(hoyStr) - new Date(res.fechaOut)) / 86400000);
+      costoNochesExtra = nochesExtra * (res.precioNoche||0);
+    }
+    var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra;
     var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
     if (totalGeneral < 0) totalGeneral = 0;
 
@@ -6825,6 +6921,7 @@ async function iniciarCheckOut(resId) {
       <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
+        ${nochesExtra > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--red);font-weight:600;"><span>⚠️ Noches adicionales ('+nochesExtra+' noche'+(nochesExtra>1?'s':'')+' — salida '+res.fechaOut+' → '+hoyStr+')</span><span>$ '+costoNochesExtra.toLocaleString('es-AR')+'</span></div>' : ''}
         ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);"><span>Saldo a favor del huésped</span><span>- $ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
         <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;margin-bottom:4px;font-weight:600;font-size:0.85rem;">Consumos:</div>
         ${consumosHTML}
@@ -6892,7 +6989,8 @@ async function iniciarCheckOut(resId) {
       try {
         // Guardar consumos detallados en la reserva para estadísticas admin
         var consumosDetalle = consumos.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, items:c.items||[], voucherId:c.voucherId||'', fecha:c.fecha }));
-        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTxPrimero, pagosCheckout:pagos, totalConsumos, totalGeneral, consumosDetalle, saldoFavorUsado: saldoFavor });
+        await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTxPrimero, pagosCheckout:pagos, totalConsumos, totalGeneral, consumosDetalle, saldoFavorUsado: saldoFavor,
+          ...(nochesExtra > 0 ? { nochesAdicionales: nochesExtra, costoNochesAdicionales: costoNochesExtra, noches: (res.noches||0) + nochesExtra, totalEstadia: (res.totalEstadia||0) + costoNochesExtra } : {}) });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
         for (var cDoc of consSnap.docs) {
@@ -8561,13 +8659,14 @@ async function cargarServiciosSpa() {
     var snap = await getDocs(collection(db,'spaServicios'));
     spaServiciosCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     var tbody = $('tbodyServiciosSpa');
-    if (!spaServiciosCache.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin servicios</td></tr>'; return; }
+    if (!spaServiciosCache.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin servicios</td></tr>'; return; }
     tbody.innerHTML = spaServiciosCache.map(s => `<tr>
       <td><strong>${esc(s.nombre)}</strong></td>
       <td>$${(s.precio||0).toFixed(2)}</td>
+      <td>$${(s.precioCosto||0).toFixed(2)}</td>
       <td>${s.duracionMin||'-'} min</td>
       <td>${s.activo !== false ? '<span style="color:var(--green);">Activo</span>' : '<span style="color:var(--red);">Inactivo</span>'}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="toggleServicioSpa('${s.id}',${s.activo !== false})">${s.activo !== false ? 'Desactivar' : 'Activar'}</button></td>
+      <td><button class="btn btn-blue btn-xs" onclick="abrirEditarServicioSpa('${s.id}')">Editar</button> <button class="btn btn-ghost btn-xs" onclick="toggleServicioSpa('${s.id}',${s.activo !== false})">${s.activo !== false ? 'Desactivar' : 'Activar'}</button></td>
     </tr>`).join('');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
@@ -8580,8 +8679,8 @@ async function agregarServicioSpa() {
   if (!nombre) { showToast('Completá el nombre','warning'); return; }
   if (precio <= 0) { showToast('Ingresá un precio válido','warning'); return; }
   try {
-    await addDoc(collection(db,'spaServicios'), { nombre, precio, duracionMin, activo:true, fechaAlta:serverTimestamp() });
-    $('ssNombre').value=''; $('ssPrecio').value='0'; $('ssDuracion').value='60';
+    await addDoc(collection(db,'spaServicios'), { nombre, precio, precioCosto: parseFloat($('ssCosto').value)||0, duracionMin, activo:true, fechaAlta:serverTimestamp() });
+    $('ssNombre').value=''; $('ssPrecio').value='0'; $('ssCosto').value='0'; $('ssDuracion').value='60';
     showToast('Servicio agregado','success');
     cargarServiciosSpa();
   } catch(e) { showToast('Error: '+e.message,'error'); }
@@ -8595,6 +8694,30 @@ async function toggleServicioSpa(id, activoActual) {
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.toggleServicioSpa = toggleServicioSpa;
+
+function abrirEditarServicioSpa(id) {
+  var s = spaServiciosCache.find(x => x.id === id);
+  if (!s) return;
+  confirmarAccion('Editar Servicio', `<div style="padding:12px;">
+    <div class="form-group"><label>Nombre *</label><input type="text" id="edSsNombre" value="${esc(s.nombre)}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Precio *</label><input type="number" id="edSsPrecio" step="0.01" value="${s.precio||0}"></div>
+      <div class="form-group"><label>Precio de Costo</label><input type="number" id="edSsCosto" step="0.01" value="${s.precioCosto||0}"></div>
+    </div>
+    <div class="form-group"><label>Duración (min)</label><input type="number" id="edSsDuracion" value="${s.duracionMin||60}"></div>
+  </div>`, 'Guardar Cambios', async (ok) => {
+    if (!ok) return;
+    var nombre = $('edSsNombre').value.trim();
+    var precio = parseFloat($('edSsPrecio').value)||0;
+    if (!nombre || precio <= 0) { showToast('Completá nombre y precio válidos','warning'); return; }
+    try {
+      await updateDoc(doc(db,'spaServicios',id), { nombre, precio, precioCosto: parseFloat($('edSsCosto').value)||0, duracionMin: parseInt($('edSsDuracion').value)||0 });
+      showToast('Servicio actualizado','success');
+      cargarServiciosSpa();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  }, '460px');
+}
+window.abrirEditarServicioSpa = abrirEditarServicioSpa;
 
 var _turnosAdminCache = [];
 async function cargarTurnosAdmin() {
@@ -8662,10 +8785,38 @@ async function cargarSelectLiquidacionProf() {
   } catch(e) {}
   var sel = $('slProfesional');
   if (sel) sel.innerHTML = '<option value="">Seleccionar...</option>' + spaProfesionalesCache.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
-  if ($('slDesde') && !$('slDesde').value) { var d=new Date(); d.setDate(1); $('slDesde').valueAsDate=d; $('slHasta').valueAsDate=new Date(); }
+  if ($('slDesde') && !$('slDesde').value) {
+    var hoy = new Date();
+    var desde = hoy.getDate() <= 15 ? new Date(hoy.getFullYear(), hoy.getMonth(), 1) : new Date(hoy.getFullYear(), hoy.getMonth(), 16);
+    var hasta = hoy.getDate() <= 15 ? new Date(hoy.getFullYear(), hoy.getMonth(), 15) : new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
+    $('slDesde').valueAsDate = desde; $('slHasta').valueAsDate = hasta;
+  }
+  cargarPorcentajeLiqSpa();
+  cargarLiquidacionesSpa();
 }
 window.cargarSelectLiquidacionProf = cargarSelectLiquidacionProf;
 
+var _pctLiqSpa = 50;
+async function cargarPorcentajeLiqSpa() {
+  try {
+    var snap = await getDoc(doc(db,'spaConfig','general'));
+    if (snap.exists() && snap.data().porcentajeLiquidacion != null) _pctLiqSpa = snap.data().porcentajeLiquidacion;
+  } catch(e) {}
+  if ($('slPorcentaje')) $('slPorcentaje').value = _pctLiqSpa;
+}
+
+async function guardarPorcentajeLiqSpa() {
+  var pct = parseFloat($('slPorcentaje').value);
+  if (isNaN(pct) || pct < 0 || pct > 100) { showToast('Ingresá un porcentaje entre 0 y 100','warning'); return; }
+  try {
+    await setDoc(doc(db,'spaConfig','general'), { porcentajeLiquidacion: pct, usuario: currentUser.usuario, fecha: serverTimestamp() }, { merge:true });
+    _pctLiqSpa = pct;
+    showToast('Porcentaje de liquidación guardado: '+pct+'%','success');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.guardarPorcentajeLiqSpa = guardarPorcentajeLiqSpa;
+
+var _liquidacionesSpaCache = [];
 async function generarLiquidacionSpa() {
   var profId = $('slProfesional').value;
   var desde = $('slDesde').value, hasta = $('slHasta').value;
@@ -8673,44 +8824,98 @@ async function generarLiquidacionSpa() {
   if (!desde || !hasta) { showToast('Completá el rango de fechas','warning'); return; }
   var prof = spaProfesionalesCache.find(p => p.id === profId);
   try {
+    // Verificar que no exista ya una liquidación solapada para el mismo profesional
+    var liqSnap = await getDocs(query(collection(db,'spaLiquidaciones'), where('profesionalId','==',profId)));
+    var solapada = liqSnap.docs.map(d => d.data()).find(l => l.estado !== 'ANULADA' && (l.desde||'') <= hasta && (l.hasta||'') >= desde);
+    if (solapada) { showToast('Ya existe una liquidación generada para '+(prof?prof.nombre:'')+' que abarca el período '+solapada.desde+' a '+solapada.hasta+'. No se puede volver a generar.','error'); return; }
     var snap = await getDocs(query(collection(db,'spaTurnos'), where('profesionalId','==',profId)));
     var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() }))
       .filter(t => (t.fecha||'') >= desde && (t.fecha||'') <= hasta)
       .filter(t => t.estado === 'CONFIRMADO' || (t.estado === 'CANCELADO' && t.liquidadoIgual))
       .sort((a,b) => (a.fecha+a.hora).localeCompare(b.fecha+b.hora));
-    var total = turnos.reduce((a,t) => a + (t.servicioPrecio||0), 0);
     var cont = $('resultadoLiquidacionSpa');
     if (!turnos.length) { cont.innerHTML = '<p style="color:var(--muted);">No hay servicios realizados en el rango.</p>'; return; }
+    var totalBruto = turnos.reduce((a,t) => a + (t.servicioPrecio||0), 0);
+    var pct = _pctLiqSpa;
+    var totalAPagar = totalBruto * pct / 100;
+    var ref = await addDoc(collection(db,'spaLiquidaciones'), {
+      profesionalId: profId, profesionalNombre: prof?prof.nombre:'', desde, hasta,
+      cantidadServicios: turnos.length, totalBruto, porcentaje: pct, total: totalAPagar,
+      estado: 'GENERADA',
+      turnos: turnos.map(t => ({ fecha:t.fecha, hora:t.hora||'', servicio:t.servicioNombre, cliente:t.nombreCliente||'', monto:t.servicioPrecio||0 })),
+      usuario: currentUser.usuario, fecha: serverTimestamp()
+    });
     var filas = turnos.map(t => `<tr><td>${esc(t.fecha)}</td><td>${esc(t.hora)}</td><td>${esc(t.servicioNombre)}</td><td>${esc(t.nombreCliente)}</td><td>${t.estado==='CANCELADO'?'Cancelado (liq.)':'Realizado'}</td><td>$${(t.servicioPrecio||0).toFixed(2)}</td></tr>`).join('');
     cont.innerHTML = `<div class="card">
       <div class="card-title">Liquidación — ${esc(prof?prof.nombre:'')} (${desde} a ${hasta})</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Fecha</th><th>Hora</th><th>Servicio</th><th>Cliente</th><th>Estado</th><th>Monto</th></tr></thead>
-        <tbody>${filas}<tr style="font-weight:700;background:rgba(46,204,113,0.1);"><td colspan="5" style="text-align:right;">TOTAL (${turnos.length} servicios)</td><td>$${total.toFixed(2)}</td></tr></tbody>
+        <tbody>${filas}
+          <tr style="font-weight:700;"><td colspan="5" style="text-align:right;">Total facturado (${turnos.length} servicios)</td><td>$${totalBruto.toFixed(2)}</td></tr>
+          <tr style="font-weight:700;background:rgba(46,204,113,0.1);"><td colspan="5" style="text-align:right;">A PAGAR (${pct}%)</td><td>$${totalAPagar.toFixed(2)}</td></tr>
+        </tbody>
       </table></div>
-      <button class="btn btn-gold btn-sm" style="margin-top:12px;" onclick="imprimirReciboLiquidacionSpa('${profId}','${desde}','${hasta}')">Imprimir Recibo de Pago</button>
+      <button class="btn btn-gold btn-sm" style="margin-top:12px;" onclick="imprimirReciboLiquidacionSpa('${ref.id}')">Imprimir Recibo de Pago</button>
     </div>`;
-    // Guardar liquidación
-    await addDoc(collection(db,'spaLiquidaciones'), {
-      profesionalId: profId, profesionalNombre: prof?prof.nombre:'', desde, hasta,
-      cantidadServicios: turnos.length, total,
-      turnos: turnos.map(t => ({ fecha:t.fecha, servicio:t.servicioNombre, monto:t.servicioPrecio||0 })),
-      usuario: currentUser.usuario, fecha: serverTimestamp()
-    });
+    showToast('Liquidación generada. El período quedó registrado y no puede regenerarse.','success');
+    cargarLiquidacionesSpa();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.generarLiquidacionSpa = generarLiquidacionSpa;
 
-async function imprimirReciboLiquidacionSpa(profId, desde, hasta) {
-  var prof = spaProfesionalesCache.find(p => p.id === profId);
+async function cargarLiquidacionesSpa() {
+  var cont = $('listaLiquidacionesSpa');
+  if (!cont) return;
   try {
-    var snap = await getDocs(query(collection(db,'spaTurnos'), where('profesionalId','==',profId)));
-    var turnos = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-      .filter(t => (t.fecha||'') >= desde && (t.fecha||'') <= hasta)
-      .filter(t => t.estado === 'CONFIRMADO' || (t.estado === 'CANCELADO' && t.liquidadoIgual))
-      .sort((a,b) => (a.fecha+a.hora).localeCompare(b.fecha+b.hora));
-    var total = turnos.reduce((a,t) => a + (t.servicioPrecio||0), 0);
-    var items = turnos.map(t => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(t.fecha)} ${esc(t.servicioNombre)}</span><span>$${(t.servicioPrecio||0).toFixed(2)}</span></div>`).join('');
+    var snap = await getDocs(query(collection(db,'spaLiquidaciones'), orderBy('fecha','desc'), limit(50)));
+    _liquidacionesSpaCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (!_liquidacionesSpaCache.length) { cont.innerHTML = '<p style="color:var(--muted);padding:8px;">Sin liquidaciones generadas</p>'; return; }
+    cont.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Profesional</th><th>Período</th><th>Servicios</th><th>A Pagar</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>${_liquidacionesSpaCache.map(l => {
+        var est = l.estado || 'GENERADA';
+        var color = est === 'PAGADA' ? 'var(--green)' : est === 'IMPRESA' ? 'var(--gold)' : est === 'ANULADA' ? 'var(--muted)' : 'var(--blue)';
+        var acc = '';
+        if (est === 'GENERADA') acc = `<button class="btn btn-gold btn-xs" onclick="imprimirReciboLiquidacionSpa('${l.id}')">Imprimir Recibo</button>`;
+        else if (est === 'IMPRESA') acc = `<button class="btn btn-ghost btn-xs" onclick="imprimirReciboLiquidacionSpa('${l.id}')">Reimprimir</button> <button class="btn btn-green btn-xs" onclick="registrarPagoLiquidacionSpa('${l.id}')">Registrar Pago</button>`;
+        else if (est === 'PAGADA') acc = `<span style="font-size:0.75rem;color:var(--muted);">Pagada por ${esc(l.pagadaPor||'')} ${l.fechaPago?fmtFecha(l.fechaPago):''}</span>`;
+        return `<tr>
+          <td><strong>${esc(l.profesionalNombre)}</strong></td>
+          <td>${esc(l.desde)} a ${esc(l.hasta)}</td>
+          <td>${l.cantidadServicios||0}</td>
+          <td>$${(l.total||0).toFixed(2)}${l.porcentaje!=null?' <span style="font-size:0.72rem;color:var(--muted);">('+l.porcentaje+'% de $'+(l.totalBruto||0).toFixed(2)+')</span>':''}</td>
+          <td><span class="badge" style="background:${color}20;color:${color};">${est}</span></td>
+          <td>${acc}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  } catch(e) { cont.innerHTML = '<p style="color:var(--muted);padding:8px;">Sin liquidaciones generadas</p>'; }
+}
+window.cargarLiquidacionesSpa = cargarLiquidacionesSpa;
+
+async function registrarPagoLiquidacionSpa(liqId) {
+  var l = _liquidacionesSpaCache.find(x => x.id === liqId);
+  if (!l) return;
+  if (!confirm('¿Registrar el pago de $'+(l.total||0).toFixed(2)+' a '+l.profesionalNombre+'? Confirmá solo si la profesional ya firmó el recibo.')) return;
+  try {
+    await updateDoc(doc(db,'spaLiquidaciones',liqId), { estado: 'PAGADA', pagadaPor: currentUser.usuario, fechaPago: serverTimestamp() });
+    showToast('Pago registrado','success');
+    cargarLiquidacionesSpa();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.registrarPagoLiquidacionSpa = registrarPagoLiquidacionSpa;
+
+async function imprimirReciboLiquidacionSpa(liqId) {
+  try {
+    var liqSnap = await getDoc(doc(db,'spaLiquidaciones',liqId));
+    if (!liqSnap.exists()) { showToast('Liquidación no encontrada','error'); return; }
+    var l = liqSnap.data();
+    var desde = l.desde, hasta = l.hasta;
+    var prof = { nombre: l.profesionalNombre };
+    var turnos = l.turnos || [];
+    var total = l.total || 0;
+    var items = turnos.map(t => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(t.fecha)} ${esc(t.servicio)}</span><span>$${(t.monto||0).toFixed(2)}</span></div>`).join('');
+    if (l.porcentaje != null) items += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:4px 0 0;border-top:1px dashed #000;padding-top:2px;"><span>Total facturado</span><span>$${(l.totalBruto||0).toFixed(2)}</span></div><div style="display:flex;justify-content:space-between;font-size:11px;"><span>Porcentaje profesional</span><span>${l.porcentaje}%</span></div>`;
     var html = `<!DOCTYPE html><html><head><style>
       @page{size:80mm auto;margin:4mm}
       body{font-family:'Courier New',monospace;font-size:12px;width:72mm;}
@@ -8732,6 +8937,8 @@ async function imprimirReciboLiquidacionSpa(profId, desde, hasta) {
       <div class="firma"><p>Firma de la profesional</p><p style="margin-top:16px;">_____________________</p></div>
     </body></html>`;
     imprimirHTML(html);
+    if ((l.estado||'GENERADA') === 'GENERADA') await updateDoc(doc(db,'spaLiquidaciones',liqId), { estado: 'IMPRESA', impresaPor: currentUser.usuario, fechaImpresion: serverTimestamp() });
+    cargarLiquidacionesSpa();
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 window.imprimirReciboLiquidacionSpa = imprimirReciboLiquidacionSpa;
