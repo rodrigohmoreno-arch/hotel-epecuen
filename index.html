@@ -855,6 +855,7 @@
         <div class="card-title">Configuración Hotel</div>
         <div class="form-row">
           <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
+          <div class="form-group"><label>Tarifa Late Checkout ($ ARS)</label><input type="number" id="cfgTarifaLate" step="0.01" min="0" placeholder="Ej: 15000"></div>
           <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
         </div>
 
@@ -1144,6 +1145,7 @@
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
       <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
       <button class="tab" onclick="tabRecepcion('promociones',this)">Promociones</button>
+      <button class="tab" onclick="tabRecepcion('gobernanta',this)">Gobernanta</button>
     </div>
     <!-- Tab Habitaciones -->
     <div id="tabRecHabitaciones">
@@ -1237,7 +1239,8 @@
               <option value="ALERGICO">Alérgico</option>
               <option value="OTRO">Otro (especificar en notas)</option>
             </select></div>
-          <div class="form-group"><label>Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resFestejoCumple"> 🎂 Festejo de cumpleaños</label>
+            <label style="margin-top:8px;display:block;">Antecedentes de Salud</label><input type="text" id="resAntecedentesSalud" placeholder="Afecciones simples o crónicas"></div>
         </div>
         <div id="seccionAcompanantes" style="padding:12px;background:rgba(74,144,217,0.06);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1312,7 +1315,6 @@
               <option value="TARJETA">Tarjeta</option>
             </select></div>
           <div class="form-group"><label>Pedidos Especiales Habitación</label><input type="text" id="resPedidosEsp" placeholder="Ej: Cuna, Decoración sorpresa">
-            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resFestejoCumple"> 🎂 Festejo de cumpleaños</label>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:16px;"><label>Notas</label><textarea id="resNotas" rows="2" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;resize:vertical;"></textarea></div>
@@ -1437,6 +1439,22 @@
         <div class="card-title">Promociones Activas</div>
         <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Promociones vigentes que se pueden aplicar al hacer check-in.</p>
         <div id="listaPromosRecepcion"></div>
+      </div>
+    </div>
+    <!-- Tab Gobernanta -->
+    <div id="tabRecGobernanta" class="hidden">
+      <div class="card">
+        <div class="card-title">Planilla para la Gobernanta</div>
+        <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;">
+          <div class="form-group" style="margin-bottom:0;"><label>Fecha</label><input type="date" id="gobFecha" onchange="generarPlanillaGobernanta()"></div>
+          <button class="btn btn-blue btn-sm" onclick="generarPlanillaGobernanta()">Generar</button>
+          <button class="btn btn-gold btn-sm" onclick="imprimirPlanillaGobernanta()">🖨 Imprimir Planilla</button>
+        </div>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;">Simbología: <strong>X</strong> = Ocupada &nbsp;·&nbsp; <strong>CS</strong> = Cambio Sábanas &nbsp;·&nbsp; <strong>△</strong> = Reservada &nbsp;·&nbsp; <strong>□</strong> = Salida (Check-Out) &nbsp;·&nbsp; <strong>○</strong> = Limpieza</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>N° Hab.</th><th>Tipo</th><th>Config. Camas</th><th>Situación</th><th>Mucama</th><th>Pedidos Especiales</th></tr></thead>
+          <tbody id="tbodyGobernanta"></tbody>
+        </table></div>
       </div>
     </div>
     <!-- Tab Caja Recepción -->
@@ -2155,8 +2173,8 @@ window.cargarMesas = cargarMesas;
 
 function renderMesas() {
   var filtro = $('filtroUbicacion').value;
-  // Ocultar mesas de spa liberadas (creadas solo para cobro de servicios externos)
-  var base = mesasCache.filter(m => !(m.esSpa && (m.estado||'LIBRE').toUpperCase() === 'LIBRE'));
+  // Ocultar mesas de spa (creadas solo para cobro en caja de servicios externos)
+  var base = mesasCache.filter(m => !m.esSpa);
   var mesas = filtro ? base.filter(m => m.ubicacion === filtro) : base;
   if (!mesas.length) { $('mesasGrid').innerHTML = '<p style="color:var(--muted);">No hay mesas configuradas</p>'; return; }
   $('mesasGrid').innerHTML = mesas.map(m => {
@@ -2252,8 +2270,10 @@ async function buscarVoucherCarhue() {
 window.buscarVoucherCarhue = buscarVoucherCarhue;
 
 var _alertaHabActual = '';
+var _alertaCocinaActual = '';
 async function verificarRestriccionesHab(habNro) {
   _alertaHabActual = '';
+  _alertaCocinaActual = '';
   var alertDiv = $('abrirHabAlerta');
   if (alertDiv) { alertDiv.style.display = 'none'; alertDiv.textContent = ''; }
   if (!habNro) return;
@@ -2261,10 +2281,11 @@ async function verificarRestriccionesHab(habNro) {
     var snap = await getDocs(query(collection(db,'reservas'), where('habitacionNro','==',habNro), where('estado','==','CHECKIN')));
     if (snap.empty) return;
     var r = snap.docs[0].data();
+    var avisosCocina = [];
+    if (r.restriccionAlim) avisosCocina.push('Huésped ' + r.restriccionAlim);
+    if (r.festejoCumple) avisosCocina.push('🎂 La mesa festeja un cumpleaños');
+    _alertaCocinaActual = avisosCocina.join(' | ');
     var avisos = [];
-    if (r.restriccionAlim) avisos.push('Huésped ' + r.restriccionAlim);
-    if (r.antecedentesSalud) avisos.push('Salud: ' + r.antecedentesSalud);
-    if (r.pedidosEsp) avisos.push('Pedido especial: ' + r.pedidosEsp);
     if (r.festejoCumple) avisos.push('🎂 La mesa festeja un cumpleaños');
     if (!avisos.length) return;
     _alertaHabActual = avisos.join(' | ');
@@ -2405,7 +2426,7 @@ async function confirmarAbrirMesa() {
       comensalesMAP: comensalesMAP,
       voucherId: voucherId || '',
       voucherPension: voucherPension || '',
-      alertaCocina: (tipo !== 'EXTERNO' && tipo !== 'CARHUE') ? _alertaHabActual : '',
+      alertaCocina: (tipo !== 'EXTERNO' && tipo !== 'CARHUE') ? _alertaCocinaActual : '',
       estado: 'ABIERTA',
       total: 0,
       usuario: currentUser.usuario,
@@ -2902,7 +2923,11 @@ async function confirmarFacturacion() {
     });
     // Actualizar comanda y mesa
     await updateDoc(doc(db,'comandas',mesaParaFacturar.comandaId), { estado:'CERRADA', fechaCierre: ahora });
-    await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0, voucherId:'', voucherPension:'' });
+    if (mesaData.esSpa) {
+      await deleteDoc(doc(db,'mesas',mesaParaFacturar.id));
+    } else {
+      await updateDoc(doc(db,'mesas',mesaParaFacturar.id), { estado:'LIBRE', comandaId:null, nombreCliente:'', nroHabitacion:'', tipoCliente:'', cantidadComensales:0, voucherId:'', voucherPension:'' });
+    }
 
     // Guardar datos para ticket y mostrar modal de datos de facturación
     ticketNoFiscalPendiente = {
@@ -5002,7 +5027,7 @@ function volverAHabitaciones() {
   var tabs = document.querySelectorAll('#panelRecepcion .tab');
   tabs.forEach(b => b.classList.remove('active'));
   if (tabs[0]) tabs[0].classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones','tabRecGobernanta'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecHabitaciones').classList.remove('hidden');
   cargarHabitaciones(); renderCalendarioHab();
 }
@@ -5010,8 +5035,8 @@ function volverAHabitaciones() {
 function tabRecepcion(t, btn) {
   document.querySelectorAll('#panelRecepcion .tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
-  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec', promociones:'tabRecPromociones' };
+  ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones','tabRecGobernanta'].forEach(id => $(id).classList.add('hidden'));
+  var map = { habitaciones:'tabRecHabitaciones', nuevaReserva:'tabRecNuevaReserva', preReservas:'tabRecPreReservas', reservas:'tabRecReservas', checkin:'tabRecCheckin', huespedes:'tabRecHuespedes', clienteHabitual:'tabRecClienteHabitual', consumos:'tabRecConsumos', cajaRec:'tabRecCajaRec', promociones:'tabRecPromociones', gobernanta:'tabRecGobernanta' };
   $(map[t]).classList.remove('hidden');
   if (t === 'habitaciones') { cargarHabitaciones(); renderCalendarioHab(); }
   if (t === 'nuevaReserva') { cargarTarifas(); poblarSelectHabReserva(); cargarEmpresasCache(); cargarHuespedCache(); }
@@ -5023,6 +5048,7 @@ function tabRecepcion(t, btn) {
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
   if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
   if (t === 'promociones') { cargarPromosRecepcion(); }
+  if (t === 'gobernanta') { if ($('gobFecha') && !$('gobFecha').value) $('gobFecha').value = new Date().toISOString().slice(0,10); generarPlanillaGobernanta(); }
 }
 window.tabRecepcion = tabRecepcion;
 
@@ -6351,6 +6377,7 @@ async function realizarCheckIn(resId) {
   try {
     var resSnap = await getDoc(doc(db,'reservas',resId));
     var res = resSnap.data();
+    try { var cfgSnap = await getDoc(doc(db,'configHotel','general')); if (cfgSnap.exists()) configHotel = cfgSnap.data(); } catch(e) {}
     // Validar fecha: no se puede hacer check-in con fecha anterior al día de ingreso
     var hoy = new Date(); hoy.setHours(0,0,0,0);
     var fechaIn = new Date(res.fechaIn+'T00:00:00');
@@ -6409,6 +6436,15 @@ async function realizarCheckIn(resId) {
         </select>
         <div id="checkInPromoDetalle" style="display:none;margin-top:8px;font-size:0.82rem;color:var(--muted);"></div>
       </div>` : ''}
+      <div style="margin:12px 0;padding:12px;background:rgba(240,180,41,0.06);border-radius:10px;border-left:3px solid var(--gold);">
+        <label style="font-size:0.88rem;font-weight:600;margin-bottom:6px;display:block;">Late Checkout ${res.lateCheckout ? '(solicitado en la reserva)' : ''}</label>
+        <select id="checkInLateOpcion" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+          <option value="NO" ${!res.lateCheckout ? 'selected' : ''}>No solicita late checkout</option>
+          <option value="CON_CARGO" ${res.lateCheckout ? 'selected' : ''}>Con cargo — $ ${(configHotel.tarifaLateCheckout||0).toLocaleString('es-AR')} (tarifa configurada por admin)</option>
+          <option value="SIN_CARGO">Sin cargo — hospitalidad</option>
+        </select>
+        ${!(configHotel.tarifaLateCheckout||0) ? '<p style="font-size:0.75rem;color:var(--red);margin-top:4px;">⚠ No hay tarifa de late checkout configurada en Admin → Config Hotel</p>' : ''}
+      </div>
       <div id="checkInResumenEstadia" style="background:var(--surface);border-radius:10px;padding:14px;margin:12px 0;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Total Estadía</span><span>${monedaLabel} ${(totalEstadia+senaAbonada).toLocaleString('es-AR')}</span></div>
         ${senaAbonada ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green);"><span>Seña abonada</span><span>- '+monedaLabel+' '+senaAbonada.toLocaleString('es-AR')+'</span></div>' : ''}
@@ -6494,6 +6530,10 @@ async function realizarCheckIn(resId) {
             tipoHab: promoOpt.getAttribute('data-tipo')||''
           };
         }
+        var lateOpcion = $('checkInLateOpcion')?.value || 'NO';
+        updateData.lateCheckout = lateOpcion !== 'NO';
+        updateData.lateCheckoutCobrar = lateOpcion === 'CON_CARGO';
+        updateData.lateCheckoutMonto = lateOpcion === 'CON_CARGO' ? (configHotel.tarifaLateCheckout||0) : 0;
         var pagarAhora = $('checkInPagarEstadia')?.checked;
         if (pagarAhora) {
           var pagosRows = document.querySelectorAll('.checkin-pago-row');
@@ -6901,7 +6941,15 @@ async function iniciarCheckOut(resId) {
       nochesExtra = Math.round((new Date(hoyStr) - new Date(res.fechaOut)) / 86400000);
       costoNochesExtra = nochesExtra * (res.precioNoche||0);
     }
-    var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra;
+    // Late checkout: si fue marcado con cargo en el check-in se cobra la tarifa configurada
+    var cargoLate = 0;
+    if (res.lateCheckout && res.lateCheckoutCobrar) {
+      cargoLate = res.lateCheckoutMonto || 0;
+      if (!cargoLate) {
+        try { var cfgLateSnap = await getDoc(doc(db,'configHotel','general')); if (cfgLateSnap.exists()) cargoLate = cfgLateSnap.data().tarifaLateCheckout || 0; } catch(e) {}
+      }
+    }
+    var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate;
     var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
     if (totalGeneral < 0) totalGeneral = 0;
 
@@ -6922,6 +6970,8 @@ async function iniciarCheckOut(resId) {
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
         ${nochesExtra > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--red);font-weight:600;"><span>⚠️ Noches adicionales ('+nochesExtra+' noche'+(nochesExtra>1?'s':'')+' — salida '+res.fechaOut+' → '+hoyStr+')</span><span>$ '+costoNochesExtra.toLocaleString('es-AR')+'</span></div>' : ''}
+        ${cargoLate > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--gold);font-weight:600;"><span>⏰ Late Checkout (con cargo)</span><span>$ '+cargoLate.toLocaleString('es-AR')+'</span></div>' : ''}
+        ${res.lateCheckout && !res.lateCheckoutCobrar ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);font-size:0.85rem;"><span>⏰ Late Checkout — sin cargo (hospitalidad)</span><span>$ 0</span></div>' : ''}
         ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);"><span>Saldo a favor del huésped</span><span>- $ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
         <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;margin-bottom:4px;font-weight:600;font-size:0.85rem;">Consumos:</div>
         ${consumosHTML}
@@ -6990,6 +7040,7 @@ async function iniciarCheckOut(resId) {
         // Guardar consumos detallados en la reserva para estadísticas admin
         var consumosDetalle = consumos.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, items:c.items||[], voucherId:c.voucherId||'', fecha:c.fecha }));
         await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTxPrimero, pagosCheckout:pagos, totalConsumos, totalGeneral, consumosDetalle, saldoFavorUsado: saldoFavor,
+          ...(cargoLate > 0 ? { lateCheckoutCobrado: cargoLate } : {}),
           ...(nochesExtra > 0 ? { nochesAdicionales: nochesExtra, costoNochesAdicionales: costoNochesExtra, noches: (res.noches||0) + nochesExtra, totalEstadia: (res.totalEstadia||0) + costoNochesExtra } : {}) });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
@@ -8222,6 +8273,99 @@ async function cargarPromosRecepcion() {
 }
 window.cargarPromosRecepcion = cargarPromosRecepcion;
 
+// ── PLANILLA GOBERNANTA ──
+var _planillaGobCache = [];
+async function generarPlanillaGobernanta() {
+  var fecha = $('gobFecha')?.value || new Date().toISOString().slice(0,10);
+  var tbody = $('tbodyGobernanta');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><span class="spinner"></span></td></tr>';
+  try {
+    var habSnap = await getDocs(collection(db,'habitaciones'));
+    var habs = habSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(a.numero).localeCompare(String(b.numero), undefined, { numeric:true }));
+    var resSnap = await getDocs(query(collection(db,'reservas'), where('estado','in',['CHECKIN','CONFIRMADA'])));
+    var reservas = resSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var configCamasLabels = { MATRIMONIAL:'Matrimonial', MATRIM_1SIMPLE:'Matrim. + 1 Simple', '3_SIMPLES':'3 Simples', CUADRUPLE:'Cuádruple', SIMPLE:'Simple', '2_SIMPLES':'2 Simples' };
+    var tipoLabels = { SINGLE:'Single', DOBLE:'Doble', TRIPLE:'Triple', CUADRUPLE:'Cuádruple', SUITE:'Suite' };
+    _planillaGobCache = habs.map(h => {
+      var simbolos = [];
+      var pedidos = [];
+      var camas = '';
+      var rIn = reservas.find(r => r.estado === 'CHECKIN' && r.habitacionNro === h.numero);
+      var salidaHoy = !!(rIn && rIn.fechaOut && rIn.fechaOut <= fecha);
+      var rReservada = reservas.find(r => r.estado === 'CONFIRMADA' && r.habitacionNro === h.numero && r.fechaIn === fecha);
+      if (rIn) {
+        simbolos.push('X');
+        camas = configCamasLabels[rIn.configCamas] || rIn.configCamas || '';
+        if (rIn.pedidosEsp) pedidos.push(rIn.pedidosEsp);
+        if (rIn.observacionesCheckIn) pedidos.push(rIn.observacionesCheckIn);
+        var diasEstadia = Math.round((new Date(fecha+'T00:00:00') - new Date(rIn.fechaIn+'T00:00:00')) / 86400000);
+        if (!salidaHoy && diasEstadia >= 3) simbolos.push('CS');
+        if (salidaHoy) simbolos.push('□');
+      }
+      if (rReservada) {
+        simbolos.push('△');
+        if (!camas) camas = configCamasLabels[rReservada.configCamas] || rReservada.configCamas || '';
+        if (rReservada.pedidosEsp) pedidos.push(rReservada.pedidosEsp);
+      }
+      if (salidaHoy || rReservada) simbolos.push('○');
+      return {
+        numero: h.numero,
+        tipo: tipoLabels[h.tipo] || h.tipo || '',
+        camas: camas,
+        situacion: simbolos.join(' - '),
+        pedidos: pedidos.join(' | ')
+      };
+    });
+    tbody.innerHTML = _planillaGobCache.map(f => `<tr>
+      <td><strong>${esc(f.numero)}</strong></td>
+      <td>${esc(f.tipo)}</td>
+      <td>${esc(f.camas)}</td>
+      <td style="font-weight:700;font-size:1rem;">${esc(f.situacion)}</td>
+      <td></td>
+      <td>${esc(f.pedidos)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin habitaciones</td></tr>';
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
+}
+window.generarPlanillaGobernanta = generarPlanillaGobernanta;
+
+function imprimirPlanillaGobernanta() {
+  var fecha = $('gobFecha')?.value || new Date().toISOString().slice(0,10);
+  var fechaLegible = new Date(fecha+'T00:00:00').toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+  var filas = _planillaGobCache.map(f => `<tr>
+    <td style="font-weight:bold;">${esc(f.numero)}</td>
+    <td>${esc(f.tipo)}</td>
+    <td>${esc(f.camas)}</td>
+    <td style="font-weight:bold;font-size:14px;text-align:center;">${esc(f.situacion)}</td>
+    <td></td>
+    <td>${esc(f.pedidos)}</td>
+  </tr>`).join('');
+  var html = `<!DOCTYPE html><html><head><title>Planilla Gobernanta</title><style>
+    @page{size:A4 portrait;margin:12mm}
+    body{font-family:Arial,sans-serif;color:#000;font-size:12px;}
+    h2{text-align:center;margin:0 0 4px;}
+    .fecha{text-align:center;font-size:14px;font-weight:bold;margin-bottom:10px;text-transform:capitalize;}
+    table{width:100%;border-collapse:collapse;}
+    th,td{border:1px solid #000;padding:6px 8px;text-align:left;vertical-align:top;}
+    th{background:#eee;font-size:11px;}
+    td:nth-child(5){min-width:90px;}
+    .leyenda{margin-top:12px;font-size:10px;}
+  </style></head><body>
+    <h2>HOTEL EPECUÉN — Planilla de Gobernanta</h2>
+    <div class="fecha">${esc(fechaLegible)}</div>
+    <table>
+      <thead><tr><th>N° Hab.</th><th>Tipo</th><th>Config. Camas</th><th>Situación</th><th>Mucama</th><th>Pedidos Especiales</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <div class="leyenda"><strong>Simbología:</strong> X = Ocupada &nbsp;·&nbsp; CS = Cambio Sábanas &nbsp;·&nbsp; △ = Reservada &nbsp;·&nbsp; □ = Salida (Check-Out) &nbsp;·&nbsp; ○ = Limpieza</div>
+  </body></html>`;
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); }, 300);
+}
+window.imprimirPlanillaGobernanta = imprimirPlanillaGobernanta;
+
 // ── CONFIG HOTEL ──
 async function cargarConfigHotel() {
   try {
@@ -8230,14 +8374,16 @@ async function cargarConfigHotel() {
       configHotel = snap.data();
     }
     $('cfgCotizacion').value = configHotel.cotizacionDolar || 1200;
+    if ($('cfgTarifaLate')) $('cfgTarifaLate').value = configHotel.tarifaLateCheckout || 0;
   } catch(e) {}
 }
 
 async function guardarConfigHotel() {
   var cotiz = parseFloat($('cfgCotizacion').value) || 0;
+  var tarifaLate = parseFloat($('cfgTarifaLate')?.value) || 0;
   try {
-    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz });
-    configHotel = { cotizacionDolar:cotiz };
+    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate }, { merge:true });
+    configHotel = { ...configHotel, cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate };
     showToast('Configuración guardada','success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
