@@ -1334,7 +1334,7 @@
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div class="card-title">Reservas Confirmadas</div>
-          <button class="btn btn-blue btn-xs" onclick="imprimirPedidosEspeciales()">Imprimir Pedidos Especiales</button>
+          <button class="btn btn-blue btn-xs" onclick="imprimirInformeInHouse()">🏨 Informe In House</button>
         </div>
         <div id="listaReservas"></div>
       </div>
@@ -1505,6 +1505,11 @@
           <button class="btn btn-gold btn-sm" onclick="registrarMovCaja()">Registrar Movimiento</button>
         </div>
         <div id="listaMovCaja" style="margin-bottom:20px;"></div>
+        <div style="padding:16px;background:rgba(245,183,49,0.06);border-radius:10px;border-left:3px solid var(--gold);margin-bottom:20px;">
+          <h4 style="margin-bottom:8px;font-size:0.95rem;">Facturas Pendientes de Asociar</h4>
+          <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Pagos de estadía en check-in con medio no efectivo sin N° de factura. No se puede cerrar la caja del día mientras haya pendientes.</p>
+          <div id="listaFacturasPendientes"></div>
+        </div>
         <div class="card-title" style="margin-top:16px;">Historial de Cajas</div>
         <div class="table-wrap"><table>
           <thead><tr><th>Fecha</th><th>Turno</th><th>Usuario</th><th>Apertura</th><th>Cierre</th><th>Estado</th></tr></thead>
@@ -5046,7 +5051,7 @@ function tabRecepcion(t, btn) {
   if (t === 'huespedes') cargarHuespedes();
   if (t === 'clienteHabitual') { var chCard = $('cardClienteHabitual'); if (chCard && chCard.parentElement !== $('tabRecClienteHabitual')) $('tabRecClienteHabitual').appendChild(chCard); }
   if (t === 'consumos') { poblarFiltroConsHab(); cargarConsumosHab(); }
-  if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); }
+  if (t === 'cajaRec') { cargarCajaRec(); cargarMovCaja(); cargarFacturasPendientes(); }
   if (t === 'promociones') { cargarPromosRecepcion(); }
   if (t === 'gobernanta') { if ($('gobFecha') && !$('gobFecha').value) $('gobFecha').value = new Date().toISOString().slice(0,10); generarPlanillaGobernanta(); }
 }
@@ -6296,44 +6301,82 @@ function agregarAcompEdit() {
 }
 window.agregarAcompEdit = agregarAcompEdit;
 
-async function imprimirPedidosEspeciales() {
+async function imprimirInformeInHouse() {
   try {
-    var snap = await getDocs(query(collection(db,'reservas'), where('estado','==','CONFIRMADA')));
-    var reservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    if (!reservas.length) { showToast('No hay reservas confirmadas','warning'); return; }
-    var conPedidos = reservas.filter(r => r.festejo || r.restriccionAlim || r.pedidosEsp || r.notas);
-    var fecha = new Date().toLocaleDateString('es-AR');
-    var html = `<!DOCTYPE html><html><head><style>
-      @page{size:A4;margin:15mm}
-      body{font-family:Arial,sans-serif;font-size:12px;color:#333;}
-      h2{text-align:center;margin-bottom:20px;}
-      table{width:100%;border-collapse:collapse;margin-top:10px;}
-      th,td{border:1px solid #ccc;padding:8px;text-align:left;vertical-align:top;}
-      th{background:#f5f5f5;font-weight:700;}
-      .no-pedidos{color:#999;font-style:italic;}
-    </style></head><body>
-    <h2>Pedidos Especiales — Reservas para Check-In</h2>
-    <p>Fecha: ${fecha} | Total reservas: ${reservas.length} | Con pedidos especiales: ${conPedidos.length}</p>
-    <table>
-      <thead><tr><th>Hab.</th><th>Huésped</th><th>Check-In</th><th>Festejo/Día Especial</th><th>Restricción Alimentaria</th><th>Pedidos Especiales</th><th>Notas</th></tr></thead>
-      <tbody>`;
-    reservas.forEach(r => {
-      html += `<tr>
+    var hoy = new Date().toISOString().slice(0,10);
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','in',['CHECKIN','CONFIRMADA'])));
+    var todas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var inHouse = todas.filter(r => r.estado === 'CHECKIN');
+    var ingresosHoy = todas.filter(r => r.fechaIn === hoy);
+    var salidasHoy = inHouse.filter(r => r.fechaOut && r.fechaOut <= hoy);
+    var paxDe = r => (r.alojados && r.alojados.length) ? r.alojados.length : ((r.adultos||1) + (r.menores||0));
+    var totalPax = inHouse.reduce((a,r) => a + paxDe(r), 0);
+    var paxSalen = salidasHoy.reduce((a,r) => a + paxDe(r), 0);
+    var paxIngresan = ingresosHoy.reduce((a,r) => a + paxDe(r), 0);
+    var paxMap = inHouse.filter(r => r.pension === 'MAP').reduce((a,r) => a + paxDe(r), 0);
+    var paxSinMap = inHouse.filter(r => r.pension === 'SIN_PENSION').reduce((a,r) => a + paxDe(r), 0);
+    var paxPC = inHouse.filter(r => r.pension === 'COMPLETA').reduce((a,r) => a + paxDe(r), 0);
+    var pensionLabels = { MAP:'MAP', SIN_PENSION:'Sin MAP', COMPLETA:'P. Completa (Plan)' };
+    var ordenar = arr => arr.slice().sort((a,b) => String(a.habitacionNro||'').localeCompare(String(b.habitacionNro||''), undefined, { numeric:true }));
+    var fechaLegible = new Date(hoy+'T00:00:00').toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+    var filaDe = r => `<tr>
         <td><strong>${esc(r.habitacionNro||'-')}</strong></td>
         <td>${esc(r.huesped||'-')}</td>
+        <td style="text-align:center;font-weight:bold;">${paxDe(r)}</td>
         <td>${r.fechaIn||'-'}</td>
-        <td>${r.festejo ? esc(r.festejo) : '<span class="no-pedidos">—</span>'}</td>
-        <td>${r.restriccionAlim ? esc(r.restriccionAlim) : '<span class="no-pedidos">—</span>'}</td>
-        <td>${r.pedidosEsp ? esc(r.pedidosEsp) : '<span class="no-pedidos">—</span>'}</td>
-        <td>${r.notas ? esc(r.notas) : '<span class="no-pedidos">—</span>'}</td>
+        <td>${r.fechaOut||'-'}${(r.estado==='CHECKIN' && r.fechaOut && r.fechaOut <= hoy) ? ' <strong>(SALE HOY)</strong>' : ''}</td>
+        <td>${esc(pensionLabels[r.pension]||r.pension||'-')}</td>
+        <td>${r.restriccionAlim ? '<strong>'+esc(r.restriccionAlim)+'</strong>' : '<span class="vacio">—</span>'}</td>
+        <td style="text-align:center;">${r.festejoCumple ? '🎂 SÍ' : '<span class="vacio">—</span>'}</td>
+        <td>${r.pedidosEsp ? esc(r.pedidosEsp) : '<span class="vacio">—</span>'}</td>
       </tr>`;
-    });
-    html += '</tbody></table></body></html>';
-    var w = window.open('','_blank','width=800,height=600');
-    w.document.write(html); w.document.close(); w.print();
+    var html = `<!DOCTYPE html><html><head><title>Informe In House</title><style>
+      @page{size:A4 landscape;margin:12mm}
+      body{font-family:Arial,sans-serif;font-size:11px;color:#000;}
+      h2{text-align:center;margin:0 0 4px;}
+      .fecha{text-align:center;font-size:13px;font-weight:bold;margin-bottom:10px;text-transform:capitalize;}
+      .stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+      .stat{border:1px solid #000;border-radius:6px;padding:6px 12px;text-align:center;}
+      .stat b{display:block;font-size:16px;}
+      h3{margin:14px 0 4px;font-size:13px;}
+      table{width:100%;border-collapse:collapse;}
+      th,td{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top;}
+      th{background:#eee;font-size:10px;}
+      .vacio{color:#999;}
+    </style></head><body>
+    <h2>HOTEL EPECUÉN — Informe In House</h2>
+    <div class="fecha">${esc(fechaLegible)}</div>
+    <div class="stats">
+      <div class="stat"><b>${totalPax}</b>Pax In House</div>
+      <div class="stat"><b>${inHouse.length}</b>Hab. Ocupadas</div>
+      <div class="stat"><b>${paxSalen}</b>Salen Hoy</div>
+      <div class="stat"><b>${paxIngresan}</b>Ingresan Hoy</div>
+      <div class="stat"><b>${paxMap}</b>Con MAP</div>
+      <div class="stat"><b>${paxSinMap}</b>Sin MAP</div>
+      <div class="stat"><b>${paxPC}</b>P. Completa (Plan)</div>
+    </div>
+    <h3>Habitaciones In House (${inHouse.length})</h3>
+    <table>
+      <thead><tr><th>Hab.</th><th>Huésped</th><th>Pax</th><th>Check-In</th><th>Check-Out</th><th>Pensión</th><th>Restricción Alim.</th><th>🎂 Cumpleaños</th><th>Pedidos Especiales</th></tr></thead>
+      <tbody>${ordenar(inHouse).map(filaDe).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;">Sin habitaciones ocupadas</td></tr>'}</tbody>
+    </table>
+    <h3>Ingresos del Día (${ingresosHoy.length} hab. — ${paxIngresan} pax)</h3>
+    <table>
+      <thead><tr><th>Hab.</th><th>Huésped</th><th>Pax</th><th>Check-In</th><th>Check-Out</th><th>Pensión</th><th>Restricción Alim.</th><th>🎂 Cumpleaños</th><th>Pedidos Especiales</th></tr></thead>
+      <tbody>${ordenar(ingresosHoy).map(filaDe).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;">Sin ingresos hoy</td></tr>'}</tbody>
+    </table>
+    <h3>Salidas del Día (${salidasHoy.length} hab. — ${paxSalen} pax)</h3>
+    <table>
+      <thead><tr><th>Hab.</th><th>Huésped</th><th>Pax</th><th>Check-In</th><th>Check-Out</th><th>Pensión</th><th>Restricción Alim.</th><th>🎂 Cumpleaños</th><th>Pedidos Especiales</th></tr></thead>
+      <tbody>${ordenar(salidasHoy).map(filaDe).join('') || '<tr><td colspan="9" style="text-align:center;color:#999;">Sin salidas hoy</td></tr>'}</tbody>
+    </table>
+    </body></html>`;
+    var w = window.open('','_blank');
+    w.document.write(html); w.document.close();
+    setTimeout(() => { w.print(); }, 300);
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
-window.imprimirPedidosEspeciales = imprimirPedidosEspeciales;
+window.imprimirInformeInHouse = imprimirInformeInHouse;
 
 async function cancelarReserva(resId, habId) {
   confirmarAccion('Cancelar Reserva','<p style="padding:16px;">¿Cancelar esta reserva/pre-reserva? La habitación volverá a LIBRE.</p>','Cancelar Reserva', async (ok) => {
@@ -6471,8 +6514,12 @@ async function realizarCheckIn(resId) {
                 <input type="number" class="checkinMonto" value="${restante}" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
             </div>
             <div class="checkinIdTxWrap" style="display:none;">
-              <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
-                <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+              <div class="form-row">
+                <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+                  <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+                <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura</label>
+                  <input type="text" class="checkinFactura" placeholder="Si no se carga queda pendiente" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -6539,14 +6586,19 @@ async function realizarCheckIn(resId) {
           var pagosRows = document.querySelectorAll('.checkin-pago-row');
           var pagos = [];
           var totalPagado = 0;
+          var facturaFaltante = false;
           for (var pr of pagosRows) {
             var medio = pr.querySelector('.checkinMedioPago').value;
             var monto = parseFloat(pr.querySelector('.checkinMonto').value)||0;
             var idTx = pr.querySelector('.checkinIdTx')?.value?.trim()||'';
+            var nroFactura = pr.querySelector('.checkinFactura')?.value?.trim()||'';
             if (medio !== 'EFECTIVO' && !idTx && monto > 0) { showToast('Completá el N° cupón / ID transacción para pagos no efectivo','warning'); return; }
-            if (monto > 0) { pagos.push({ medio, monto, idTx }); totalPagado += monto; }
+            if (medio !== 'EFECTIVO' && !nroFactura && monto > 0) facturaFaltante = true;
+            if (monto > 0) { pagos.push({ medio, monto, idTx, nroFactura }); totalPagado += monto; }
           }
           if (!pagos.length) { showToast('Agregá al menos un pago','warning'); return; }
+          updateData.facturaPendiente = facturaFaltante;
+          if (facturaFaltante) showToast('⚠️ Quedó pendiente asociar factura. No se podrá cerrar la caja del día hasta asociarla.','warning');
           updateData.estadiaPagadaEnCheckin = true;
           updateData.pagosEstadia = pagos;
           updateData.totalPagadoCheckin = totalPagado;
@@ -6689,8 +6741,12 @@ function agregarPagoCheckIn(restante, monedaLabel) {
         <input type="number" class="checkinMonto" value="0" step="0.01" min="0" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
     </div>
     <div class="checkinIdTxWrap" style="display:none;">
-      <div class="form-group"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
-        <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
+          <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+        <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura</label>
+          <input type="text" class="checkinFactura" placeholder="Si no se carga queda pendiente" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+      </div>
     </div>`;
   container.appendChild(row);
 }
@@ -7408,7 +7464,56 @@ async function cargarMovCaja() {
 }
 window.cargarMovCaja = cargarMovCaja;
 
+// ── FACTURAS PENDIENTES DE ASOCIAR ──
+async function cargarFacturasPendientes() {
+  var cont = $('listaFacturasPendientes');
+  if (!cont) return;
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('facturaPendiente','==',true)));
+    var pendientes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    if (!pendientes.length) { cont.innerHTML = '<p style="color:var(--green);font-size:0.85rem;">✓ Sin facturas pendientes</p>'; return; }
+    cont.innerHTML = pendientes.map(r => {
+      var pagosSinFactura = (r.pagosEstadia||[]).filter(p => p.medio !== 'EFECTIVO' && !p.nroFactura);
+      var detalle = pagosSinFactura.map(p => p.medio.replace(/_/g,' ')+' $'+(p.monto||0).toLocaleString('es-AR')+(p.idTx?' (cupón '+p.idTx+')':'')).join(' | ');
+      return `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px;background:var(--card);border-radius:8px;margin-bottom:8px;">
+        <div style="flex:1;min-width:200px;">
+          <strong>Hab. ${esc(r.habitacionNro||'')} — ${esc(r.huesped||'')}</strong>
+          <div style="font-size:0.78rem;color:var(--muted);">${esc(detalle)}</div>
+        </div>
+        <input type="text" id="factPend_${r.id}" placeholder="N° Factura" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:160px;">
+        <button class="btn btn-green btn-xs" onclick="asociarFacturaCheckin('${r.id}')">Asociar Factura</button>
+      </div>`;
+    }).join('');
+  } catch(e) { cont.innerHTML = '<p style="color:var(--red);font-size:0.85rem;">Error: '+esc(e.message)+'</p>'; }
+}
+window.cargarFacturasPendientes = cargarFacturasPendientes;
+
+async function asociarFacturaCheckin(resId) {
+  var nro = $('factPend_'+resId)?.value?.trim()||'';
+  if (!nro) { showToast('Ingresá el N° de factura','warning'); return; }
+  try {
+    var resSnap = await getDoc(doc(db,'reservas',resId));
+    if (!resSnap.exists()) { showToast('Reserva no encontrada','error'); return; }
+    var r = resSnap.data();
+    var pagos = (r.pagosEstadia||[]).map(p => (p.medio !== 'EFECTIVO' && !p.nroFactura) ? { ...p, nroFactura:nro } : p);
+    await updateDoc(doc(db,'reservas',resId), { pagosEstadia:pagos, facturaPendiente:false, facturaAsociadaPor:currentUser.usuario, fechaFacturaAsociada:serverTimestamp() });
+    showToast('Factura '+nro+' asociada','success');
+    cargarFacturasPendientes();
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.asociarFacturaCheckin = asociarFacturaCheckin;
+
 async function cerrarCajaRec() {
+  // Bloquear cierre si hay facturas pendientes de asociar
+  try {
+    var pendSnap = await getDocs(query(collection(db,'reservas'), where('facturaPendiente','==',true)));
+    if (!pendSnap.empty) {
+      var habsPend = pendSnap.docs.map(d => d.data().habitacionNro).join(', ');
+      showToast('⚠️ No se puede cerrar la caja: hay facturas pendientes de asociar (Hab. '+habsPend+'). Asocialas desde Caja → Facturas Pendientes.','error');
+      cargarFacturasPendientes();
+      return;
+    }
+  } catch(e) { showToast('Error verificando facturas pendientes: '+e.message,'error'); return; }
   var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
   if (snap.empty) { showToast('No hay caja abierta para cerrar','warning'); return; }
   var cajaDoc = snap.docs[0];
@@ -8301,14 +8406,15 @@ async function generarPlanillaGobernanta() {
         if (rIn.observacionesCheckIn) pedidos.push(rIn.observacionesCheckIn);
         var diasEstadia = Math.round((new Date(fecha+'T00:00:00') - new Date(rIn.fechaIn+'T00:00:00')) / 86400000);
         if (!salidaHoy && diasEstadia >= 3) simbolos.push('CS');
-        if (salidaHoy) simbolos.push('□');
+        if (salidaHoy) { simbolos.push('□'); simbolos.push('○'); }
+      } else {
+        simbolos.push('○');
       }
       if (rReservada) {
         simbolos.push('△');
         if (!camas) camas = configCamasLabels[rReservada.configCamas] || rReservada.configCamas || '';
         if (rReservada.pedidosEsp) pedidos.push(rReservada.pedidosEsp);
       }
-      if (salidaHoy || rReservada) simbolos.push('○');
       return {
         numero: h.numero,
         tipo: tipoLabels[h.tipo] || h.tipo || '',
