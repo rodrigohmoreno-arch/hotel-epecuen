@@ -1140,7 +1140,7 @@
       <button class="tab" onclick="tabRecepcion('preReservas',this)">Pre-Reservas</button>
       <button class="tab" onclick="tabRecepcion('reservas',this)">Reservas</button>
       <button class="tab" onclick="tabRecepcion('checkin',this)">Check-In/Out</button>
-      <button class="tab" onclick="tabRecepcion('huespedes',this)">Huéspedes</button>
+      <button class="tab" onclick="tabRecepcion('huespedes',this)">Clientes</button>
       <button class="tab" onclick="tabRecepcion('clienteHabitual',this)">Cliente Habitual</button>
       <button class="tab" onclick="tabRecepcion('consumos',this)">Consumos</button>
       <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
@@ -1266,9 +1266,16 @@
             <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;">Los datos de los alojados se cargan al momento del check-in. Al checkout la estadía se factura a la empresa, los consumos del restaurante a los huéspedes alojados.</p>
           </div>
         <div class="form-row" id="resHabIndividualRow">
-          <div class="form-group"><label>Habitación *</label>
+          <div class="form-group" id="resGrupoHabSingle">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><label>Habitación *</label>
+            <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:0.78rem;color:var(--muted);font-weight:400;"><input type="checkbox" id="resMultiHab" onchange="toggleMultiHab()"> Reservar varias habitaciones</label></div>
             <input type="text" id="buscarHabReserva" placeholder="Buscar habitación..." oninput="filtrarHabReserva()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
-            <select id="resHabitacion" style="width:100%;"></select></div>
+            <select id="resHabitacion" style="width:100%;"></select>
+            <div id="resGrupoHabMulti" class="hidden" style="margin-top:6px;">
+              <input type="text" id="buscarHabMulti" placeholder="Buscar habitación..." oninput="filtrarHabMulti()" style="margin-bottom:4px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;">
+              <select id="resHabitacionesMulti" multiple size="6" style="width:100%;"></select>
+              <p style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Seleccioná varias con Ctrl+Click. Se crea una reserva por habitación a nombre del mismo cliente. La seña se aplica a la primera habitación.</p>
+            </div></div>
           <div class="form-group"><label>Pensión *</label>
             <select id="resPension">
               <option value="MAP">Media Pensión (MAP)</option>
@@ -1353,9 +1360,32 @@
     <!-- Tab Huéspedes -->
     <div id="tabRecHuespedes" class="hidden">
       <div class="card">
-        <div class="card-title">Registro de Huéspedes</div>
+        <div class="card-title">Registro de Clientes</div>
         <div style="padding:16px;background:rgba(74,144,217,0.08);border-radius:10px;border-left:3px solid var(--blue);margin-bottom:20px;">
-          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nuevo Huésped</h4>
+          <h4 style="margin-bottom:12px;font-size:0.95rem;">Nuevo Cliente</h4>
+          <div class="form-row">
+            <div class="form-group"><label>Tipo de Cliente</label>
+              <select id="huesTipoCliente" onchange="toggleTipoCliente()">
+                <option value="PERSONA">Persona</option>
+                <option value="EMPRESA">Empresa / Grupo</option>
+              </select></div>
+          </div>
+          <div id="huesCamposEmpresa" class="hidden">
+            <div class="form-row">
+              <div class="form-group"><label>Nombre Empresa / Grupo *</label><input type="text" id="huesEmpRazon"></div>
+              <div class="form-group"><label>CUIT *</label><input type="text" id="huesEmpCuit" placeholder="Ej: 30-12345678-9"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Persona de Contacto</label><input type="text" id="huesEmpContacto"></div>
+              <div class="form-group"><label>Teléfono</label><input type="text" id="huesEmpTelefono"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Email</label><input type="email" id="huesEmpEmail"></div>
+              <div class="form-group"><label>Localidad</label><input type="text" id="huesEmpLocalidad"></div>
+            </div>
+            <div class="form-group"><label>Notas</label><input type="text" id="huesEmpNotas" placeholder="Observaciones"></div>
+          </div>
+          <div id="huesCamposPersona">
           <div class="form-row">
             <div class="form-group"><label>Nombre *</label><input type="text" id="huesNombre"></div>
             <div class="form-group"><label>Apellido *</label><input type="text" id="huesApellido"></div>
@@ -1389,18 +1419,19 @@
             <div class="form-group"><label>N° Pasaporte (extranjeros)</label><input type="text" id="huesPasaporte" placeholder="Solo si es extranjero"></div>
             <div class="form-group"><label>Notas</label><input type="text" id="huesNotas" placeholder="Observaciones"></div>
           </div>
-          <button class="btn btn-blue btn-sm" onclick="guardarHuesped()">Guardar Huésped</button>
+          </div>
+          <button class="btn btn-blue btn-sm" onclick="guardarHuesped()">Guardar Cliente</button>
         </div>
         <div class="filtros" style="margin-bottom:16px;">
-          <div class="form-group"><label>Buscar por DNI</label><input type="text" id="buscarHuesDni" placeholder="DNI..." onkeyup="filtrarHuespedes()"></div>
-          <div class="form-group"><label>Buscar por Nombre</label><input type="text" id="buscarHuesNombre" placeholder="Nombre..." onkeyup="filtrarHuespedes()"></div>
+          <div class="form-group"><label>Buscar por DNI / CUIT</label><input type="text" id="buscarHuesDni" placeholder="DNI o CUIT..." onkeyup="filtrarHuespedes()"></div>
+          <div class="form-group"><label>Buscar por Nombre / Empresa</label><input type="text" id="buscarHuesNombre" placeholder="Nombre o empresa..." onkeyup="filtrarHuespedes()"></div>
         </div>
         <div style="margin-bottom:12px;display:flex;gap:8px;">
           <button class="btn btn-sm" onclick="reporteHuespedesAlojados()">Reporte Alojados</button>
           <button class="btn btn-sm" onclick="reporteExtranjeros()">Reporte Extranjeros</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Nombre</th><th>DNI</th><th>F.Nac.</th><th>Nac.</th><th>Email</th><th>Última Visita</th><th></th></tr></thead>
+          <thead><tr><th>Nombre / Empresa</th><th>DNI / CUIT</th><th>F.Nac. / Contacto</th><th>Nac.</th><th>Email</th><th>Última Visita</th><th></th></tr></thead>
           <tbody id="tbodyHuespedes"></tbody>
         </table></div>
       </div>
@@ -5158,6 +5189,7 @@ function abrirPreReservaDesdeHab(hab) {
   btns[1].classList.add('active'); // Nueva Reserva tab
   ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
+  cargarEmpresasCache(); cargarHuespedCache();
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     // Pre-select the room
     var sel = $('resHabitacion');
@@ -5342,18 +5374,35 @@ async function eliminarTarifa(id) {
 }
 window.eliminarTarifa = eliminarTarifa;
 
-// ── HUESPEDES ──
+// ── CLIENTES (HUÉSPEDES + EMPRESAS) ──
+function toggleTipoCliente() {
+  var esEmpresa = $('huesTipoCliente').value === 'EMPRESA';
+  $('huesCamposEmpresa').classList.toggle('hidden', !esEmpresa);
+  $('huesCamposPersona').classList.toggle('hidden', esEmpresa);
+}
+window.toggleTipoCliente = toggleTipoCliente;
+
 async function cargarHuespedes() {
   try {
-    var snap = await getDocs(collection(db,'huespedes'));
-    huespedesCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var [snap, empSnap] = await Promise.all([getDocs(collection(db,'huespedes')), getDocs(collection(db,'empresas'))]);
+    var personas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var empresas = empSnap.docs.map(d => ({ id:d.id, ...d.data(), esEmpresaCliente:true }));
+    huespedesCache = personas.concat(empresas);
     renderHuespedes(huespedesCache);
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
 function renderHuespedes(lista) {
   var nacLabels = { AR:'🇦🇷',BR:'🇧🇷',CL:'🇨🇱',UY:'🇺🇾',PY:'🇵🇾',BO:'🇧🇴',PE:'🇵🇪',CO:'🇨🇴',US:'🇺🇸',EU:'🇪🇺',OTRO:'🌍' };
-  $('tbodyHuespedes').innerHTML = lista.map(h => `<tr>
+  $('tbodyHuespedes').innerHTML = lista.map(h => h.esEmpresaCliente ? `<tr>
+    <td><strong>${esc(h.razonSocial||'')}</strong> <span style="background:rgba(139,92,246,0.15);color:rgba(139,92,246,1);padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:600;">EMPRESA/GRUPO</span></td>
+    <td>${esc(h.cuit||'-')}</td>
+    <td style="font-size:0.82rem;">${esc(h.contacto||'-')}${h.telefono?'<br><span style="color:var(--muted);font-size:0.75rem;">'+esc(h.telefono)+'</span>':''}</td>
+    <td>-</td>
+    <td style="font-size:0.82rem;">${esc(h.email||'-')}</td>
+    <td style="font-size:0.8rem;color:var(--muted);">${esc(h.localidad||'-')}</td>
+    <td><button class="btn btn-blue btn-xs" onclick="editarHuesped('${h.id}')">Editar</button>${(currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) ? '' : '<button class="btn btn-red btn-xs" onclick="eliminarHuesped(\''+h.id+'\')" style="margin-left:4px;">Elim.</button>'}</td>
+  </tr>` : `<tr>
     <td><strong>${esc(h.nombre)} ${esc(h.apellido)}</strong></td>
     <td>${esc(h.dni||'-')}</td>
     <td>${h.fechaNac||'-'}</td>
@@ -5361,15 +5410,17 @@ function renderHuespedes(lista) {
     <td style="font-size:0.82rem;">${esc(h.email||'-')}</td>
     <td style="font-size:0.8rem;color:var(--muted);">${h.ultimaVisita ? fmtFecha(h.ultimaVisita) : '-'}${h.ultimaEdicion ? '<br><span style="font-size:0.72rem;">Edit: '+fmtFecha(h.ultimaEdicion)+(h.editadoPor?' ('+esc(h.editadoPor)+')':'')+'</span>' : ''}</td>
     <td><button class="btn btn-blue btn-xs" onclick="editarHuesped('${h.id}')">Editar</button>${(currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) ? '' : '<button class="btn btn-red btn-xs" onclick="eliminarHuesped(\''+h.id+'\')" style="margin-left:4px;">Elim.</button>'}</td>
-  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin huéspedes registrados</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin clientes registrados</td></tr>';
 }
 
 function filtrarHuespedes() {
   var dni = ($('buscarHuesDni').value||'').trim().toLowerCase();
   var nom = ($('buscarHuesNombre').value||'').trim().toLowerCase();
   var filtrado = huespedesCache.filter(h => {
-    if (dni && !(h.dni||'').toLowerCase().includes(dni)) return false;
-    if (nom && !((h.nombre||'')+' '+(h.apellido||'')).toLowerCase().includes(nom)) return false;
+    var nroDoc = h.esEmpresaCliente ? (h.cuit||'') : (h.dni||'');
+    var nombre = h.esEmpresaCliente ? (h.razonSocial||'') : ((h.nombre||'')+' '+(h.apellido||''));
+    if (dni && !nroDoc.toLowerCase().includes(dni)) return false;
+    if (nom && !nombre.toLowerCase().includes(nom)) return false;
     return true;
   });
   renderHuespedes(filtrado);
@@ -5377,6 +5428,28 @@ function filtrarHuespedes() {
 window.filtrarHuespedes = filtrarHuespedes;
 
 async function guardarHuesped() {
+  if ($('huesTipoCliente')?.value === 'EMPRESA') {
+    var razonSocial = $('huesEmpRazon').value.trim();
+    var cuit = $('huesEmpCuit').value.trim();
+    if (!razonSocial || !cuit) { showToast('Completá nombre de empresa/grupo y CUIT','warning'); return; }
+    try {
+      var existe = await getDocs(query(collection(db,'empresas'), where('cuit','==',cuit)));
+      if (!existe.empty) { showToast('Ya existe una empresa con ese CUIT','warning'); return; }
+      await addDoc(collection(db,'empresas'), {
+        razonSocial, cuit,
+        contacto: $('huesEmpContacto').value.trim(),
+        telefono: $('huesEmpTelefono').value.trim(),
+        email: $('huesEmpEmail').value.trim(),
+        localidad: $('huesEmpLocalidad').value.trim(),
+        notas: $('huesEmpNotas').value.trim(),
+        fechaCreacion: serverTimestamp()
+      });
+      showToast('Empresa/Grupo registrado','success');
+      ['huesEmpRazon','huesEmpCuit','huesEmpContacto','huesEmpTelefono','huesEmpEmail','huesEmpLocalidad','huesEmpNotas'].forEach(id => { $(id).value=''; });
+      await cargarHuespedes();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+    return;
+  }
   var nombre = $('huesNombre').value.trim();
   var apellido = $('huesApellido').value.trim();
   var dni = $('huesDni').value.trim();
@@ -5390,7 +5463,7 @@ async function guardarHuesped() {
   if (!nombre || !apellido || !dni) { showToast('Completá nombre, apellido y DNI','warning'); return; }
   try {
     await addDoc(collection(db,'huespedes'), { nombre, apellido, dni, fechaNac, telefono, email, localidad, nacionalidad, pasaporte, notas, ultimaVisita:null });
-    showToast('Huésped registrado','success');
+    showToast('Cliente registrado','success');
     $('huesNombre').value=''; $('huesApellido').value=''; $('huesDni').value=''; $('huesFechaNac').value='';
     $('huesTelefono').value=''; $('huesEmail').value=''; $('huesLocalidad').value=''; $('huesPasaporte').value=''; $('huesNotas').value='';
     await cargarHuespedes();
@@ -5399,10 +5472,12 @@ async function guardarHuesped() {
 window.guardarHuesped = guardarHuesped;
 
 async function eliminarHuesped(id) {
-  if (currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) { showToast('Recepción no puede eliminar huéspedes, solo editar','warning'); return; }
-  confirmarAccion('Eliminar Huésped','<p style="padding:16px;">¿Eliminar este huésped del registro?</p>','Eliminar', async (ok) => {
+  if (currentUser && (currentUser.rol === 'RECEPCION' || currentUser.rol === 'CARHUE_RECEPCION')) { showToast('Recepción no puede eliminar clientes, solo editar','warning'); return; }
+  var h = huespedesCache.find(x => x.id === id);
+  var coleccion = (h && h.esEmpresaCliente) ? 'empresas' : 'huespedes';
+  confirmarAccion('Eliminar Cliente','<p style="padding:16px;">¿Eliminar este cliente del registro?</p>','Eliminar', async (ok) => {
     if (!ok) return;
-    try { await deleteDoc(doc(db,'huespedes',id)); showToast('Huésped eliminado','success'); await cargarHuespedes(); }
+    try { await deleteDoc(doc(db,coleccion,id)); showToast('Cliente eliminado','success'); await cargarHuespedes(); }
     catch(e) { showToast('Error: '+e.message,'error'); }
   });
 }
@@ -5411,6 +5486,37 @@ window.eliminarHuesped = eliminarHuesped;
 async function editarHuesped(id) {
   var h = huespedesCache.find(x => x.id === id);
   if (!h) return;
+  if (h.esEmpresaCliente) {
+    var cuerpoE = '<div style="padding:16px;display:flex;flex-direction:column;gap:8px;">'
+      + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Nombre Empresa / Grupo *</label><input type="text" id="editEmpRazon" value="'+esc(h.razonSocial||'')+'"></div>'
+      + '<div class="form-group" style="flex:1;"><label>CUIT *</label><input type="text" id="editEmpCuit" value="'+esc(h.cuit||'')+'"></div></div>'
+      + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Persona de Contacto</label><input type="text" id="editEmpContacto" value="'+esc(h.contacto||'')+'"></div>'
+      + '<div class="form-group" style="flex:1;"><label>Teléfono</label><input type="text" id="editEmpTelefono" value="'+esc(h.telefono||'')+'"></div></div>'
+      + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Email</label><input type="email" id="editEmpEmail" value="'+esc(h.email||'')+'"></div>'
+      + '<div class="form-group" style="flex:1;"><label>Localidad</label><input type="text" id="editEmpLocalidad" value="'+esc(h.localidad||'')+'"></div></div>'
+      + '<div class="form-group"><label>Notas</label><input type="text" id="editEmpNotas" value="'+esc(h.notas||'')+'"></div></div>';
+    confirmarAccion('Editar Empresa / Grupo', cuerpoE, 'Guardar Cambios', async (ok) => {
+      if (!ok) return;
+      var razon = $('editEmpRazon').value.trim();
+      var cuit = $('editEmpCuit').value.trim();
+      if (!razon || !cuit) { showToast('Completá nombre de empresa y CUIT','warning'); return; }
+      try {
+        await updateDoc(doc(db,'empresas',id), {
+          razonSocial: razon, cuit,
+          contacto: $('editEmpContacto').value.trim(),
+          telefono: $('editEmpTelefono').value.trim(),
+          email: $('editEmpEmail').value.trim(),
+          localidad: $('editEmpLocalidad').value.trim(),
+          notas: $('editEmpNotas').value.trim(),
+          ultimaEdicion: serverTimestamp(),
+          editadoPor: currentUser ? currentUser.usuario : ''
+        });
+        showToast('Empresa actualizada','success');
+        await cargarHuespedes();
+      } catch(e) { showToast('Error: '+e.message,'error'); }
+    });
+    return;
+  }
   var cuerpo = '<div style="padding:16px;display:flex;flex-direction:column;gap:8px;">'
     + '<div class="form-row"><div class="form-group" style="flex:1;"><label>Apellido *</label><input type="text" id="editHuesApellido" value="'+esc(h.apellido||'')+'"></div>'
     + '<div class="form-group" style="flex:1;"><label>Nombre *</label><input type="text" id="editHuesNombre" value="'+esc(h.nombre||'')+'"></div></div>'
@@ -5539,6 +5645,34 @@ function toggleDocReserva() {
   if (esAR) { $('resPasaporte').value=''; } else { $('resDni').value=''; }
 }
 window.toggleDocReserva = toggleDocReserva;
+
+function toggleMultiHab() {
+  var multi = $('resMultiHab').checked;
+  $('resGrupoHabMulti').classList.toggle('hidden', !multi);
+  $('resHabitacion').style.display = multi ? 'none' : '';
+  $('buscarHabReserva').style.display = multi ? 'none' : '';
+  if (multi) poblarSelectHabMulti();
+}
+window.toggleMultiHab = toggleMultiHab;
+
+async function poblarSelectHabMulti() {
+  await cargarHabitaciones();
+  var sel = $('resHabitacionesMulti');
+  sel.innerHTML = '';
+  habitacionesCache.filter(h => h.estado === 'LIBRE' || h.estado === 'RESERVADA').forEach(h => {
+    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}</option>`;
+  });
+}
+
+function filtrarHabMulti() {
+  var q = ($('buscarHabMulti')?.value || '').toLowerCase();
+  var sel = $('resHabitacionesMulti');
+  for (var i = 0; i < sel.options.length; i++) {
+    var o = sel.options[i];
+    o.style.display = (o.text.toLowerCase().includes(q)) ? '' : 'none';
+  }
+}
+window.filtrarHabMulti = filtrarHabMulti;
 
 function toggleReservaEmpresa() {
   var checked = $('resEmpresa').checked;
@@ -5688,9 +5822,19 @@ async function crearReserva() {
   var telVal = validarTelefonoAR(tel, $('resTelPais')?.value ?? '54');
   if (!telVal.ok) { showToast(telVal.msg,'warning'); $('resTelefono').focus(); return; }
   tel = telVal.valor;
-  var habSel = $('resHabitacion');
-  var opt = habSel.options[habSel.selectedIndex];
-  if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
+  var multiHab = $('resMultiHab')?.checked || false;
+  var habsMulti = [];
+  var opt = null;
+  if (multiHab) {
+    var selM = $('resHabitacionesMulti');
+    for (var mi0=0; mi0<selM.options.length; mi0++) { if (selM.options[mi0].selected) habsMulti.push(selM.options[mi0]); }
+    if (!habsMulti.length) { showToast('Seleccioná al menos una habitación','warning'); return; }
+    opt = habsMulti[0];
+  } else {
+    var habSel = $('resHabitacion');
+    opt = habSel.options[habSel.selectedIndex];
+    if (!opt || !opt.value) { showToast('Seleccioná una habitación','warning'); return; }
+  }
   var fechaIn = $('resFechaIn').value;
   var fechaOut = $('resFechaOut').value;
   if (!fechaIn || !fechaOut) { showToast('Completá fechas de check-in/out','warning'); return; }
@@ -5787,13 +5931,21 @@ async function crearReserva() {
       vencePreReserva: null,
       usuario: currentUser.usuario
     };
+    var grupoReservaId = (multiHab && habsMulti.length > 1) ? 'GRP-' + Date.now() : null;
+    if (grupoReservaId) reservaData.grupoReservaId = grupoReservaId;
     await addDoc(collection(db,'reservas'), reservaData);
     // Marcar habitación según estado
-    if (tieneSeña) {
-      await updateDoc(doc(db,'habitaciones',habId), { estado:'RESERVADA' });
-    } else {
-      // Pre-reserva: marcar habitación como PRE_RESERVA (no libre, no se pueden cargar consumos)
-      await updateDoc(doc(db,'habitaciones',habId), { estado:'PRE_RESERVA' });
+    await updateDoc(doc(db,'habitaciones',habId), { estado: tieneSeña ? 'RESERVADA' : 'PRE_RESERVA' });
+    // Habitaciones adicionales del mismo cliente (multi-habitación)
+    for (var mi=1; mi<habsMulti.length; mi++) {
+      var optM = habsMulti[mi];
+      var tarifaM = tarifasCache.find(t => t.tipo === optM.dataset.tipo && t.pension === pension);
+      var precioM = tarifaM ? (moneda === 'USD' ? (tarifaM.precioUSD||0) : (tarifaM.precioARS||0)) : 0;
+      await addDoc(collection(db,'reservas'), { ...reservaData,
+        habitacionId: optM.value, habitacionNro: optM.dataset.nro, tipoHab: optM.dataset.tipo,
+        precioNoche: precioM, totalEstadia: precioM*noches, sena: 0, medioPagoSena: '',
+        totalPagar: precioM*noches*(1-desc/100), acompanantes: [], adultos: 0, menores: 0, comensalesMAP: 0 });
+      await updateDoc(doc(db,'habitaciones',optM.value), { estado: tieneSeña ? 'RESERVADA' : 'PRE_RESERVA' });
     }
     // Guardar huésped si no existe
     var docId = esAR ? dni : pasaporte;
@@ -5812,7 +5964,8 @@ async function crearReserva() {
         await updateDoc(doc(db,'huespedes',huesExiste.docs[0].id), updateData);
       }
     }
-    var msg = tieneSeña ? 'Reserva CONFIRMADA — Hab. '+habNro : 'PRE-RESERVA creada — Hab. '+habNro+' (pendiente seña)';
+    var habsNros = multiHab ? habsMulti.map(o => o.dataset.nro).join(', ') : habNro;
+    var msg = tieneSeña ? 'Reserva CONFIRMADA — Hab. '+habsNros : 'PRE-RESERVA creada — Hab. '+habsNros+' (pendiente seña)';
     showToast(msg, tieneSeña ? 'success' : 'warning');
     // Reset form
     $('resApellido').value=''; $('resNombre').value=''; $('resDni').value=''; $('resTelefono').value=''; $('resEmail').value='';
@@ -5828,6 +5981,7 @@ async function crearReserva() {
     if ($('resProvincia')) $('resProvincia').value='';
     if ($('resVehiculo')) $('resVehiculo').value='';
     if ($('resBuscarHuesped')) $('resBuscarHuesped').value='';
+    if ($('resMultiHab')) { $('resMultiHab').checked = false; toggleMultiHab(); }
     _avisoRestriccionMostrado = false;
     $('listaAcompanantes').innerHTML='';
     $('resumenReserva').style.display='none';
@@ -7919,6 +8073,7 @@ function abrirReservaDesdeCalendario(habId, habNro, fecha) {
   tabs[1].classList.add('active');
   ['tabRecHabitaciones','tabRecNuevaReserva','tabRecPreReservas','tabRecReservas','tabRecCheckin','tabRecHuespedes','tabRecClienteHabitual','tabRecConsumos','tabRecCajaRec','tabRecPromociones'].forEach(id => $(id).classList.add('hidden'));
   $('tabRecNuevaReserva').classList.remove('hidden');
+  cargarEmpresasCache(); cargarHuespedCache();
   cargarTarifas(); poblarSelectHabReserva().then(() => {
     var sel = $('resHabitacion');
     for (var i=0; i<sel.options.length; i++) {
@@ -8002,6 +8157,7 @@ function abrirReservaEmpresaDesdeCalendario(habIds) {
   $('tabRecNuevaReserva').classList.remove('hidden');
   $('resEmpresa').checked = true;
   toggleReservaEmpresa();
+  cargarEmpresasCache(); cargarHuespedCache();
   cargarTarifas();
   poblarSelectHabEmpresa().then(function() {
     var sel = $('resHabitacionesEmpresa');
