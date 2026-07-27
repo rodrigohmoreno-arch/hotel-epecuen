@@ -856,6 +856,7 @@
         <div class="form-row">
           <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
           <div class="form-group"><label>Tarifa Late Checkout ($ ARS)</label><input type="number" id="cfgTarifaLate" step="0.01" min="0" placeholder="Ej: 15000"></div>
+          <div class="form-group"><label>Tarifa Early Check-in ($ ARS)</label><input type="number" id="cfgTarifaEarly" step="0.01" min="0" placeholder="Ej: 15000"></div>
           <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
         </div>
 
@@ -1284,7 +1285,9 @@
             </select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Fecha Check-in *</label><input type="date" id="resFechaIn"></div>
+          <div class="form-group"><label>Fecha Check-in *</label><input type="date" id="resFechaIn">
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resEarlyCheckin"> Early Check-in</label>
+          </div>
           <div class="form-group"><label>Fecha Check-out *</label><input type="date" id="resFechaOut">
             <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:0.85rem;cursor:pointer;"><input type="checkbox" id="resLateCheckout"> Late Checkout</label>
           </div>
@@ -5866,6 +5869,7 @@ async function crearReserva() {
   var antecedentesSalud = $('resAntecedentesSalud')?.value?.trim()||'';
   var vehiculoRes = $('resVehiculo')?.value?.trim()||'';
   var lateCheckout = $('resLateCheckout')?.checked || false;
+  var earlyCheckin = $('resEarlyCheckin')?.checked || false;
   var festejoCumple = $('resFestejoCumple')?.checked || false;
 
   if ((!restriccionAlim || !antecedentesSalud) && !_avisoRestriccionMostrado) {
@@ -5926,7 +5930,7 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       totalPagar, notas,
-      configCamas, restriccionAlim, pedidosEsp, lateCheckout, festejoCumple,
+      configCamas, restriccionAlim, pedidosEsp, lateCheckout, earlyCheckin, festejoCumple,
       comensalesMAP: pension === 'MAP' ? (adultos + menores) : 0,
       localidad: localidadRes, provincia: provinciaRes, antecedentesSalud, vehiculo: vehiculoRes,
       acompanantes,
@@ -5981,6 +5985,7 @@ async function crearReserva() {
     $('resDescuento').value='0'; $('resPedidosEsp').value='';
     $('resRestriccionAlim').value=''; $('resConfigCamas').value='MATRIMONIAL';
     if ($('resLateCheckout')) $('resLateCheckout').checked = false;
+    if ($('resEarlyCheckin')) $('resEarlyCheckin').checked = false;
     if ($('resFestejoCumple')) $('resFestejoCumple').checked = false;
     if ($('resAntecedentesSalud')) $('resAntecedentesSalud').value='';
     if ($('resLocalidad')) $('resLocalidad').value='';
@@ -6374,6 +6379,7 @@ async function editarReserva(resId) {
     <div class="form-row">
       <div class="form-group"><label>Festejo / Día Especial</label><input type="text" id="editResFestejo" value="${esc(reserva.festejo||'')}"></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="editResLateCheckout" ${reserva.lateCheckout?'checked':''}> Late Checkout</label></div>
+      <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="editResEarlyCheckin" ${reserva.earlyCheckin?'checked':''}> Early Check-in</label></div>
       <div class="form-group"><label>Pedidos Especiales</label><input type="text" id="editResPedidosEsp" value="${esc(reserva.pedidosEsp||'')}"></div>
     </div>
     <div class="form-row">
@@ -6425,6 +6431,7 @@ async function editarReserva(resId) {
         configCamas: $('editResConfigCamas')?.value||reserva.configCamas||'MATRIMONIAL',
         restriccionAlim: $('editResRestriccion')?.value||'',
         lateCheckout: $('editResLateCheckout')?.checked||false,
+        earlyCheckin: $('editResEarlyCheckin')?.checked||false,
         festejo: $('editResFestejo')?.value?.trim()||'',
         pedidosEsp: $('editResPedidosEsp')?.value?.trim()||'',
         localidad: $('editResLocalidad')?.value?.trim()||'',
@@ -6640,6 +6647,15 @@ async function realizarCheckIn(resId) {
         <div id="checkInPromoDetalle" style="display:none;margin-top:8px;font-size:0.82rem;color:var(--muted);"></div>
       </div>` : ''}
       <div style="margin:12px 0;padding:12px;background:rgba(240,180,41,0.06);border-radius:10px;border-left:3px solid var(--gold);">
+        <label style="font-size:0.88rem;font-weight:600;margin-bottom:6px;display:block;">Early Check-in ${res.earlyCheckin ? '(solicitado en la reserva)' : ''}</label>
+        <select id="checkInEarlyOpcion" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+          <option value="NO" ${!res.earlyCheckin ? 'selected' : ''}>No solicita early check-in</option>
+          <option value="CON_CARGO" ${res.earlyCheckin ? 'selected' : ''}>Con cargo — $ ${(configHotel.tarifaEarlyCheckin||0).toLocaleString('es-AR')} (tarifa configurada por admin)</option>
+          <option value="SIN_CARGO">Sin cargo — atención del hotel</option>
+        </select>
+        ${!(configHotel.tarifaEarlyCheckin||0) ? '<p style="font-size:0.75rem;color:var(--red);margin-top:4px;">⚠ No hay tarifa de early check-in configurada en Admin → Config Hotel</p>' : ''}
+      </div>
+      <div style="margin:12px 0;padding:12px;background:rgba(240,180,41,0.06);border-radius:10px;border-left:3px solid var(--gold);">
         <label style="font-size:0.88rem;font-weight:600;margin-bottom:6px;display:block;">Late Checkout ${res.lateCheckout ? '(solicitado en la reserva)' : ''}</label>
         <select id="checkInLateOpcion" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
           <option value="NO" ${!res.lateCheckout ? 'selected' : ''}>No solicita late checkout</option>
@@ -6741,6 +6757,10 @@ async function realizarCheckIn(resId) {
         updateData.lateCheckout = lateOpcion !== 'NO';
         updateData.lateCheckoutCobrar = lateOpcion === 'CON_CARGO';
         updateData.lateCheckoutMonto = lateOpcion === 'CON_CARGO' ? (configHotel.tarifaLateCheckout||0) : 0;
+        var earlyOpcion = $('checkInEarlyOpcion')?.value || 'NO';
+        updateData.earlyCheckin = earlyOpcion !== 'NO';
+        updateData.earlyCheckinCobrar = earlyOpcion === 'CON_CARGO';
+        updateData.earlyCheckinMonto = earlyOpcion === 'CON_CARGO' ? (configHotel.tarifaEarlyCheckin||0) : 0;
         var pagarAhora = $('checkInPagarEstadia')?.checked;
         if (pagarAhora) {
           var pagosRows = document.querySelectorAll('.checkin-pago-row');
@@ -7089,7 +7109,7 @@ async function cargarListaCheckOut() {
       if (vencida) vencidas.push(r);
       return `<div class="reserva-card" ${vencida?'style="border:1px solid var(--red);"':''}>
       <div class="reserva-header">
-        <div><strong>${esc(r.huesped)}</strong> — Hab. ${esc(r.habitacionNro)}${r.lateCheckout?' <span class="badge" style="background:rgba(74,144,217,0.15);color:var(--blue);">LATE CHECKOUT</span>':''}</div>
+        <div><strong>${esc(r.huesped)}</strong> — Hab. ${esc(r.habitacionNro)}${r.lateCheckout?' <span class="badge" style="background:rgba(74,144,217,0.15);color:var(--blue);">LATE CHECKOUT</span>':''}${r.earlyCheckin?' <span class="badge" style="background:rgba(240,180,41,0.15);color:var(--gold);">EARLY CHECK-IN</span>':''}</div>
         <span class="badge" style="background:rgba(232,69,60,0.15);color:var(--red);">${vencida?'CHECKOUT VENCIDO':'OCUPADA'}</span>
       </div>
       <div class="reserva-info">
@@ -7165,7 +7185,15 @@ async function iniciarCheckOut(resId) {
         try { var cfgLateSnap = await getDoc(doc(db,'configHotel','general')); if (cfgLateSnap.exists()) cargoLate = cfgLateSnap.data().tarifaLateCheckout || 0; } catch(e) {}
       }
     }
-    var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate;
+    // Early check-in: si fue marcado con cargo en el check-in se cobra la tarifa configurada
+    var cargoEarly = 0;
+    if (res.earlyCheckin && res.earlyCheckinCobrar) {
+      cargoEarly = res.earlyCheckinMonto || 0;
+      if (!cargoEarly) {
+        try { var cfgEarlySnap = await getDoc(doc(db,'configHotel','general')); if (cfgEarlySnap.exists()) cargoEarly = cfgEarlySnap.data().tarifaEarlyCheckin || 0; } catch(e) {}
+      }
+    }
+    var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate + cargoEarly;
     var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
     if (totalGeneral < 0) totalGeneral = 0;
 
@@ -7188,6 +7216,8 @@ async function iniciarCheckOut(resId) {
         ${nochesExtra > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--red);font-weight:600;"><span>⚠️ Noches adicionales ('+nochesExtra+' noche'+(nochesExtra>1?'s':'')+' — salida '+fmtDMA(res.fechaOut)+' → '+fmtDMA(hoyStr)+')</span><span>$ '+costoNochesExtra.toLocaleString('es-AR')+'</span></div>' : ''}
         ${cargoLate > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--gold);font-weight:600;"><span>⏰ Late Checkout (con cargo)</span><span>$ '+cargoLate.toLocaleString('es-AR')+'</span></div>' : ''}
         ${res.lateCheckout && !res.lateCheckoutCobrar ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);font-size:0.85rem;"><span>⏰ Late Checkout — sin cargo (hospitalidad)</span><span>$ 0</span></div>' : ''}
+        ${cargoEarly > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--gold);font-weight:600;"><span>🌅 Early Check-in (con cargo)</span><span>$ '+cargoEarly.toLocaleString('es-AR')+'</span></div>' : ''}
+        ${res.earlyCheckin && !res.earlyCheckinCobrar ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);font-size:0.85rem;"><span>🌅 Early Check-in — sin cargo (atención del hotel)</span><span>$ 0</span></div>' : ''}
         ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);"><span>Saldo a favor del huésped</span><span>- $ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
         <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;margin-bottom:4px;font-weight:600;font-size:0.85rem;">Consumos:</div>
         ${consumosHTML}
@@ -7257,6 +7287,7 @@ async function iniciarCheckOut(resId) {
         var consumosDetalle = consumos.map(c => ({ concepto:c.concepto||'', tipo:c.tipo||'', total:c.total||0, items:c.items||[], voucherId:c.voucherId||'', fecha:c.fecha }));
         await updateDoc(doc(db,'reservas',resId), { estado:'CHECKOUT', fechaCheckOutReal:serverTimestamp(), medioPagoFinal:medioPago, idTransaccion:idTxPrimero, pagosCheckout:pagos, totalConsumos, totalGeneral, consumosDetalle, saldoFavorUsado: saldoFavor,
           ...(cargoLate > 0 ? { lateCheckoutCobrado: cargoLate } : {}),
+          ...(cargoEarly > 0 ? { earlyCheckinCobrado: cargoEarly } : {}),
           ...(nochesExtra > 0 ? { nochesAdicionales: nochesExtra, costoNochesAdicionales: costoNochesExtra, noches: (res.noches||0) + nochesExtra, totalEstadia: (res.totalEstadia||0) + costoNochesExtra } : {}) });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
@@ -8643,15 +8674,17 @@ async function cargarConfigHotel() {
     }
     $('cfgCotizacion').value = configHotel.cotizacionDolar || 1200;
     if ($('cfgTarifaLate')) $('cfgTarifaLate').value = configHotel.tarifaLateCheckout || 0;
+    if ($('cfgTarifaEarly')) $('cfgTarifaEarly').value = configHotel.tarifaEarlyCheckin || 0;
   } catch(e) {}
 }
 
 async function guardarConfigHotel() {
   var cotiz = parseFloat($('cfgCotizacion').value) || 0;
   var tarifaLate = parseFloat($('cfgTarifaLate')?.value) || 0;
+  var tarifaEarly = parseFloat($('cfgTarifaEarly')?.value) || 0;
   try {
-    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate }, { merge:true });
-    configHotel = { ...configHotel, cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate };
+    await setDoc(doc(db,'configHotel','general'), { cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate, tarifaEarlyCheckin:tarifaEarly }, { merge:true });
+    configHotel = { ...configHotel, cotizacionDolar:cotiz, tarifaLateCheckout:tarifaLate, tarifaEarlyCheckin:tarifaEarly };
     showToast('Configuración guardada','success');
   } catch(e) { showToast('Error: '+e.message,'error'); }
 }
