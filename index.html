@@ -6480,9 +6480,12 @@ async function imprimirInformeInHouse() {
     var totalPax = inHouse.reduce((a,r) => a + paxDe(r), 0);
     var paxSalen = salidasHoy.reduce((a,r) => a + paxDe(r), 0);
     var paxIngresan = ingresosHoy.reduce((a,r) => a + paxDe(r), 0);
-    var paxMap = inHouse.filter(r => r.pension === 'MAP').reduce((a,r) => a + paxDe(r), 0);
-    var paxSinMap = inHouse.filter(r => r.pension === 'SIN_PENSION').reduce((a,r) => a + paxDe(r), 0);
-    var paxPC = inHouse.filter(r => r.pension === 'COMPLETA').reduce((a,r) => a + paxDe(r), 0);
+    // Las estadías que salen hoy no cuentan para MAP / sin MAP / plan: solo desayunan
+    var saleHoy = r => r.estado === 'CHECKIN' && r.fechaOut && r.fechaOut <= hoy;
+    var cuentanPension = inHouse.filter(r => !saleHoy(r)).concat(ingresosHoy.filter(r => r.estado !== 'CHECKIN'));
+    var paxMap = cuentanPension.filter(r => r.pension === 'MAP').reduce((a,r) => a + paxDe(r), 0);
+    var paxSinMap = cuentanPension.filter(r => r.pension === 'SIN_PENSION').reduce((a,r) => a + paxDe(r), 0);
+    var paxPC = cuentanPension.filter(r => r.pension === 'COMPLETA').reduce((a,r) => a + paxDe(r), 0);
     var pensionLabels = { MAP:'MAP', SIN_PENSION:'Sin MAP', COMPLETA:'P. Completa (Plan)' };
     var ordenar = arr => arr.slice().sort((a,b) => String(a.habitacionNro||'').localeCompare(String(b.habitacionNro||''), undefined, { numeric:true }));
     var fechaLegible = new Date(hoy+'T00:00:00').toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
@@ -6491,8 +6494,8 @@ async function imprimirInformeInHouse() {
         <td>${esc(r.huesped||'-')}</td>
         <td style="text-align:center;font-weight:bold;">${paxDe(r)}</td>
         <td>${fmtDMA(r.fechaIn)}</td>
-        <td>${fmtDMA(r.fechaOut)}${(r.estado==='CHECKIN' && r.fechaOut && r.fechaOut <= hoy) ? ' <strong>(SALE HOY)</strong>' : ''}</td>
-        <td>${esc(pensionLabels[r.pension]||r.pension||'-')}</td>
+        <td>${fmtDMA(r.fechaOut)}${saleHoy(r) ? ' <strong>(SALE HOY)</strong>' : ''}</td>
+        <td>${saleHoy(r) ? '<strong>Solo desayuna</strong>' : esc(pensionLabels[r.pension]||r.pension||'-')}</td>
         <td>${r.restriccionAlim ? '<strong>'+esc(r.restriccionAlim)+'</strong>' : '<span class="vacio">—</span>'}</td>
         <td style="text-align:center;">${r.festejoCumple ? '🎂 SÍ' : '<span class="vacio">—</span>'}</td>
         <td>${r.pedidosEsp ? esc(r.pedidosEsp) : '<span class="vacio">—</span>'}</td>
@@ -6521,6 +6524,7 @@ async function imprimirInformeInHouse() {
       <div class="stat"><b>${paxMap}</b>Con MAP</div>
       <div class="stat"><b>${paxSinMap}</b>Sin MAP</div>
       <div class="stat"><b>${paxPC}</b>P. Completa (Plan)</div>
+      <div class="stat"><b>${paxSalen}</b>Solo Desayunan (salen hoy)</div>
     </div>
     <h3>Habitaciones In House (${inHouse.length})</h3>
     <table>
