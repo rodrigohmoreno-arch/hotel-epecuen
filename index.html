@@ -2000,6 +2000,12 @@ function fmtFecha(ts) {
   var d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleString('es-AR');
 }
+function fmtDMA(f) {
+  if (!f) return '-';
+  var s = String(f);
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? (m[3] + '/' + m[2] + '/' + m[1]) : s;
+}
 function fmtHora(ts) {
   if (!ts) return '-';
   var d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -3327,7 +3333,7 @@ function renderCompraCard(c, esAdmin) {
       <div><strong>${esc(c.tipoComprobante)} ${esc(c.nroComprobante)}</strong> — ${esc(c.proveedorNombre)}</div>
       <span class="badge" style="background:${estadoColor}20;color:${estadoColor};">${estadoLbl}</span>
     </div>
-    <div style="font-size:0.8rem;color:var(--muted);margin:4px 0;">Fecha: ${esc(c.fecha)} — Cargada por: ${esc(c.usuario)}</div>
+    <div style="font-size:0.8rem;color:var(--muted);margin:4px 0;">Fecha: ${fmtDMA(c.fecha)} — Cargada por: ${esc(c.usuario)}</div>
     ${itemsHtml}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;"><strong>Total: $${(c.total||0).toLocaleString('es-AR')}</strong><div>${acciones}</div></div>
   </div>`;
@@ -4576,7 +4582,7 @@ function imprimirTicketCheckout(res, consumos, totalConsumos, totalGeneral, medi
     <hr>
     <p><b>Huésped:</b> ${esc(res.huesped)}</p>
     <p><b>Hab:</b> ${esc(res.habitacionNro)}</p>
-    <p><b>Estadía:</b> ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
+    <p><b>Estadía:</b> ${fmtDMA(res.fechaIn)} → ${fmtDMA(res.fechaOut)} (${res.noches} noches)</p>
     <hr>
     <p style="font-weight:bold;">ESTADÍA</p>
     <div style="display:flex;justify-content:space-between;"><span>${res.noches} noches (${esc(res.pension||'')})</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}</span></div>
@@ -4747,7 +4753,7 @@ async function cargarHistorialHuespedes() {
         <td>${fmtFecha(r.fechaCheckOutReal)}</td>
         <td><strong>${esc(r.huesped)}</strong></td>
         <td>${esc(r.habitacionNro)}</td>
-        <td>${r.fechaIn} → ${r.fechaOut} (${r.noches}n)</td>
+        <td>${fmtDMA(r.fechaIn)} → ${fmtDMA(r.fechaOut)} (${r.noches}n)</td>
         <td>${esc(r.pension||'-')}</td>
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${consumosDet}">${consumosDet}</td>
         <td><strong>$${(r.totalGeneral||0).toLocaleString('es-AR')}</strong></td>
@@ -4986,7 +4992,7 @@ async function generarLiquidacion() {
 
     var htmlRes = reservas.length ? reservas.map(r => `<tr>
       <td>${esc(r.habitacionNro||'')}</td>
-      <td>${r.fechaIn} → ${r.fechaOut}</td>
+      <td>${fmtDMA(r.fechaIn)} → ${fmtDMA(r.fechaOut)}</td>
       <td>${r.noches||0}</td>
       <td>$${(r.totalPagar||0).toLocaleString('es-AR')}</td>
       <td>$${(r.totalConsumos||0).toLocaleString('es-AR')}</td>
@@ -5405,7 +5411,7 @@ function renderHuespedes(lista) {
   </tr>` : `<tr>
     <td><strong>${esc(h.nombre)} ${esc(h.apellido)}</strong></td>
     <td>${esc(h.dni||'-')}</td>
-    <td>${h.fechaNac||'-'}</td>
+    <td>${fmtDMA(h.fechaNac)}</td>
     <td>${nacLabels[h.nacionalidad]||''} ${esc(h.nacionalidad||'AR')}${h.pasaporte?' (P:'+esc(h.pasaporte)+')':''}</td>
     <td style="font-size:0.82rem;">${esc(h.email||'-')}</td>
     <td style="font-size:0.8rem;color:var(--muted);">${h.ultimaVisita ? fmtFecha(h.ultimaVisita) : '-'}${h.ultimaEdicion ? '<br><span style="font-size:0.72rem;">Edit: '+fmtFecha(h.ultimaEdicion)+(h.editadoPor?' ('+esc(h.editadoPor)+')':'')+'</span>' : ''}</td>
@@ -6125,7 +6131,7 @@ async function cargarPreReservas() {
       </div>
       <div class="reserva-info">
         <span>Hab. ${esc(r.habitacionNro)} (${esc(r.tipoHab)})</span>
-        <span>In: ${r.fechaIn} → Out: ${r.fechaOut}</span>
+        <span>In: ${fmtDMA(r.fechaIn)} → Out: ${fmtDMA(r.fechaOut)}</span>
         <span>${r.noches} noches</span>
         <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
@@ -6300,8 +6306,8 @@ async function cargarReservasActivas() {
         <div class="reserva-info">
           <span>Hab. ${esc(r.habitacionNro)} (${esc(r.tipoHab)})</span>
           <span>${esc(pensionLabels[r.pension]||r.pension)}</span>
-          <span>In: ${r.fechaIn}</span>
-          <span>Out: ${r.fechaOut}</span>
+          <span>In: ${fmtDMA(r.fechaIn)}</span>
+          <span>Out: ${fmtDMA(r.fechaOut)}</span>
           <span>${r.noches} noches | ${r.adultos} ad. ${r.menores>0?'+ '+r.menores+' men.':''}</span>
           <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
         </div>
@@ -6477,8 +6483,8 @@ async function imprimirInformeInHouse() {
         <td><strong>${esc(r.habitacionNro||'-')}</strong></td>
         <td>${esc(r.huesped||'-')}</td>
         <td style="text-align:center;font-weight:bold;">${paxDe(r)}</td>
-        <td>${r.fechaIn||'-'}</td>
-        <td>${r.fechaOut||'-'}${(r.estado==='CHECKIN' && r.fechaOut && r.fechaOut <= hoy) ? ' <strong>(SALE HOY)</strong>' : ''}</td>
+        <td>${fmtDMA(r.fechaIn)}</td>
+        <td>${fmtDMA(r.fechaOut)}${(r.estado==='CHECKIN' && r.fechaOut && r.fechaOut <= hoy) ? ' <strong>(SALE HOY)</strong>' : ''}</td>
         <td>${esc(pensionLabels[r.pension]||r.pension||'-')}</td>
         <td>${r.restriccionAlim ? '<strong>'+esc(r.restriccionAlim)+'</strong>' : '<span class="vacio">—</span>'}</td>
         <td style="text-align:center;">${r.festejoCumple ? '🎂 SÍ' : '<span class="vacio">—</span>'}</td>
@@ -6560,7 +6566,7 @@ async function cargarListaCheckIn() {
         <span style="font-size:0.8rem;color:var(--muted);">Hab. ${esc(r.habitacionNro)}</span>
       </div>
       <div class="reserva-info">
-        <span>In: ${r.fechaIn}</span><span>Out: ${r.fechaOut}</span>
+        <span>In: ${fmtDMA(r.fechaIn)}</span><span>Out: ${fmtDMA(r.fechaOut)}</span>
         <span>${r.noches} noches</span><span>${r.adultos} adulto(s)</span>
       </div>
       <div style="margin-top:10px;">
@@ -6578,7 +6584,7 @@ async function realizarCheckIn(resId) {
     // Validar fecha: no se puede hacer check-in con fecha anterior al día de ingreso
     var hoy = new Date(); hoy.setHours(0,0,0,0);
     var fechaIn = new Date(res.fechaIn+'T00:00:00');
-    if (hoy < fechaIn) { showToast('No se puede hacer check-in antes de la fecha de ingreso ('+res.fechaIn+')','warning'); return; }
+    if (hoy < fechaIn) { showToast('No se puede hacer check-in antes de la fecha de ingreso ('+fmtDMA(res.fechaIn)+')','warning'); return; }
     // Validar acompañantes obligatorios si más de 1 huésped (no aplica a empresa: alojados se cargan en check-in)
     if (!res.esEmpresa) {
       var totalPersonas = (res.adultos||1) + (res.menores||0);
@@ -7087,7 +7093,7 @@ async function cargarListaCheckOut() {
         <span class="badge" style="background:rgba(232,69,60,0.15);color:var(--red);">${vencida?'CHECKOUT VENCIDO':'OCUPADA'}</span>
       </div>
       <div class="reserva-info">
-        <span>In: ${r.fechaIn}</span><span>Out: ${r.fechaOut}</span>
+        <span>In: ${fmtDMA(r.fechaIn)}</span><span>Out: ${fmtDMA(r.fechaOut)}</span>
         <span>${r.noches} noches</span><span>Total Estadía: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
       ${vencida?'<div style="margin-top:8px;padding:8px 10px;background:rgba(232,69,60,0.1);border-radius:8px;font-size:0.82rem;color:var(--red);font-weight:600;">⚠️ Fecha de checkout vencida y estadía sin abonar — realizá el check-out o agregá días a la estadía</div>':''}
@@ -7108,7 +7114,7 @@ async function abrirExtenderEstadia(resId) {
     confirmarAccion('Agregar Días de Estadía', `
       <div style="padding:16px;">
         <p style="margin-bottom:10px;"><strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}</p>
-        <p style="margin-bottom:10px;color:var(--muted);font-size:0.85rem;">Check-out actual: ${res.fechaOut} (${res.noches} noches — precio noche ${res.moneda==='USD'?'U$D':'$'} ${(res.precioNoche||0).toLocaleString('es-AR')})</p>
+        <p style="margin-bottom:10px;color:var(--muted);font-size:0.85rem;">Check-out actual: ${fmtDMA(res.fechaOut)} (${res.noches} noches — precio noche ${res.moneda==='USD'?'U$D':'$'} ${(res.precioNoche||0).toLocaleString('es-AR')})</p>
         <div class="form-group">
           <label>Nueva Fecha Check-out</label>
           <input type="date" id="extFechaOut" value="${res.fechaOut}" min="${res.fechaOut}" style="padding:11px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.92rem;width:100%;">
@@ -7176,10 +7182,10 @@ async function iniciarCheckOut(resId) {
       <p style="color:var(--muted);margin-bottom:4px;">Huésped: <strong>${esc(res.huesped)}</strong></p>
       ${esEmpresaCheckout ? '<p style="color:rgba(139,92,246,1);font-size:0.85rem;margin-bottom:4px;font-weight:600;">🏢 Empresa: '+esc(res.razonSocial||'')+' (CUIT: '+esc(res.cuitEmpresa||'')+')</p>' : ''}
       ${esEmpresaCheckout ? '<label style="display:flex;align-items:center;gap:8px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:10px;margin-bottom:10px;cursor:pointer;font-size:0.85rem;"><input type="checkbox" id="checkoutEstadiaCtaCte" onchange="toggleCheckoutEstadiaCtaCte('+totalConsumos+','+costoEstadia+','+saldoFavor+')"><span>Enviar <strong>estadía</strong> a Cta. Cte. de la empresa y cobrar al huésped solo los <strong>consumos</strong></span></label>' : ''}
-      <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${res.fechaIn} → ${res.fechaOut} (${res.noches} noches)</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${fmtDMA(res.fechaIn)} → ${fmtDMA(res.fechaOut)} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
-        ${nochesExtra > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--red);font-weight:600;"><span>⚠️ Noches adicionales ('+nochesExtra+' noche'+(nochesExtra>1?'s':'')+' — salida '+res.fechaOut+' → '+hoyStr+')</span><span>$ '+costoNochesExtra.toLocaleString('es-AR')+'</span></div>' : ''}
+        ${nochesExtra > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--red);font-weight:600;"><span>⚠️ Noches adicionales ('+nochesExtra+' noche'+(nochesExtra>1?'s':'')+' — salida '+fmtDMA(res.fechaOut)+' → '+fmtDMA(hoyStr)+')</span><span>$ '+costoNochesExtra.toLocaleString('es-AR')+'</span></div>' : ''}
         ${cargoLate > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--gold);font-weight:600;"><span>⏰ Late Checkout (con cargo)</span><span>$ '+cargoLate.toLocaleString('es-AR')+'</span></div>' : ''}
         ${res.lateCheckout && !res.lateCheckoutCobrar ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);font-size:0.85rem;"><span>⏰ Late Checkout — sin cargo (hospitalidad)</span><span>$ 0</span></div>' : ''}
         ${saldoFavor > 0 ? '<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--green);"><span>Saldo a favor del huésped</span><span>- $ '+saldoFavor.toLocaleString('es-AR')+'</span></div>' : ''}
@@ -7261,14 +7267,14 @@ async function iniciarCheckOut(resId) {
         if (tieneCtaCte && esEmpresaCheckout && montoCtaCte > 0) {
           try {
             var ctaId = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
-            await cargarDeudaCtaCte(ctaId, res.razonSocial||'', res.cuitEmpresa||'', montoCtaCte, 'Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+') - Reserva '+resId.substring(0,6));
+            await cargarDeudaCtaCte(ctaId, res.razonSocial||'', res.cuitEmpresa||'', montoCtaCte, 'Estadía Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+') - Reserva '+resId.substring(0,6));
           } catch(ee) { console.error('Error ctacte:',ee); }
         }
         // Enviar estadía a Cta. Cte. (cobrar al huésped solo consumos)
         if (estadiaACtaCte && esEmpresaCheckout && costoEstadia > 0) {
           try {
             var ctaIdE = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
-            await cargarDeudaCtaCte(ctaIdE, res.razonSocial||'', res.cuitEmpresa||'', costoEstadia, 'Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+') - Reserva '+resId.substring(0,6));
+            await cargarDeudaCtaCte(ctaIdE, res.razonSocial||'', res.cuitEmpresa||'', costoEstadia, 'Estadía Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+') - Reserva '+resId.substring(0,6));
             showToast('Estadía $'+costoEstadia.toLocaleString('es-AR')+' enviada a Cta. Cte. de '+esc(res.razonSocial||''),'info');
           } catch(ee) { console.error('Error estadia ctacte:',ee); }
         }
@@ -7277,7 +7283,7 @@ async function iniciarCheckOut(resId) {
           try {
             var montoPendiente = totalGeneral - totalPagado;
             var ctaId2 = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
-            await cargarDeudaCtaCte(ctaId2, res.razonSocial||'', res.cuitEmpresa||'', montoPendiente, 'Pago Diferido — Estadía Hab.'+res.habitacionNro+' ('+res.fechaIn+' → '+res.fechaOut+')');
+            await cargarDeudaCtaCte(ctaId2, res.razonSocial||'', res.cuitEmpresa||'', montoPendiente, 'Pago Diferido — Estadía Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+')');
             showToast('Saldo pendiente $'+montoPendiente.toLocaleString('es-AR')+' cargado a Cta. Cte. de '+esc(res.razonSocial||''),'info');
           } catch(ee) { console.error('Error auto ctacte:',ee); }
         }
@@ -7524,7 +7530,7 @@ async function cargarCajaRec() {
     $('tbodyCajaRec').innerHTML = cajas.map(c => {
       var color = c.estado==='ABIERTA' ? 'var(--green)' : 'var(--muted)';
       return `<tr>
-        <td style="font-size:0.82rem;">${c.fechaApertura||'-'}</td>
+        <td style="font-size:0.82rem;">${fmtFecha(c.fechaApertura)}</td>
         <td>${turnoLabels[c.turno]||c.turno}</td>
         <td>${esc(c.usuario||'-')}</td>
         <td>$${(c.montoApertura||0).toLocaleString('es-AR')}</td>
@@ -7794,8 +7800,8 @@ async function reporteHuespedesAlojados() {
     <td>${esc(r.habitacionNro)}</td>
     <td>${esc(r.huesped)}</td>
     <td>${esc(r.dni||'-')}</td>
-    <td>${r.fechaIn}</td>
-    <td>${r.fechaOut}</td>
+    <td>${fmtDMA(r.fechaIn)}</td>
+    <td>${fmtDMA(r.fechaOut)}</td>
     <td>${r.adultos||1} ad. ${r.menores>0?'+ '+r.menores+' men.':''}</td>
   </tr>`).join('') || '<tr><td colspan="6">Sin huéspedes alojados</td></tr>';
   var win = window.open('','_blank','width=800,height=600');
@@ -7827,7 +7833,7 @@ async function reporteExtranjeros() {
     <td>${esc(h.pasaporte||'-')}</td>
     <td>${nacLabels[h.nacionalidad]||h.nacionalidad}</td>
     <td>${esc(h.email||'-')}</td>
-    <td>${h.fechaNac||'-'}</td>
+    <td>${fmtDMA(h.fechaNac)}</td>
   </tr>`).join('') || '<tr><td colspan="6">Sin extranjeros registrados</td></tr>';
   var win = window.open('','_blank','width=800,height=600');
   win.document.write(`<!DOCTYPE html><html><head><title>Reporte Extranjeros Alojados</title>
@@ -7878,7 +7884,7 @@ async function cargarListaMarketing() {
       return `<tr>
         <td>${esc(h.nombre||'')} ${esc(h.apellido||'')}</td>
         <td style="font-size:0.82rem;">${esc(h.email)}</td>
-        <td>${h.fechaNac||'-'}</td>
+        <td>${fmtDMA(h.fechaNac)}</td>
         <td style="font-weight:600;${proxCumple==='HOY'?'color:var(--gold);':''}">${proxCumple}</td>
         <td style="font-size:0.8rem;">${acompTxt}</td>
       </tr>`;
@@ -7925,7 +7931,7 @@ async function reporteCumpleanos() {
     });
   });
   var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var rows = cumples.map(c => `<tr><td>${esc(c.nombre)}</td><td>${c.fechaNac}</td><td>${esc(c.email)}</td><td>${c.tipo}</td></tr>`).join('') || '<tr><td colspan="4">Sin cumpleaños este mes</td></tr>';
+  var rows = cumples.map(c => `<tr><td>${esc(c.nombre)}</td><td>${fmtDMA(c.fechaNac)}</td><td>${esc(c.email)}</td><td>${c.tipo}</td></tr>`).join('') || '<tr><td colspan="4">Sin cumpleaños este mes</td></tr>';
   var win = window.open('','_blank','width=800,height=600');
   win.document.write(`<!DOCTYPE html><html><head><title>Cumpleaños - ${meses[mesActual]}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}
@@ -8973,7 +8979,7 @@ function imprimirTicketSpa(t) {
     <p style="font-size:11px;"><b>Tipo:</b> ${t.tipoCliente === 'ALOJADO' ? 'Huésped Alojado (Hab. '+esc(t.habitacionNro)+')' : 'Externo'}</p>
     <p style="font-size:11px;"><b>Servicio:</b> ${esc(t.servicioNombre)}</p>
     <p style="font-size:11px;"><b>Profesional:</b> ${esc(t.profesionalNombre)}</p>
-    <p style="font-size:11px;"><b>Fecha turno:</b> ${esc(t.fecha)} ${esc(t.hora)}</p>
+    <p style="font-size:11px;"><b>Fecha turno:</b> ${fmtDMA(t.fecha)} ${esc(t.hora)}</p>
     <hr>
     <div class="total"><span>TOTAL</span><span>$${(t.servicioPrecio||0).toFixed(2)}</span></div>
     ${t.tipoCliente === 'ALOJADO' ? '<p style="font-size:10px;text-align:center;margin-top:6px;">Cargado a consumos de la habitación</p>' : '<p style="font-size:10px;text-align:center;margin-top:6px;">A cobrar en Caja</p>'}
@@ -9145,7 +9151,7 @@ async function cargarTurnosAdmin() {
         acc = `<button class="btn btn-red btn-xs" onclick="cancelarTurnoAdmin('${t.id}')">Cancelar</button>`;
       }
       return `<tr>
-        <td>${esc(t.fecha)}</td>
+        <td>${fmtDMA(t.fecha)}</td>
         <td>${esc(t.hora)}</td>
         <td>${esc(t.nombreCliente)}${t.tipoCliente==='ALOJADO'?' (Hab. '+esc(t.habitacionNro)+')':''}</td>
         <td>${t.tipoCliente === 'ALOJADO' ? 'Alojado' : 'Externo'}</td>
@@ -9253,7 +9259,7 @@ async function generarLiquidacionSpa() {
       turnos: turnos.map(t => ({ fecha:t.fecha, hora:t.hora||'', servicio:t.servicioNombre, cliente:t.nombreCliente||'', monto:t.servicioPrecio||0 })),
       usuario: currentUser.usuario, fecha: serverTimestamp()
     });
-    var filas = turnos.map(t => `<tr><td>${esc(t.fecha)}</td><td>${esc(t.hora)}</td><td>${esc(t.servicioNombre)}</td><td>${esc(t.nombreCliente)}</td><td>${t.estado==='CANCELADO'?'Cancelado (liq.)':'Realizado'}</td><td>$${(t.servicioPrecio||0).toFixed(2)}</td></tr>`).join('');
+    var filas = turnos.map(t => `<tr><td>${fmtDMA(t.fecha)}</td><td>${esc(t.hora)}</td><td>${esc(t.servicioNombre)}</td><td>${esc(t.nombreCliente)}</td><td>${t.estado==='CANCELADO'?'Cancelado (liq.)':'Realizado'}</td><td>$${(t.servicioPrecio||0).toFixed(2)}</td></tr>`).join('');
     cont.innerHTML = `<div class="card">
       <div class="card-title">Liquidación — ${esc(prof?prof.nombre:'')} (${desde} a ${hasta})</div>
       <div class="table-wrap"><table>
@@ -9322,7 +9328,7 @@ async function imprimirReciboLiquidacionSpa(liqId) {
     var prof = { nombre: l.profesionalNombre };
     var turnos = l.turnos || [];
     var total = l.total || 0;
-    var items = turnos.map(t => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${esc(t.fecha)} ${esc(t.servicio)}</span><span>$${(t.monto||0).toFixed(2)}</span></div>`).join('');
+    var items = turnos.map(t => `<div style="display:flex;justify-content:space-between;font-size:11px;margin:2px 0;"><span>${fmtDMA(t.fecha)} ${esc(t.servicio)}</span><span>$${(t.monto||0).toFixed(2)}</span></div>`).join('');
     if (l.porcentaje != null) items += `<div style="display:flex;justify-content:space-between;font-size:11px;margin:4px 0 0;border-top:1px dashed #000;padding-top:2px;"><span>Total facturado</span><span>$${(l.totalBruto||0).toFixed(2)}</span></div><div style="display:flex;justify-content:space-between;font-size:11px;"><span>Porcentaje profesional</span><span>${l.porcentaje}%</span></div>`;
     var html = `<!DOCTYPE html><html><head><style>
       @page{size:80mm auto;margin:4mm}
