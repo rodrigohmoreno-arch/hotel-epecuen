@@ -6112,6 +6112,7 @@ async function cargarPreReservas() {
         <span>${r0.noches} noches</span>
         <span>Total Grupo: $ ${totalGrupo.toLocaleString('es-AR')}</span>
       </div>
+      ${r0.fechaIn && r0.fechaIn < new Date().toISOString().slice(0,10) ? '<div style="margin-top:8px;padding:8px 10px;background:rgba(232,69,60,0.1);border-radius:8px;font-size:0.82rem;color:var(--red);font-weight:600;">⚠️ Fecha de ingreso vencida ('+fmtDMA(r0.fechaIn)+') — editá la fecha de ingreso antes de confirmar la seña</div>' : ''}
       <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">📅 Creada hace ${diasDesdeCreacion} día(s) — pendiente de seña</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-green btn-xs" onclick="confirmarPreReservaGrupo('${gId}')">Confirmar Seña (Grupo)</button>
@@ -6141,6 +6142,7 @@ async function cargarPreReservas() {
         <span>Total: ${r.moneda==='USD'?'U$D':'$'} ${(r.totalPagar||0).toLocaleString('es-AR')}</span>
       </div>
       ${extras.length?`<div style="margin-top:6px;font-size:0.8rem;color:var(--text);display:flex;flex-wrap:wrap;gap:8px;">${extras.join(' | ')}</div>`:''}
+      ${r.fechaIn && r.fechaIn < new Date().toISOString().slice(0,10) ? '<div style="margin-top:8px;padding:8px 10px;background:rgba(232,69,60,0.1);border-radius:8px;font-size:0.82rem;color:var(--red);font-weight:600;">⚠️ Fecha de ingreso vencida ('+fmtDMA(r.fechaIn)+') — editá la fecha de ingreso antes de confirmar la seña</div>' : ''}
       <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">📅 Creada hace ${diasDesdeCreacion} día(s) — pendiente de seña</div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <button class="btn btn-blue btn-xs" onclick="editarReserva('${r.id}')">Editar</button>
@@ -6153,6 +6155,15 @@ async function cargarPreReservas() {
 }
 
 async function confirmarPreReserva(resId, habId) {
+  try {
+    var preSnap = await getDoc(doc(db,'reservas',resId));
+    var pre = preSnap.data();
+    var hoyPre = new Date().toISOString().slice(0,10);
+    if (pre && pre.fechaIn && pre.fechaIn < hoyPre) {
+      showToast('⚠️ La fecha de ingreso ('+fmtDMA(pre.fechaIn)+') ya venció. Editá la fecha de ingreso de la pre-reserva antes de confirmar la seña.','warning');
+      return;
+    }
+  } catch(e) {}
   var cuerpo = `<div style="padding:20px;">
     <p style="margin-bottom:16px;">Registrá la seña recibida para confirmar la reserva:</p>
     <div class="form-row">
@@ -6209,6 +6220,11 @@ async function confirmarPreReservaGrupo(grupoId) {
   var grupo = snap.docs.filter(d => d.data().grupoEmpresaId === grupoId).map(d => ({id:d.id, ...d.data()}));
   if (!grupo.length) { showToast('No se encontraron reservas del grupo','warning'); return; }
   var r0 = grupo[0];
+  var hoyGrupo = new Date().toISOString().slice(0,10);
+  if (r0.fechaIn && r0.fechaIn < hoyGrupo) {
+    showToast('⚠️ La fecha de ingreso ('+fmtDMA(r0.fechaIn)+') ya venció. Editá la fecha de ingreso de la pre-reserva antes de confirmar la seña.','warning');
+    return;
+  }
   var totalGrupo = grupo.reduce((s,r) => s + (r.totalEstadia||r.totalPagar||0), 0);
   var habsInfo = grupo.map(r => 'Hab. '+r.habitacionNro).join(', ');
   var cuerpo = `<div style="padding:20px;">
@@ -6615,16 +6631,23 @@ async function realizarCheckIn(resId) {
       + esc(p.nombre)+' — $'+(p.precio||0).toLocaleString('es-AR')+' ('+p.dias+'d/'+p.noches+'n)</option>').join('');
     var esEmpresaRes = res.esEmpresa || false;
     var cuerpoCheckIn = `<div style="padding:16px;">
-      <p>¿Confirmar check-in para <strong>${esc(res.huesped)}</strong> — Hab. ${esc(res.habitacionNro)}?</p>
-      <p style="color:var(--muted);font-size:0.85rem;">La habitación pasará a OCUPADA.</p>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surface);border-radius:10px;border-left:4px solid var(--gold);margin-bottom:10px;">
+        <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;">Habitación</div><div style="font-size:1.7rem;font-weight:800;color:var(--gold);">${esc(res.habitacionNro)}</div></div>
+        <div style="flex:1;">
+          <div style="font-size:1.15rem;font-weight:700;">${esc(res.huesped)}</div>
+          <div style="font-size:0.82rem;color:var(--muted);">${res.dni ? 'DNI: '+esc(res.dni)+' — ' : ''}${res.esEmpresa && res.razonSocial ? '🏢 '+esc(res.razonSocial)+' — ' : ''}${(res.adultos||1)} adulto(s)${(res.menores||0)>0 ? ' + '+res.menores+' menor(es)' : ''}</div>
+          <div style="font-size:0.82rem;color:var(--muted);">In: <strong>${fmtDMA(res.fechaIn)}</strong> → Out: <strong>${fmtDMA(res.fechaOut)}</strong> (${res.noches} noches — ${esc(res.pension||'')})</div>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:0.85rem;">¿Confirmar check-in? La habitación pasará a OCUPADA.</p>
       <div style="margin:10px 0;padding:10px;background:var(--surface);border-radius:10px;">
         <div class="form-row" style="margin-bottom:6px;">
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Vehículo (patente/modelo)</label><input type="text" id="checkInVehiculo" value="${esc(res.vehiculo||'')}" placeholder="Ej: ABC123 - Ford Ranger" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
         </div>
-        <div class="form-row" style="margin-bottom:6px;">
+        ${esEmpresaRes ? '' : `<div class="form-row" style="margin-bottom:6px;">
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Localidad</label><input type="text" id="checkInLocalidad" value="${esc(res.localidad||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Provincia</label><input type="text" id="checkInProvincia" value="${esc(res.provincia||'')}" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
-        </div>
+        </div>`}
         <div class="form-row">
           <div class="form-group" style="flex:1;"><label style="font-size:0.82rem;">Antecedentes de Salud</label><input type="text" id="checkInAntecedentesSalud" value="${esc(res.antecedentesSalud||'')}" placeholder="Afecciones simples o crónicas" style="padding:6px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>
         </div>
@@ -6697,8 +6720,8 @@ async function realizarCheckIn(resId) {
               <div class="form-row">
                 <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
                   <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
-                <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura</label>
-                  <input type="text" class="checkinFactura" placeholder="Si no se carga queda pendiente" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+                <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura *</label>
+                  <input type="text" class="checkinFactura" placeholder="Ej: A-0001-00012345" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
               </div>
             </div>
           </div>
@@ -6740,6 +6763,8 @@ async function realizarCheckIn(resId) {
             if (a.nacionalidad !== 'AR' && !a.pasaporte) { showToast('Completá pasaporte/cédula de alojados extranjeros','warning'); return; }
           }
           updateData.alojados = alojadosCI;
+          var restriccionesAloj = alojadosCI.filter(a => a.restriccionAlim).map(a => a.apellido+' '+a.nombre+': '+a.restriccionAlim).join(' | ');
+          if (restriccionesAloj) updateData.restriccionAlim = res.restriccionAlim ? res.restriccionAlim+' | '+restriccionesAloj : restriccionesAloj;
           var obs = $('checkInObservaciones')?.value?.trim()||'';
           if (obs) updateData.observacionesCheckIn = obs;
         }
@@ -6770,19 +6795,17 @@ async function realizarCheckIn(resId) {
           var pagosRows = document.querySelectorAll('.checkin-pago-row');
           var pagos = [];
           var totalPagado = 0;
-          var facturaFaltante = false;
           for (var pr of pagosRows) {
             var medio = pr.querySelector('.checkinMedioPago').value;
             var monto = parseFloat(pr.querySelector('.checkinMonto').value)||0;
             var idTx = pr.querySelector('.checkinIdTx')?.value?.trim()||'';
             var nroFactura = pr.querySelector('.checkinFactura')?.value?.trim()||'';
             if (medio !== 'EFECTIVO' && !idTx && monto > 0) { showToast('Completá el N° cupón / ID transacción para pagos no efectivo','warning'); return; }
-            if (medio !== 'EFECTIVO' && !nroFactura && monto > 0) facturaFaltante = true;
+            if (medio !== 'EFECTIVO' && !nroFactura && monto > 0) { showToast('Completá el N° de factura para pagos no efectivo — es obligatorio para confirmar el check-in','warning'); return; }
             if (monto > 0) { pagos.push({ medio, monto, idTx, nroFactura }); totalPagado += monto; }
           }
           if (!pagos.length) { showToast('Agregá al menos un pago','warning'); return; }
-          updateData.facturaPendiente = facturaFaltante;
-          if (facturaFaltante) showToast('⚠️ Quedó pendiente asociar factura. No se podrá cerrar la caja del día hasta asociarla.','warning');
+          updateData.facturaPendiente = false;
           updateData.estadiaPagadaEnCheckin = true;
           updateData.pagosEstadia = pagos;
           updateData.totalPagadoCheckin = totalPagado;
@@ -6844,7 +6867,10 @@ function agregarAlojadoCheckIn() {
     + '<div class="form-group aloj-pasaporte-group" style="flex:1;display:none;"><label style="font-size:0.78rem;">Pasaporte / Cédula *</label><input type="text" class="aloj-pasaporte" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
     + '<div class="form-row" style="margin-bottom:4px;"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Teléfono *</label><input type="text" class="aloj-telefono" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
     + '<div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Email</label><input type="email" class="aloj-email" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
-    + '<div class="form-row"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Fecha Nacimiento</label><input type="date" class="aloj-fechanac" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>';
+    + '<div class="form-row" style="margin-bottom:4px;"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Fecha Nacimiento</label><input type="date" class="aloj-fechanac" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
+    + '<div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Localidad</label><input type="text" class="aloj-localidad" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div>'
+    + '<div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Provincia</label><input type="text" class="aloj-provincia" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1;"><label style="font-size:0.78rem;">Restricción Alimentaria</label><input type="text" class="aloj-restriccion" placeholder="Ej: celíaco, hipertenso, vegetariano" style="padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;width:100%;"></div></div>';
   lista.appendChild(div);
 }
 window.agregarAlojadoCheckIn = agregarAlojadoCheckIn;
@@ -6872,7 +6898,10 @@ function recogerAlojadosCheckIn() {
       pasaporte: nac!=='AR' ? (item.querySelector('.aloj-pasaporte')?.value?.trim()||'') : '',
       telefono: item.querySelector('.aloj-telefono')?.value?.trim()||'',
       email: item.querySelector('.aloj-email')?.value?.trim()||'',
-      fechaNac: item.querySelector('.aloj-fechanac')?.value||''
+      fechaNac: item.querySelector('.aloj-fechanac')?.value||'',
+      localidad: item.querySelector('.aloj-localidad')?.value?.trim()||'',
+      provincia: item.querySelector('.aloj-provincia')?.value?.trim()||'',
+      restriccionAlim: item.querySelector('.aloj-restriccion')?.value?.trim()||''
     });
   }
   return alojados;
@@ -6928,8 +6957,8 @@ function agregarPagoCheckIn(restante, monedaLabel) {
       <div class="form-row">
         <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Cupón / ID Transacción *</label>
           <input type="text" class="checkinIdTx" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
-        <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura</label>
-          <input type="text" class="checkinFactura" placeholder="Si no se carga queda pendiente" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
+        <div class="form-group" style="flex:1;"><label style="font-size:0.8rem;">N° Factura *</label>
+          <input type="text" class="checkinFactura" placeholder="Ej: A-0001-00012345" style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;width:100%;"></div>
       </div>
     </div>`;
   container.appendChild(row);
