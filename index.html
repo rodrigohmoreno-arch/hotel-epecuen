@@ -8109,7 +8109,7 @@ async function renderCalendarioHab() {
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#f5b731;display:inline-block;"></span> Pre-Reserva</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#2ecc71;display:inline-block;"></span> Confirmada</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid var(--border);display:inline-block;"></span> Libre</span>';
-  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Click en celda vacía → reserva / pre-reserva · Arrastrá varias → reserva empresa · Shift+Click habitaciones discontinuas → reserva multi-habitación</span>';
+  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Click en celda vacía → reserva / pre-reserva · Arrastrá varias → reserva empresa · Shift+Click habitaciones discontinuas (soltá Shift o tocá Crear reserva) → reserva multi-habitación</span>';
   html += '</div>';
   $('calendarioHab').innerHTML = html;
 }
@@ -8269,14 +8269,53 @@ function _calGetCell(e) {
 // Shift+click: selección de habitaciones discontinuas → al soltar Shift abre el formulario
 var _calShiftSel = [];
 
+function _calShiftBarUpdate() {
+  var bar = document.getElementById('calShiftBar');
+  if (!_calShiftSel.length) { if (bar) bar.remove(); return; }
+  var habs = [];
+  _calShiftSel.forEach(function(td) { var n = td.getAttribute('data-hab-nro'); if (n && habs.indexOf(n) === -1) habs.push(n); });
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'calShiftBar';
+    bar.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--surface);border:2px solid var(--blue);border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,0.35);font-size:0.85rem;';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '<span><strong>'+habs.length+'</strong> habitación(es): '+habs.map(esc).join(', ')+'</span>'
+    + '<button class="btn btn-green btn-xs" onclick="calShiftConfirmar()">Crear reserva</button>'
+    + '<button class="btn btn-ghost btn-xs" onclick="calShiftCancelar()">Cancelar</button>';
+}
+
+function calShiftCancelar() {
+  _calShiftSel = [];
+  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  _calShiftBarUpdate();
+}
+window.calShiftCancelar = calShiftCancelar;
+
+function calShiftConfirmar() {
+  if (!_calShiftSel.length) return;
+  var celdas = _calShiftSel.slice();
+  calShiftCancelar();
+  var habIds = [];
+  celdas.forEach(function(td) {
+    var hId = td.getAttribute('data-hab-id');
+    if (hId && habIds.indexOf(hId) === -1) habIds.push(hId);
+  });
+  var fecha = celdas[0].getAttribute('data-fecha') || '';
+  if (habIds.length === 1) abrirReservaDesdeCalendario(habIds[0], celdas[0].getAttribute('data-hab-nro'), fecha);
+  else abrirReservaMultiDesdeCalendario(habIds, fecha);
+}
+window.calShiftConfirmar = calShiftConfirmar;
+
 document.addEventListener('mousedown', function(e) {
   var td = _calGetCell(e);
   if (!td) return;
   e.preventDefault();
-  if (e.shiftKey) {
+  if (e.shiftKey || _calShiftSel.length) {
     var idx = _calShiftSel.indexOf(td);
     if (idx === -1) { _calShiftSel.push(td); td.classList.add('cal-sel'); }
     else { _calShiftSel.splice(idx,1); td.classList.remove('cal-sel'); }
+    _calShiftBarUpdate();
     return;
   }
   _calDragging = true;
@@ -8302,21 +8341,8 @@ document.addEventListener('mousemove', function(e) {
 });
 
 document.addEventListener('keyup', function(e) {
-  if (e.key !== 'Shift' || !_calShiftSel.length) return;
-  var celdas = _calShiftSel.slice();
-  _calShiftSel = [];
-  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
-  var habIds = [];
-  celdas.forEach(function(td) {
-    var hId = td.getAttribute('data-hab-id');
-    if (hId && habIds.indexOf(hId) === -1) habIds.push(hId);
-  });
-  var fecha = celdas[0].getAttribute('data-fecha') || '';
-  if (habIds.length === 1) {
-    abrirReservaDesdeCalendario(habIds[0], celdas[0].getAttribute('data-hab-nro'), fecha);
-  } else if (habIds.length > 1) {
-    abrirReservaMultiDesdeCalendario(habIds, fecha);
-  }
+  if (e.key !== 'Shift' || _calShiftSel.length < 2) return;
+  calShiftConfirmar();
 });
 
 function abrirReservaMultiDesdeCalendario(habIds, fecha) {
