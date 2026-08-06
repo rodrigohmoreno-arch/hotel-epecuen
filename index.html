@@ -8128,33 +8128,114 @@ function dropReserva(ev, habId, habNro) {
   ev.preventDefault();
   if (!dragReservaId || habNro === dragDesdeHab) return;
   var resId = dragReservaId;
-  confirmarAccion('Cambio de Habitación', `<div style="padding:20px;">
-    <p>¿Estás seguro de mover la reserva de <strong>Hab. ${esc(dragDesdeHab)}</strong> a <strong>Hab. ${esc(habNro)}</strong>?</p>
-    <p style="color:var(--muted);font-size:0.85rem;margin-top:8px;">Se actualizará la habitación asignada en la reserva.</p>
-  </div>`, 'Confirmar Cambio', async (ok) => {
-    if (!ok) { dragReservaId=''; dragDesdeHab=''; return; }
+  var desdeHab = dragDesdeHab;
+  dragReservaId = ''; dragDesdeHab = '';
+  (async () => {
     try {
-      // Find old room and new room
-      var oldHab = habitacionesCache.find(h => h.numero === dragDesdeHab);
-      var newHab = habitacionesCache.find(h => h.id === habId);
-      if (!newHab) { showToast('Habitación destino no encontrada','error'); return; }
-      // Get reservation data
       var resSnap = await getDoc(doc(db,'reservas',resId));
       var resData = resSnap.data();
-      // Update reservation
-      await updateDoc(doc(db,'reservas',resId), { habitacionId:habId, habitacionNro:habNro, tipoHab:newHab.tipo });
-      // Update room states
-      if (oldHab) await updateDoc(doc(db,'habitaciones',oldHab.id), { estado:'LIBRE', huespedActual:'', reservaId:'' });
-      var newEstado = resData.estado === 'CHECKIN' ? 'OCUPADA' : 'RESERVADA';
-      await updateDoc(doc(db,'habitaciones',habId), { estado:newEstado, huespedActual:resData.huesped||'', reservaId:resId });
+      if (!resData) { showToast('Reserva no encontrada','error'); return; }
+      var grupoId = resData.grupoEmpresaId || resData.grupoReservaId || '';
+      if (grupoId) {
+        confirmarAccion('Reserva de Grupo', `<div style="padding:20px;">
+          <p style="margin-bottom:10px;">La <strong>Hab. ${esc(desdeHab)}</strong> pertenece a una reserva de grupo (<strong>${esc(resData.huesped||resData.razonSocial||'')}</strong>). ¿Qué querés mover?</p>
+          <label style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--card);border-radius:8px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="moverGrupoModo" value="INDIVIDUAL" checked> <span>Mover <strong>solo esta habitación</strong> → Hab. ${esc(habNro)}</span></label>
+          <label style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--card);border-radius:8px;cursor:pointer;">
+            <input type="radio" name="moverGrupoModo" value="GRUPO"> <span>Reasignar <strong>todo el grupo</strong> (elegir habitación por habitación)</span></label>
+        </div>`, 'Continuar', async (ok) => {
+          if (!ok) return;
+          var modo = document.querySelector('input[name="moverGrupoModo"]:checked')?.value || 'INDIVIDUAL';
+          if (modo === 'INDIVIDUAL') confirmarMoverReserva(resId, resData, desdeHab, habId, habNro);
+          else abrirMoverGrupo(grupoId, resId, habId, habNro);
+        });
+      } else {
+        confirmarMoverReserva(resId, resData, desdeHab, habId, habNro);
+      }
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  })();
+}
+window.dropReserva = dropReserva;
+
+function confirmarMoverReserva(resId, resData, desdeHab, habId, habNro) {
+  confirmarAccion('Cambio de Habitación', `<div style="padding:20px;">
+    <p>¿Estás seguro de mover la reserva de <strong>Hab. ${esc(desdeHab)}</strong> a <strong>Hab. ${esc(habNro)}</strong>?</p>
+    <p style="color:var(--muted);font-size:0.85rem;margin-top:8px;">Se actualizará la habitación asignada en la reserva.</p>
+  </div>`, 'Confirmar Cambio', async (ok) => {
+    if (!ok) return;
+    try {
+      await moverReservaHab(resId, resData, desdeHab, habId, habNro);
       showToast('Reserva movida a Hab. '+habNro,'success');
       await cargarHabitaciones();
       await renderCalendarioHab();
     } catch(e) { showToast('Error: '+e.message,'error'); }
-    dragReservaId=''; dragDesdeHab='';
   });
 }
-window.dropReserva = dropReserva;
+
+async function moverReservaHab(resId, resData, desdeHab, habId, habNro) {
+  var oldHab = habitacionesCache.find(h => h.numero === desdeHab);
+  var newHab = habitacionesCache.find(h => h.id === habId);
+  if (!newHab) { showToast('Habitación destino no encontrada','error'); return; }
+  await updateDoc(doc(db,'reservas',resId), { habitacionId:habId, habitacionNro:habNro, tipoHab:newHab.tipo });
+  if (oldHab) await updateDoc(doc(db,'habitaciones',oldHab.id), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+  var newEstado = resData.estado === 'CHECKIN' ? 'OCUPADA' : (resData.estado === 'PRE_RESERVA' ? 'PRE_RESERVA' : 'RESERVADA');
+  await updateDoc(doc(db,'habitaciones',habId), { estado:newEstado, huespedActual:resData.huesped||'', reservaId:resId });
+}
+
+async function abrirMoverGrupo(grupoId, resIdArrastrada, habIdDestino, habNroDestino) {
+  try {
+    var snap = await getDocs(query(collection(db,'reservas'), where('estado','in',['PRE_RESERVA','CONFIRMADA','CHECKIN'])));
+    var grupo = snap.docs.filter(d => { var r = d.data(); return r.grupoEmpresaId === grupoId || r.grupoReservaId === grupoId; }).map(d => ({id:d.id, ...d.data()}));
+    if (!grupo.length) { showToast('No se encontraron reservas del grupo','warning'); return; }
+    var habsGrupo = grupo.map(g => g.habitacionNro);
+    var opcionesHab = h => habitacionesCache.slice().sort((a,b) => String(a.numero).localeCompare(String(b.numero),'es',{numeric:true})).map(hab => {
+      var ocupadaOtra = hab.estado !== 'LIBRE' && !habsGrupo.includes(hab.numero);
+      return '<option value="'+hab.id+'|'+esc(hab.numero)+'"'+(hab.numero === h ? ' selected' : '')+(ocupadaOtra ? ' disabled' : '')+'>'+esc(hab.numero)+' — '+esc(hab.tipo)+(ocupadaOtra ? ' (ocupada)' : '')+'</option>';
+    }).join('');
+    var filas = grupo.map(g => {
+      var habDefault = g.id === resIdArrastrada ? habNroDestino : g.habitacionNro;
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="flex:1;font-size:0.85rem;">Hab. <strong>${esc(g.habitacionNro)}</strong> — ${esc(g.huesped||'')}</span>
+        <select class="moverGrupoSel" data-res-id="${g.id}" style="flex:1;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.82rem;">${opcionesHab(habDefault)}</select>
+      </div>`;
+    }).join('');
+    confirmarAccion('Reasignar Habitaciones del Grupo', `<div style="padding:20px;">
+      <p style="margin-bottom:12px;color:var(--muted);font-size:0.85rem;">Elegí la habitación destino para cada reserva del grupo:</p>
+      ${filas}
+    </div>`, 'Confirmar Cambios', async (ok) => {
+      if (!ok) return;
+      try {
+        var sels = Array.from(document.querySelectorAll('.moverGrupoSel'));
+        var cambios = [];
+        var destinos = [];
+        for (var sel of sels) {
+          var rid = sel.getAttribute('data-res-id');
+          var parts = sel.value.split('|');
+          var g = grupo.find(x => x.id === rid);
+          if (destinos.includes(parts[1])) { showToast('Hab. '+parts[1]+' está asignada a más de una reserva del grupo','warning'); return; }
+          destinos.push(parts[1]);
+          if (g && g.habitacionNro !== parts[1]) cambios.push({ res:g, habId:parts[0], habNro:parts[1] });
+        }
+        if (!cambios.length) { showToast('No hay cambios para aplicar','info'); return; }
+        // Liberar primero todas las habitaciones de origen, después asignar destinos
+        for (var c of cambios) {
+          var oldHab = habitacionesCache.find(h => h.numero === c.res.habitacionNro);
+          if (oldHab) await updateDoc(doc(db,'habitaciones',oldHab.id), { estado:'LIBRE', huespedActual:'', reservaId:'' });
+        }
+        for (var c of cambios) {
+          var newHab = habitacionesCache.find(h => h.id === c.habId);
+          await updateDoc(doc(db,'reservas',c.res.id), { habitacionId:c.habId, habitacionNro:c.habNro, tipoHab:newHab ? newHab.tipo : (c.res.tipoHab||'') });
+          var newEstado = c.res.estado === 'CHECKIN' ? 'OCUPADA' : (c.res.estado === 'PRE_RESERVA' ? 'PRE_RESERVA' : 'RESERVADA');
+          await updateDoc(doc(db,'habitaciones',c.habId), { estado:newEstado, huespedActual:c.res.huesped||'', reservaId:c.res.id });
+        }
+        showToast('Grupo reasignado: '+cambios.length+' habitación(es) movida(s)','success');
+        await cargarHabitaciones();
+        await renderCalendarioHab();
+      } catch(e) { showToast('Error: '+e.message,'error'); }
+    });
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.abrirMoverGrupo = abrirMoverGrupo;
 
 function abrirReservaDesdeCalendario(habId, habNro, fecha) {
   // Switch to Nueva Reserva tab
