@@ -7230,10 +7230,10 @@ async function iniciarCheckOut(resId) {
     var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate + cargoEarly;
     var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
     if (totalGeneral < 0) totalGeneral = 0;
-    // Desglose para Cta. Cte. empresa: estadía / servicios (spa + late/early) / consumos (restaurante/bar)
-    var montoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra;
+    // Desglose para Cta. Cte. empresa: estadía (incluye late/early) / servicios (spa) / consumos (restaurante/bar)
+    var montoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate + cargoEarly;
     var consumosSpa = consumos.filter(c => c.tipo === 'SPA').reduce((a,c) => a + (c.total||0), 0);
-    var montoServicios = cargoLate + cargoEarly + consumosSpa;
+    var montoServicios = consumosSpa;
     var montoConsumosResto = totalConsumos - consumosSpa;
 
     var consumosHTML = consumos.length ? consumos.map(c => {
@@ -7256,7 +7256,7 @@ async function iniciarCheckOut(resId) {
           <option value="ESTADIA_SERVICIOS">Estadía + Servicios → Cta. Cte. | Huésped paga solo consumos</option>
           <option value="ESTADIA_CONSUMOS">Estadía + Consumos → Cta. Cte. | Huésped paga solo servicios</option>
         </select>
-        <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">Estadía: $ ${montoEstadia.toLocaleString('es-AR')} · Servicios (spa/late/early): $ ${montoServicios.toLocaleString('es-AR')} · Consumos (restaurante/bar): $ ${montoConsumosResto.toLocaleString('es-AR')}</div>
+        <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">Estadía (incl. late/early): $ ${montoEstadia.toLocaleString('es-AR')} · Servicios (spa): $ ${montoServicios.toLocaleString('es-AR')} · Consumos (restaurante/bar): $ ${montoConsumosResto.toLocaleString('es-AR')}</div>
       </div>` : ''}
       <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${fmtDMA(res.fechaIn)} → ${fmtDMA(res.fechaOut)} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
