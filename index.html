@@ -7230,6 +7230,11 @@ async function iniciarCheckOut(resId) {
     var costoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate + cargoEarly;
     var totalGeneral = costoEstadia + totalConsumos - saldoFavor;
     if (totalGeneral < 0) totalGeneral = 0;
+    // Desglose para Cta. Cte. empresa: estadía (incluye late/early) / servicios (spa) / consumos (restaurante/bar)
+    var montoEstadia = (estadiaPagada ? 0 : (res.totalPagar||0)) + costoNochesExtra + cargoLate + cargoEarly;
+    var consumosSpa = consumos.filter(c => c.tipo === 'SPA').reduce((a,c) => a + (c.total||0), 0);
+    var montoServicios = consumosSpa;
+    var montoConsumosResto = totalConsumos - consumosSpa;
 
     var consumosHTML = consumos.length ? consumos.map(c => {
       var tipoLabels = { RESTAURANTE:'🍽 Restaurante', SPA:'💆 Spa', BAR:'🍸 Bar', EXTRA:'➕ Extra' };
@@ -7243,7 +7248,16 @@ async function iniciarCheckOut(resId) {
       <div style="margin-bottom:12px;font-weight:700;font-size:1.1rem;">Check-Out — Hab. ${esc(res.habitacionNro)}</div>
       <p style="color:var(--muted);margin-bottom:4px;">Huésped: <strong>${esc(res.huesped)}</strong></p>
       ${esEmpresaCheckout ? '<p style="color:rgba(139,92,246,1);font-size:0.85rem;margin-bottom:4px;font-weight:600;">🏢 Empresa: '+esc(res.razonSocial||'')+' (CUIT: '+esc(res.cuitEmpresa||'')+')</p>' : ''}
-      ${esEmpresaCheckout ? '<label style="display:flex;align-items:center;gap:8px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:10px;margin-bottom:10px;cursor:pointer;font-size:0.85rem;"><input type="checkbox" id="checkoutEstadiaCtaCte" onchange="toggleCheckoutEstadiaCtaCte('+totalConsumos+','+costoEstadia+','+saldoFavor+')"><span>Enviar <strong>estadía</strong> a Cta. Cte. de la empresa y cobrar al huésped solo los <strong>consumos</strong></span></label>' : ''}
+      ${esEmpresaCheckout ? `<div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:10px;margin-bottom:10px;font-size:0.85rem;">
+        <label style="font-weight:600;display:block;margin-bottom:6px;">📋 ¿Qué va a la Cta. Cte. de la empresa?</label>
+        <select id="checkoutCtaCteOpcion" onchange="toggleCheckoutCtaCteOpcion(${montoEstadia},${montoServicios},${montoConsumosResto},${saldoFavor})" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;">
+          <option value="NADA">Nada — el huésped paga todo (estadía + servicios + consumos)</option>
+          <option value="ESTADIA">Estadía → Cta. Cte. | Huésped paga consumos + servicios</option>
+          <option value="ESTADIA_SERVICIOS">Estadía + Servicios → Cta. Cte. | Huésped paga solo consumos</option>
+          <option value="ESTADIA_CONSUMOS">Estadía + Consumos → Cta. Cte. | Huésped paga solo servicios</option>
+        </select>
+        <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);">Estadía (incl. late/early): $ ${montoEstadia.toLocaleString('es-AR')} · Servicios (spa): $ ${montoServicios.toLocaleString('es-AR')} · Consumos (restaurante/bar): $ ${montoConsumosResto.toLocaleString('es-AR')}</div>
+      </div>` : ''}
       <p style="color:var(--muted);margin-bottom:12px;">Estadía: ${fmtDMA(res.fechaIn)} → ${fmtDMA(res.fechaOut)} (${res.noches} noches)</p>
       <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--muted);">Estadía (${res.noches} noches)</span><span>${res.moneda==='USD'?'U$D':'$'} ${(res.totalPagar||0).toLocaleString('es-AR')}${estadiaPagada?' <em style="color:var(--green);font-size:0.8rem;">(pagada en check-in)</em>':''}</span></div>
@@ -7262,7 +7276,7 @@ async function iniciarCheckOut(resId) {
       <div style="display:flex;justify-content:space-between;font-size:1.2rem;font-weight:700;padding:10px;background:rgba(46,204,113,0.1);border-radius:10px;">
         <span>TOTAL A COBRAR</span><span id="checkoutTotalCobrar" style="color:var(--green);">$ ${totalGeneral.toLocaleString('es-AR')}</span>
       </div>
-      <div id="checkoutEstadiaCtaCteAviso" style="display:none;font-size:0.82rem;color:rgba(139,92,246,1);margin-top:6px;">La estadía se cargará a la Cta. Cte. de la empresa.</div>
+      <div id="checkoutEstadiaCtaCteAviso" style="display:none;font-size:0.82rem;color:rgba(139,92,246,1);margin-top:6px;"></div>
       <div style="margin-top:16px;">
         <label style="font-size:0.85rem;color:var(--muted);display:block;margin-bottom:8px;font-weight:600;">Medios de Pago</label>
         <div id="checkoutPagosContainer">
@@ -7291,7 +7305,11 @@ async function iniciarCheckOut(resId) {
 
     confirmarAccion('Check-Out', cuerpo, 'Confirmar Check-Out', async (ok) => {
       if (!ok) return;
-      var estadiaACtaCte = esEmpresaCheckout && $('checkoutEstadiaCtaCte') && $('checkoutEstadiaCtaCte').checked;
+      var ctaCteOpcion = esEmpresaCheckout ? ($('checkoutCtaCteOpcion')?.value || 'NADA') : 'NADA';
+      var montoOpcionCtaCte = ctaCteOpcion === 'ESTADIA' ? montoEstadia
+        : ctaCteOpcion === 'ESTADIA_SERVICIOS' ? montoEstadia + montoServicios
+        : ctaCteOpcion === 'ESTADIA_CONSUMOS' ? montoEstadia + montoConsumosResto : 0;
+      var estadiaACtaCte = montoOpcionCtaCte > 0;
       // Collect multiple payments
       var pagosRows = document.querySelectorAll('.checkout-pago-row');
       var pagos = [];
@@ -7306,7 +7324,7 @@ async function iniciarCheckOut(resId) {
         if (medio === 'CUENTA_CORRIENTE') { tieneCtaCte = true; montoCtaCte += monto; }
         if (monto > 0) { pagos.push({ medio, monto, idTx }); totalPagado += monto; }
       }
-      var totalEfectivo = estadiaACtaCte ? Math.max(0, totalConsumos - saldoFavor) : totalGeneral;
+      var totalEfectivo = Math.max(0, costoEstadia + totalConsumos - montoOpcionCtaCte - saldoFavor);
       if (!pagos.length && totalEfectivo > 0) { showToast('Agregá al menos un pago','warning'); return; }
       var medioPago = pagos.length === 1 ? pagos[0].medio : 'MULTIPLE';
       var idTxPrimero = pagos.length === 1 ? (pagos[0].idTx||'') : pagos.map(p=>p.medio+':'+p.monto+(p.idTx?'('+p.idTx+')':'')).join(', ');
@@ -7335,12 +7353,13 @@ async function iniciarCheckOut(resId) {
             await cargarDeudaCtaCte(ctaId, res.razonSocial||'', res.cuitEmpresa||'', montoCtaCte, 'Estadía Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+') - Reserva '+resId.substring(0,6));
           } catch(ee) { console.error('Error ctacte:',ee); }
         }
-        // Enviar estadía a Cta. Cte. (cobrar al huésped solo consumos)
-        if (estadiaACtaCte && esEmpresaCheckout && costoEstadia > 0) {
+        // Enviar a Cta. Cte. según la opción elegida
+        if (estadiaACtaCte && esEmpresaCheckout && montoOpcionCtaCte > 0) {
           try {
+            var descOpcion = ctaCteOpcion === 'ESTADIA' ? 'Estadía' : ctaCteOpcion === 'ESTADIA_SERVICIOS' ? 'Estadía + Servicios' : 'Estadía + Consumos';
             var ctaIdE = await cargarOCrearCtaCte(res.razonSocial||'', res.cuitEmpresa||'', res.emailEmpresa||'', res.telefonoEmpresa||'');
-            await cargarDeudaCtaCte(ctaIdE, res.razonSocial||'', res.cuitEmpresa||'', costoEstadia, 'Estadía Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+') - Reserva '+resId.substring(0,6));
-            showToast('Estadía $'+costoEstadia.toLocaleString('es-AR')+' enviada a Cta. Cte. de '+esc(res.razonSocial||''),'info');
+            await cargarDeudaCtaCte(ctaIdE, res.razonSocial||'', res.cuitEmpresa||'', montoOpcionCtaCte, descOpcion+' Hab.'+res.habitacionNro+' ('+fmtDMA(res.fechaIn)+' → '+fmtDMA(res.fechaOut)+') - Reserva '+resId.substring(0,6));
+            showToast(descOpcion+' $'+montoOpcionCtaCte.toLocaleString('es-AR')+' enviado a Cta. Cte. de '+esc(res.razonSocial||''),'info');
           } catch(ee) { console.error('Error estadia ctacte:',ee); }
         }
         // Auto-crear cta cte para empresas que no pagaron el total (pago diferido)
@@ -7368,24 +7387,24 @@ function toggleCheckoutRowIdTx(sel) {
 }
 window.toggleCheckoutRowIdTx = toggleCheckoutRowIdTx;
 
-function toggleCheckoutEstadiaCtaCte(totalConsumos, costoEstadia, saldoFavor) {
-  var chk = $('checkoutEstadiaCtaCte');
-  var nuevoTotal;
-  if (chk && chk.checked) {
-    nuevoTotal = totalConsumos - saldoFavor;
-  } else {
-    nuevoTotal = costoEstadia + totalConsumos - saldoFavor;
-  }
+function toggleCheckoutCtaCteOpcion(montoEstadia, montoServicios, montoConsumos, saldoFavor) {
+  var opcion = $('checkoutCtaCteOpcion')?.value || 'NADA';
+  var aCtaCte = opcion === 'ESTADIA' ? montoEstadia
+    : opcion === 'ESTADIA_SERVICIOS' ? montoEstadia + montoServicios
+    : opcion === 'ESTADIA_CONSUMOS' ? montoEstadia + montoConsumos : 0;
+  var nuevoTotal = montoEstadia + montoServicios + montoConsumos - aCtaCte - saldoFavor;
   if (nuevoTotal < 0) nuevoTotal = 0;
   var spanTotal = $('checkoutTotalCobrar');
   if (spanTotal) spanTotal.textContent = '$ ' + nuevoTotal.toLocaleString('es-AR');
   var aviso = $('checkoutEstadiaCtaCteAviso');
-  if (aviso) aviso.style.display = (chk && chk.checked) ? 'block' : 'none';
-  // Actualizar el primer monto del pago
+  if (aviso) {
+    aviso.style.display = aCtaCte > 0 ? 'block' : 'none';
+    aviso.textContent = aCtaCte > 0 ? 'Se cargarán $ '+aCtaCte.toLocaleString('es-AR')+' a la Cta. Cte. de la empresa. El huésped paga $ '+nuevoTotal.toLocaleString('es-AR')+'.' : '';
+  }
   var primerMonto = document.querySelector('.checkoutMonto');
   if (primerMonto) primerMonto.value = nuevoTotal;
 }
-window.toggleCheckoutEstadiaCtaCte = toggleCheckoutEstadiaCtaCte;
+window.toggleCheckoutCtaCteOpcion = toggleCheckoutCtaCteOpcion;
 
 function agregarPagoCheckout(total) {
   var container = $('checkoutPagosContainer');
