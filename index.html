@@ -8093,13 +8093,13 @@ async function renderCalendarioHab() {
         if (res.estado === 'CHECKIN') { bgColor = '#e8453c'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
         else if (res.estado === 'CONFIRMADA') { bgColor = '#2ecc71'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
         else { bgColor = '#f5b731'; content = `<span style="color:#fff;font-size:0.68rem;">${nomCorto}</span>`; }
-        draggable = ` draggable="true" ondragstart="dragReserva(event,'${res.id}','${hab.numero}')"`;
+        draggable = ` draggable="true" ondragstart="dragReserva(event,'${res.id}','${hab.numero}','${fStr}')"`;
       } else {
         borderCircle = '';
       }
       var dblClickAttr = !res ? ` ondblclick="abrirReservaDesdeCalendario('${hab.id}','${esc(hab.numero)}','${fStr}')"` : '';
       var emptyAttr = !res ? ` data-empty="1" data-hab-id="${hab.id}" data-hab-nro="${esc(hab.numero)}" data-fecha="${fStr}"` : '';
-      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'pointer'};min-height:28px;"${draggable}${tooltip}${dblClickAttr}${emptyAttr} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}')">${content}</td>`;
+      html += `<td style="padding:2px 4px;border:2px solid #000;text-align:center;background:${bgColor};cursor:${res?'grab':'pointer'};min-height:28px;"${draggable}${tooltip}${dblClickAttr}${emptyAttr} ondragover="event.preventDefault()" ondrop="dropReserva(event,'${hab.id}','${hab.numero}','${fStr}')">${content}</td>`;
     });
     html += '</tr>';
   });
@@ -8117,25 +8117,42 @@ window.renderCalendarioHab = renderCalendarioHab;
 
 var dragReservaId = '';
 var dragDesdeHab = '';
-function dragReserva(ev, resId, habNro) {
+var dragDesdeFecha = '';
+function dragReserva(ev, resId, habNro, fecha) {
   dragReservaId = resId;
   dragDesdeHab = habNro;
+  dragDesdeFecha = fecha || '';
   ev.dataTransfer.setData('text/plain', resId);
 }
 window.dragReserva = dragReserva;
 
-function dropReserva(ev, habId, habNro) {
+function _sumarDiasISO(iso, n) {
+  var d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+function dropReserva(ev, habId, habNro, fechaDestino) {
   ev.preventDefault();
-  if (!dragReservaId || habNro === dragDesdeHab) return;
+  if (!dragReservaId) return;
+  var deltaDias = (dragDesdeFecha && fechaDestino)
+    ? Math.round((new Date(fechaDestino + 'T00:00:00Z') - new Date(dragDesdeFecha + 'T00:00:00Z')) / 86400000) : 0;
+  if (habNro === dragDesdeHab && deltaDias === 0) return;
   var resId = dragReservaId;
   var desdeHab = dragDesdeHab;
-  dragReservaId = ''; dragDesdeHab = '';
+  dragReservaId = ''; dragDesdeHab = ''; dragDesdeFecha = '';
   (async () => {
     try {
       var resSnap = await getDoc(doc(db,'reservas',resId));
       var resData = resSnap.data();
       if (!resData) { showToast('Reserva no encontrada','error'); return; }
       var grupoId = resData.grupoEmpresaId || resData.grupoReservaId || '';
+      if (deltaDias !== 0) {
+        if (resData.estado === 'CHECKIN') { showToast('No se puede cambiar la fecha de una reserva con check-in realizado','warning'); return; }
+        if (grupoId && habNro !== desdeHab) { showToast('Reserva de grupo: el cambio de habitación debe ser en el mismo día. Para cambiar la fecha soltá sobre la misma habitación (mueve todo el bloque del grupo).','warning'); return; }
+        confirmarMoverFecha(resId, resData, grupoId, deltaDias, desdeHab, habId, habNro);
+        return;
+      }
       if (grupoId) {
         confirmarAccion('Reserva de Grupo', `<div style="padding:20px;">
           <p style="margin-bottom:10px;">La <strong>Hab. ${esc(desdeHab)}</strong> pertenece a una reserva de grupo (<strong>${esc(resData.huesped||resData.razonSocial||'')}</strong>). ¿Qué querés mover?</p>
@@ -8156,6 +8173,38 @@ function dropReserva(ev, habId, habNro) {
   })();
 }
 window.dropReserva = dropReserva;
+
+function confirmarMoverFecha(resId, resData, grupoId, deltaDias, desdeHab, habId, habNro) {
+  var cambiaHab = habNro !== desdeHab;
+  var nuevaIn = _sumarDiasISO(resData.fechaIn, deltaDias);
+  var nuevaOut = resData.fechaOut ? _sumarDiasISO(resData.fechaOut, deltaDias) : '';
+  var detalle = grupoId
+    ? '<p style="color:rgba(139,92,246,1);font-size:0.85rem;margin-top:8px;font-weight:600;">Reserva de grupo: se moverá el bloque completo (todas las habitaciones del grupo) '+Math.abs(deltaDias)+' día(s) hacia '+(deltaDias>0?'adelante':'atrás')+'.</p>'
+    : (cambiaHab ? '<p style="color:var(--muted);font-size:0.85rem;margin-top:8px;">También se cambia de Hab. '+esc(desdeHab)+' a Hab. '+esc(habNro)+'.</p>' : '');
+  confirmarAccion('Mover Fecha de Reserva', `<div style="padding:20px;">
+    <p>¿Mover la reserva de <strong>${esc(resData.huesped||resData.razonSocial||'')}</strong>?</p>
+    <p style="margin-top:8px;">In: <strong>${fmtDMA(resData.fechaIn)}</strong> → <strong>${fmtDMA(nuevaIn)}</strong><br>Out: <strong>${fmtDMA(resData.fechaOut)}</strong> → <strong>${fmtDMA(nuevaOut)}</strong> (${resData.noches||''} noches)</p>
+    ${detalle}
+  </div>`, 'Confirmar Cambio', async (ok) => {
+    if (!ok) return;
+    try {
+      if (grupoId) {
+        var snap = await getDocs(query(collection(db,'reservas'), where('estado','in',['PRE_RESERVA','CONFIRMADA'])));
+        var grupo = snap.docs.filter(d => { var r = d.data(); return r.grupoEmpresaId === grupoId || r.grupoReservaId === grupoId; }).map(d => ({id:d.id, ...d.data()}));
+        for (var g of grupo) {
+          await updateDoc(doc(db,'reservas',g.id), { fechaIn:_sumarDiasISO(g.fechaIn, deltaDias), fechaOut: g.fechaOut ? _sumarDiasISO(g.fechaOut, deltaDias) : '' });
+        }
+        showToast('Bloque del grupo movido: '+grupo.length+' habitación(es), '+Math.abs(deltaDias)+' día(s)','success');
+      } else {
+        await updateDoc(doc(db,'reservas',resId), { fechaIn:nuevaIn, fechaOut:nuevaOut });
+        if (cambiaHab) await moverReservaHab(resId, resData, desdeHab, habId, habNro);
+        showToast('Reserva movida a '+fmtDMA(nuevaIn)+(cambiaHab ? ' — Hab. '+habNro : ''),'success');
+      }
+      await cargarHabitaciones();
+      await renderCalendarioHab();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  });
+}
 
 function confirmarMoverReserva(resId, resData, desdeHab, habId, habNro) {
   confirmarAccion('Cambio de Habitación', `<div style="padding:20px;">
