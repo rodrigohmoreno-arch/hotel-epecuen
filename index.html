@@ -7198,8 +7198,9 @@ async function iniciarCheckOut(resId) {
     var resSnap = await getDoc(doc(db,'reservas',resId));
     var res = resSnap.data();
     // Buscar consumos de la habitación
-    var consSnap = await getDocs(query(collection(db,'consumosHabitacion'), where('habitacionNro','==',res.habitacionNro), where('reservaId','==',resId)));
-    var consumos = consSnap.docs.map(d => d.data());
+    var consSnap = await getDocs(query(collection(db,'consumosHabitacion'), where('habitacionNro','==',res.habitacionNro)));
+    var consDocs = consSnap.docs.filter(d => { var rid = d.data().reservaId || ''; return rid === resId || rid === ''; });
+    var consumos = consDocs.map(d => d.data());
     var totalConsumos = consumos.reduce((a,c) => a + (c.total||0), 0);
     var estadiaPagada = res.estadiaPagadaEnCheckin || false;
     var saldoFavor = res.saldoFavor || 0;
@@ -7324,7 +7325,7 @@ async function iniciarCheckOut(resId) {
           ...(nochesExtra > 0 ? { nochesAdicionales: nochesExtra, costoNochesAdicionales: costoNochesExtra, noches: (res.noches||0) + nochesExtra, totalEstadia: (res.totalEstadia||0) + costoNochesExtra } : {}) });
         await updateDoc(doc(db,'habitaciones',res.habitacionId), { estado:'LIBRE', huespedActual:'', reservaId:'' });
         // Limpiar consumos de la habitación (quedan en reserva para estadísticas)
-        for (var cDoc of consSnap.docs) {
+        for (var cDoc of consDocs) {
           try { await deleteDoc(doc(db,'consumosHabitacion',cDoc.id)); } catch(ee) {}
         }
         // Si pagó con cuenta corriente explícita, cargar deuda a la empresa
@@ -8751,6 +8752,12 @@ async function registrarConsumoHabitacion(mesa, items, total) {
       reservaId = habData.reservaId || '';
     }
   }
+  if (!reservaId) {
+    try {
+      var resCkSnap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKIN'), where('habitacionNro','==',habNro)));
+      if (!resCkSnap.empty) reservaId = resCkSnap.docs[0].id;
+    } catch(e) {}
+  }
   // Agrupar por consumidor: en habitación compartida, cada persona genera su propio registro
   var grupos = {};
   items.forEach(i => {
@@ -8988,6 +8995,12 @@ async function registrarConsumoSpaHabitacion(t) {
     var reservaId = '';
     var habSnap = await getDocs(query(collection(db,'habitaciones'), where('numero','==',t.habitacionNro)));
     if (!habSnap.empty) reservaId = habSnap.docs[0].data().reservaId || '';
+    if (!reservaId) {
+      try {
+        var resCkSnap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKIN'), where('habitacionNro','==',t.habitacionNro)));
+        if (!resCkSnap.empty) reservaId = resCkSnap.docs[0].id;
+      } catch(e) {}
+    }
     await addDoc(collection(db,'consumosHabitacion'), {
       habitacionNro: t.habitacionNro,
       reservaId: reservaId,
