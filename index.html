@@ -5668,8 +5668,9 @@ async function poblarSelectHabMulti() {
   await cargarHabitaciones();
   var sel = $('resHabitacionesMulti');
   sel.innerHTML = '';
-  habitacionesCache.filter(h => h.estado === 'LIBRE' || h.estado === 'RESERVADA').forEach(h => {
-    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}</option>`;
+  habitacionesCache.forEach(h => {
+    var nota = (h.estado === 'LIBRE' || h.estado === 'RESERVADA') ? '' : ' (hoy: ' + h.estado.toLowerCase().replace('_',' ') + ')';
+    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}${nota}</option>`;
   });
 }
 
@@ -5702,8 +5703,9 @@ async function poblarSelectHabEmpresa() {
   await cargarHabitaciones();
   var sel = $('resHabitacionesEmpresa');
   sel.innerHTML = '';
-  habitacionesCache.filter(h => h.estado === 'LIBRE' || h.estado === 'RESERVADA').forEach(h => {
-    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}</option>`;
+  habitacionesCache.forEach(h => {
+    var nota = (h.estado === 'LIBRE' || h.estado === 'RESERVADA') ? '' : ' (hoy: ' + h.estado.toLowerCase().replace('_',' ') + ')';
+    sel.innerHTML += `<option value="${h.id}" data-nro="${h.numero}" data-tipo="${h.tipo}">${h.numero} — ${h.tipo}${nota}</option>`;
   });
 }
 
