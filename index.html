@@ -8109,7 +8109,7 @@ async function renderCalendarioHab() {
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#f5b731;display:inline-block;"></span> Pre-Reserva</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#2ecc71;display:inline-block;"></span> Confirmada</span>';
   html += '<span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid var(--border);display:inline-block;"></span> Libre</span>';
-  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Click en celda vacía → reserva / pre-reserva · Arrastrá varias → reserva empresa · Shift+Click habitaciones discontinuas (soltá Shift o tocá Crear reserva) → reserva multi-habitación</span>';
+  html += '<span style="color:var(--muted);font-style:italic;margin-left:12px;">Doble click en celda vacía → reserva individual · Arrastrá varias continuas → reserva empresa · Shift+Click discontinuas y tocá Crear reserva → reserva multi-habitación</span>';
   html += '</div>';
   $('calendarioHab').innerHTML = html;
 }
@@ -8336,7 +8336,7 @@ function _calShiftBarUpdate() {
 
 function calShiftCancelar() {
   _calShiftSel = [];
-  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => { c.classList.remove('cal-sel'); c.classList.remove('cal-shift'); });
   _calShiftBarUpdate();
 }
 window.calShiftCancelar = calShiftCancelar;
@@ -8362,14 +8362,14 @@ document.addEventListener('mousedown', function(e) {
   e.preventDefault();
   if (e.shiftKey || _calShiftSel.length) {
     var idx = _calShiftSel.indexOf(td);
-    if (idx === -1) { _calShiftSel.push(td); td.classList.add('cal-sel'); }
-    else { _calShiftSel.splice(idx,1); td.classList.remove('cal-sel'); }
+    if (idx === -1) { _calShiftSel.push(td); td.classList.add('cal-sel'); td.classList.add('cal-shift'); }
+    else { _calShiftSel.splice(idx,1); td.classList.remove('cal-sel'); td.classList.remove('cal-shift'); }
     _calShiftBarUpdate();
     return;
   }
   _calDragging = true;
   _calSelected = [];
-  document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+  document.querySelectorAll('#calendarioHab td.cal-sel:not(.cal-shift)').forEach(c => c.classList.remove('cal-sel'));
   var cal = document.getElementById('calendarioHab');
   if (cal) cal.classList.add('cal-dragging');
   td.classList.add('cal-sel');
@@ -8420,16 +8420,9 @@ document.addEventListener('mouseup', function(e) {
   var cal = document.getElementById('calendarioHab');
   if (cal) cal.classList.remove('cal-dragging');
   if (_calSelected.length < 2) {
-    // Click simple sobre celda vacía → abrir reserva / pre-reserva
-    var unica = _calSelected[0];
-    document.querySelectorAll('#calendarioHab td.cal-sel').forEach(c => c.classList.remove('cal-sel'));
+    // Click simple no abre nada — individual es con doble click
+    document.querySelectorAll('#calendarioHab td.cal-sel:not(.cal-shift)').forEach(c => c.classList.remove('cal-sel'));
     _calSelected = [];
-    if (unica) {
-      var hId = unica.getAttribute('data-hab-id');
-      var hNro = unica.getAttribute('data-hab-nro');
-      var fch = unica.getAttribute('data-fecha');
-      if (hId) abrirReservaDesdeCalendario(hId, hNro, fch);
-    }
     return;
   }
   var habIds = [];
