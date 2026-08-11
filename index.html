@@ -1305,6 +1305,12 @@
             </select></div>
           <div class="form-group"><label>Descuento %</label><input type="number" id="resDescuento" value="0" min="0" max="100" onchange="calcularTotalReserva()"></div>
         </div>
+        <div class="form-row" id="resRowPromo">
+          <div class="form-group" style="flex:1;"><label>Promoción Activa (opcional)</label>
+            <select id="resPromoSelect" onchange="aplicarPromoReserva()"><option value="">— Sin promoción —</option></select>
+            <div id="resPromoDetalle" style="display:none;margin-top:6px;font-size:0.8rem;color:var(--muted);"></div>
+          </div>
+        </div>
         <div class="form-row" id="resRowTarifaEspecial">
           <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="resTarifaEspecial" onchange="toggleTarifaEspecial()"> Tarifa Especial (reemplaza tarifa por habitación)</label></div>
           <div class="form-group hidden" id="grupoTarifaEspecialMonto"><label>Monto Tarifa Especial por Noche *</label><input type="number" id="resTarifaEspecialMonto" value="0" step="0.01" min="0" onchange="calcularTotalReserva()"></div>
@@ -5366,6 +5372,7 @@ async function cargarTarifas() {
   try {
     var snap = await getDocs(collection(db,'tarifas'));
     tarifasCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    cargarPromosReservaSelect();
     var tbody = $('tbodyTarifas');
     tbody.innerHTML = tarifasCache.map(t => `<tr>
       <td><strong>${esc(t.tipo)}</strong></td>
@@ -5615,19 +5622,21 @@ function calcularTotalReserva() {
   var tarifaEspecialAct = $('resTarifaEspecial')?.checked || false;
   var tarifaEspecialMonto = parseFloat($('resTarifaEspecialMonto')?.value)||0;
   if (tarifaEspecialAct && tarifaEspecialMonto > 0) precioNoche = tarifaEspecialMonto;
+  var promoAplicada = _getPromoReservaSeleccionada();
+  if (promoAplicada && !(tarifaEspecialAct && tarifaEspecialMonto > 0)) precioNoche = promoAplicada.precioNoche;
   var subtotal = precioNoche * noches;
   var descMonto = subtotal * desc / 100;
   var total = subtotal - descMonto - sena;
   $('resumenReserva').style.display = 'block';
   $('resumenReserva').innerHTML = `
     <div style="font-size:0.9rem;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Tarifa/noche${tarifaEspecialAct && tarifaEspecialMonto > 0 ? ' <span style="color:var(--gold);font-weight:700;">(ESPECIAL)</span>' : ''}:</span><strong>${moneda === 'USD' ? 'U$D' : '$'} ${precioNoche.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Tarifa/noche${tarifaEspecialAct && tarifaEspecialMonto > 0 ? ' <span style="color:var(--gold);font-weight:700;">(ESPECIAL)</span>' : (promoAplicada ? ' <span style="color:#8b5cf6;font-weight:700;">(PROMO)</span>' : '')}:</span><strong>${moneda === 'USD' ? 'U$D' : '$'} ${precioNoche.toLocaleString('es-AR')}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Noches:</span><strong>${noches}</strong></div>
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Subtotal:</span><strong>${moneda === 'USD' ? 'U$D' : '$'} ${subtotal.toLocaleString('es-AR')}</strong></div>
       ${desc > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--red);"><span>Descuento (${desc}%):</span><strong>-${moneda === 'USD' ? 'U$D' : '$'} ${descMonto.toLocaleString('es-AR')}</strong></div>` : ''}
       ${sena > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--blue);"><span>Seña:</span><strong>-${moneda === 'USD' ? 'U$D' : '$'} ${sena.toLocaleString('es-AR')}</strong></div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:6px;"><span style="font-weight:700;">Total a Pagar:</span><strong style="color:var(--green);font-size:1.1rem;">${moneda === 'USD' ? 'U$D' : '$'} ${total.toLocaleString('es-AR')}</strong></div>
-      ${!tarifa && !(tarifaEspecialAct && tarifaEspecialMonto > 0) ? '<p style="color:var(--red);font-size:0.8rem;margin-top:6px;">⚠ No hay tarifa configurada para esta combinación</p>' : ''}
+      ${!tarifa && !(tarifaEspecialAct && tarifaEspecialMonto > 0) && !promoAplicada ? '<p style="color:var(--red);font-size:0.8rem;margin-top:6px;">⚠ No hay tarifa configurada para esta combinación</p>' : ''}
     </div>`;
 }
 window.calcularTotalReserva = calcularTotalReserva;
@@ -5637,9 +5646,111 @@ function toggleTarifaEspecial() {
   var grupo = $('grupoTarifaEspecialMonto');
   if (grupo) grupo.classList.toggle('hidden', !activo);
   if (!activo && $('resTarifaEspecialMonto')) $('resTarifaEspecialMonto').value = '0';
+  if (activo && $('resPromoSelect') && $('resPromoSelect').value) { $('resPromoSelect').value = ''; aplicarPromoReserva(); return; }
   calcularTotalReserva();
 }
 window.toggleTarifaEspecial = toggleTarifaEspecial;
+
+// ── PROMOCIONES EN RESERVA ──
+async function cargarPromosReservaSelect() {
+  var sel = $('resPromoSelect');
+  if (!sel) return;
+  try {
+    var snap = await getDocs(query(collection(db,'promociones'), where('estado','==','ACTIVA')));
+    var promos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var valorActual = sel.value;
+    sel.innerHTML = '<option value="">— Sin promoción —</option>' + promos.map(p =>
+      '<option value="'+p.id+'" data-precio="'+(p.precio||0)+'" data-dias="'+(p.dias||0)+'" data-noches="'+(p.noches||1)+'" data-pension="'+esc(p.pension||'')+'" data-tipo="'+esc(p.tipoHab||'')+'" data-nombre="'+esc(p.nombre||'')+'">'
+      + esc(p.nombre)+' — $'+(p.precio||0).toLocaleString('es-AR')+' ('+(p.dias||0)+'d/'+(p.noches||1)+'n, '+esc(p.pension||'')+', '+esc(p.tipoHab||'')+')</option>').join('');
+    if (valorActual) sel.value = valorActual;
+  } catch(e) { console.error('Error cargando promociones', e); }
+}
+window.cargarPromosReservaSelect = cargarPromosReservaSelect;
+
+function _getPromoReservaSeleccionada() {
+  var sel = $('resPromoSelect');
+  if (!sel || !sel.value) return null;
+  var opt = sel.options[sel.selectedIndex];
+  var precio = parseFloat(opt.getAttribute('data-precio'))||0;
+  var noches = parseInt(opt.getAttribute('data-noches'))||1;
+  return { id: sel.value, nombre: opt.getAttribute('data-nombre')||'', precio, noches,
+    dias: parseInt(opt.getAttribute('data-dias'))||0, pension: opt.getAttribute('data-pension')||'',
+    tipoHab: opt.getAttribute('data-tipo')||'', precioNoche: precio / noches };
+}
+
+function aplicarPromoReserva() {
+  var promo = _getPromoReservaSeleccionada();
+  var detalle = $('resPromoDetalle');
+  if (promo) {
+    if ($('resTarifaEspecial') && $('resTarifaEspecial').checked) {
+      $('resTarifaEspecial').checked = false;
+      var grupo = $('grupoTarifaEspecialMonto');
+      if (grupo) grupo.classList.add('hidden');
+      if ($('resTarifaEspecialMonto')) $('resTarifaEspecialMonto').value = '0';
+    }
+    if (promo.pension && $('resPension')) $('resPension').value = promo.pension;
+    if (detalle) {
+      detalle.style.display = 'block';
+      detalle.innerHTML = '<strong>Promo: $ ' + promo.precio.toLocaleString('es-AR') + '</strong> por ' + promo.noches + ' noche(s) (' + esc(promo.pension) + ', Hab. ' + esc(promo.tipoHab) + ') — equivale a $ ' + Math.round(promo.precioNoche).toLocaleString('es-AR') + '/noche';
+    }
+  } else if (detalle) { detalle.style.display = 'none'; detalle.innerHTML = ''; }
+  calcularTotalReserva();
+}
+window.aplicarPromoReserva = aplicarPromoReserva;
+
+// ── CUADROS GLOBALES SHIFT+T / SHIFT+P ──
+function _cerrarModalInfoGlobal() {
+  var m = document.getElementById('modalInfoGlobal');
+  if (m) m.remove();
+}
+window.cerrarModalInfoGlobal = _cerrarModalInfoGlobal;
+
+function _mostrarModalInfoGlobal(titulo, contenidoHtml) {
+  _cerrarModalInfoGlobal();
+  var m = document.createElement('div');
+  m.id = 'modalInfoGlobal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.5);">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><h3 style="font-size:1.05rem;">' + titulo + '</h3>' +
+    '<button class="btn btn-ghost btn-xs" onclick="cerrarModalInfoGlobal()">✕ Cerrar</button></div>' + contenidoHtml + '</div>';
+  m.addEventListener('mousedown', function(e){ if (e.target === m) _cerrarModalInfoGlobal(); });
+  document.body.appendChild(m);
+}
+
+async function mostrarTarifasGlobal() {
+  _mostrarModalInfoGlobal('💲 Tarifas Activas', '<p style="color:var(--muted);">Cargando...</p>');
+  try {
+    var snap = await getDocs(collection(db,'tarifas'));
+    var tarifas = snap.docs.map(d => d.data());
+    tarifas.sort((a,b) => (a.tipo||'').localeCompare(b.tipo||'') || (a.pension||'').localeCompare(b.pension||''));
+    var filas = tarifas.map(t => '<tr><td><strong>'+esc(t.tipo||'-')+'</strong></td><td>'+esc(t.pension||'-')+'</td><td>$ '+(t.precioARS||0).toLocaleString('es-AR')+'</td><td>U$D '+(t.precioUSD||0).toFixed(2)+'</td><td style="color:var(--muted);font-size:0.82rem;">'+esc(t.notas||'-')+'</td></tr>').join('');
+    _mostrarModalInfoGlobal('💲 Tarifas Activas', '<div class="table-wrap"><table><thead><tr><th>Tipo Hab.</th><th>Pensión</th><th>Precio ARS</th><th>Precio USD</th><th>Notas</th></tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sin tarifas cargadas</td></tr>') + '</tbody></table></div><p style="font-size:0.75rem;color:var(--muted);margin-top:10px;">Atajo: Shift+T desde cualquier pantalla — Esc para cerrar</p>');
+  } catch(e) { _mostrarModalInfoGlobal('💲 Tarifas Activas', '<p style="color:var(--red);">Error: '+esc(e.message)+'</p>'); }
+}
+window.mostrarTarifasGlobal = mostrarTarifasGlobal;
+
+async function mostrarPromosGlobal() {
+  _mostrarModalInfoGlobal('🏷️ Promociones Activas', '<p style="color:var(--muted);">Cargando...</p>');
+  try {
+    var snap = await getDocs(query(collection(db,'promociones'), where('estado','==','ACTIVA')));
+    var promos = snap.docs.map(d => d.data());
+    promos.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+    var pensionLabels = { MAP:'Media Pensión', COMPLETA:'P. Completa', SIN_PENSION:'Sin MAP' };
+    var filas = promos.map(p => '<tr><td><strong>'+esc(p.nombre||'-')+'</strong></td><td>'+esc(p.tipoHab||'-')+'</td><td>'+esc(pensionLabels[p.pension]||p.pension||'-')+'</td><td>'+(p.dias||0)+'d / '+(p.noches||0)+'n</td><td style="color:var(--gold);font-weight:700;">$ '+(p.precio||0).toLocaleString('es-AR')+'</td><td>'+(p.fechaVencimiento ? fmtDMA(p.fechaVencimiento) : '-')+'</td><td style="color:var(--muted);font-size:0.82rem;">'+esc(p.descripcion||'-')+'</td></tr>').join('');
+    _mostrarModalInfoGlobal('🏷️ Promociones Activas', '<div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Tipo Hab.</th><th>Pensión</th><th>Días/Noches</th><th>Precio</th><th>Vence</th><th>Descripción</th></tr></thead><tbody>' + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Sin promociones activas</td></tr>') + '</tbody></table></div><p style="font-size:0.75rem;color:var(--muted);margin-top:10px;">Atajo: Shift+P desde cualquier pantalla — Esc para cerrar</p>');
+  } catch(e) { _mostrarModalInfoGlobal('🏷️ Promociones Activas', '<p style="color:var(--red);">Error: '+esc(e.message)+'</p>'); }
+}
+window.mostrarPromosGlobal = mostrarPromosGlobal;
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { _cerrarModalInfoGlobal(); return; }
+  if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+  var tag = (e.target && e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return;
+  if (!currentUser) return;
+  if (e.key === 'T' || e.key === 't') { e.preventDefault(); mostrarTarifasGlobal(); }
+  else if (e.key === 'P' || e.key === 'p') { e.preventDefault(); mostrarPromosGlobal(); }
+});
 
 async function cargarTarifasEspecialesLog() {
   var tbody = $('tbodyTarifasEspeciales');
@@ -5950,6 +6061,7 @@ async function crearReserva() {
   var tarifaEspecial = $('resTarifaEspecial')?.checked || false;
   var tarifaEspecialMonto = parseFloat($('resTarifaEspecialMonto')?.value)||0;
   if (tarifaEspecial && tarifaEspecialMonto <= 0) { showToast('Indicá el monto de la tarifa especial por noche','warning'); return; }
+  var promoRes = (tarifaEspecial && tarifaEspecialMonto > 0) ? null : _getPromoReservaSeleccionada();
 
   if ((!restriccionAlim || !antecedentesSalud) && !_avisoRestriccionMostrado) {
     _avisoRestriccionMostrado = true;
@@ -5999,6 +6111,7 @@ async function crearReserva() {
   var tarifa = tarifasCache.find(t => t.tipo === tipoHab && t.pension === pension);
   var precioNoche = tarifa ? (moneda === 'USD' ? (tarifa.precioUSD||0) : (tarifa.precioARS||0)) : 0;
   if (tarifaEspecial && tarifaEspecialMonto > 0) precioNoche = tarifaEspecialMonto;
+  if (promoRes) precioNoche = promoRes.precioNoche;
   var totalEstadia = precioNoche * noches;
   var descMonto = totalEstadia * desc / 100;
   var totalPagar = totalEstadia - descMonto - sena;
@@ -6010,6 +6123,7 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       tarifaEspecial, tarifaEspecialMonto: tarifaEspecial ? tarifaEspecialMonto : 0,
+      promoId: promoRes ? promoRes.id : '', promoNombre: promoRes ? promoRes.nombre : '',
       totalPagar, notas,
       configCamas, restriccionAlim, pedidosEsp, lateCheckout, earlyCheckin, festejoCumple,
       comensalesMAP: pension === 'MAP' ? (adultos + menores) : 0,
@@ -6034,6 +6148,7 @@ async function crearReserva() {
       var tarifaM = tarifasCache.find(t => t.tipo === optM.dataset.tipo && t.pension === pension);
       var precioM = tarifaM ? (moneda === 'USD' ? (tarifaM.precioUSD||0) : (tarifaM.precioARS||0)) : 0;
       if (tarifaEspecial && tarifaEspecialMonto > 0) precioM = tarifaEspecialMonto;
+      if (promoRes) precioM = promoRes.precioNoche;
       var reservaM = { ...reservaData,
         habitacionId: optM.value, habitacionNro: optM.dataset.nro, tipoHab: optM.dataset.tipo,
         precioNoche: precioM, totalEstadia: precioM*noches, sena: 0, medioPagoSena: '',
@@ -6079,6 +6194,7 @@ async function crearReserva() {
     if ($('resBuscarHuesped')) $('resBuscarHuesped').value='';
     if ($('resMultiHab')) { $('resMultiHab').checked = false; toggleMultiHab(); }
     if ($('resTarifaEspecial')) { $('resTarifaEspecial').checked = false; toggleTarifaEspecial(); }
+    if ($('resPromoSelect')) { $('resPromoSelect').value = ''; aplicarPromoReserva(); }
     _avisoRestriccionMostrado = false;
     $('listaAcompanantes').innerHTML='';
     $('resumenReserva').style.display='none';
@@ -6109,6 +6225,7 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
   var tarifaEspecialEmp = $('resTarifaEspecial')?.checked || false;
   var tarifaEspecialMontoEmp = parseFloat($('resTarifaEspecialMonto')?.value)||0;
   if (tarifaEspecialEmp && tarifaEspecialMontoEmp <= 0) { showToast('Indicá el monto de la tarifa especial por noche','warning'); return; }
+  var promoEmp = (tarifaEspecialEmp && tarifaEspecialMontoEmp > 0) ? null : _getPromoReservaSeleccionada();
   try {
     for (var i=0; i<habsSeleccionadas.length; i++) {
       var opt = habsSeleccionadas[i];
@@ -6116,6 +6233,7 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
       var habNro = opt.getAttribute('data-nro') || opt.text.split(' ')[0];
       var precioNoche = await obtenerPrecioNoche(opt.getAttribute('data-tipo') || '', pension) || 0;
       if (tarifaEspecialEmp && tarifaEspecialMontoEmp > 0) precioNoche = tarifaEspecialMontoEmp;
+      if (promoEmp) precioNoche = promoEmp.precioNoche;
       var totalEstadia = precioNoche * noches;
       if (desc > 0) totalEstadia = totalEstadia * (1 - desc/100);
       var totalPagar = totalEstadia - sena;
@@ -6127,6 +6245,7 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
         fechaIn, fechaOut, noches, adultos: 0, menores: 0,
         precioNoche, moneda, totalEstadia, descuento: desc, sena: i===0 ? sena : 0, medioPagoSena: i===0 ? medioPagoSena : '',
         tarifaEspecial: tarifaEspecialEmp, tarifaEspecialMonto: tarifaEspecialEmp ? tarifaEspecialMontoEmp : 0,
+        promoId: promoEmp ? promoEmp.id : '', promoNombre: promoEmp ? promoEmp.nombre : '',
         totalPagar: i===0 ? totalPagar : totalEstadia, notas,
         configCamas:'', festejo:'', restriccionAlim:'', pedidosEsp:'',
         acompanantes: [],
@@ -6150,6 +6269,7 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
     $('resFechaIn').value=''; $('resFechaOut').value=''; $('resSena').value='0'; $('resNotas').value='';
     $('resDescuento').value='0';
     if ($('resTarifaEspecial')) { $('resTarifaEspecial').checked = false; toggleTarifaEspecial(); }
+    if ($('resPromoSelect')) { $('resPromoSelect').value = ''; aplicarPromoReserva(); }
     $('resEmpresa').checked=false; toggleReservaEmpresa();
     $('resRazonSocial').value=''; $('resCuitEmpresa').value='';
     if ($('resEmailEmpresa')) $('resEmailEmpresa').value='';
