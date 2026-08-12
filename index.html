@@ -1315,6 +1315,19 @@
           <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="resTarifaEspecial" onchange="toggleTarifaEspecial()"> Tarifa Especial (reemplaza tarifa por habitación)</label></div>
           <div class="form-group hidden" id="grupoTarifaEspecialMonto"><label>Monto Tarifa Especial por Noche *</label><input type="number" id="resTarifaEspecialMonto" value="0" step="0.01" min="0" onchange="calcularTotalReserva()"></div>
         </div>
+        <div class="form-row hidden" id="resRowTarifaEspecialMotivo">
+          <div class="form-group"><label>Justificación del Cambio de Tarifa *</label>
+            <select id="resTarifaEspecialMotivo" onchange="toggleMotivoTarifaEspecial()">
+              <option value="">— Seleccioná el motivo —</option>
+              <option value="CLIENTE_HABITUAL">Cliente Habitual</option>
+              <option value="PAQUETE_ENTERO">Compra paquete entero</option>
+              <option value="INGRESO_TARDIO">Ingreso Tardío</option>
+              <option value="ASEGURAR_VENTA">Quedan muchas Habitaciones (Asegurar Venta)</option>
+              <option value="AUTORIZA_ADMIN">Autoriza Administración Gral.</option>
+              <option value="OTROS">Otros</option>
+            </select></div>
+          <div class="form-group hidden" id="grupoTarifaEspecialMotivoOtro"><label>Detalle del Motivo *</label><input type="text" id="resTarifaEspecialMotivoOtro" placeholder="Explayá el motivo del cambio de tarifa"></div>
+        </div>
         <div class="form-row" id="resRowConfigSena">
           <div class="form-group"><label>Configuración de Camas</label>
             <select id="resConfigCamas">
@@ -1523,6 +1536,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-green btn-sm" onclick="abrirCajaRec()">Abrir Caja</button>
+            <button class="btn btn-blue btn-sm" onclick="verLibroCaja()">📒 Libro de Caja</button>
             <button class="btn btn-red btn-sm" onclick="cerrarCajaRec()">Cerrar Caja</button>
           </div>
         </div>
@@ -1567,13 +1581,52 @@
   <!-- PANEL SPA RECEPCIÓN (Turnos) -->
   <!-- PANEL FADMIN -->
   <div id="panelFadmin" class="hidden">
-    <div class="card">
-      <div class="card-title">Registro de Tarifas Especiales</div>
-      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Auditoría de reservas creadas con tarifa especial: usuario que asignó la tarifa, monto por noche y detalles de la reserva.</p>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Fecha/Hora</th><th>Usuario</th><th>Monto/Noche</th><th>Huésped</th><th>Hab.</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Total Estadía</th><th>Estado</th></tr></thead>
-        <tbody id="tbodyTarifasEspeciales"></tbody>
-      </table></div>
+    <div class="tabs" style="flex-wrap:wrap;">
+      <button class="tab active" onclick="tabFadmin('tarifas',this)">Tarifas Especiales</button>
+      <button class="tab" onclick="tabFadmin('dia',this)">Movimientos del Día</button>
+      <button class="tab" onclick="tabFadmin('cierres',this)">Cierres de Caja</button>
+    </div>
+    <div id="tabFadminTarifas">
+      <div class="card">
+        <div class="card-title">Registro de Tarifas Especiales</div>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Auditoría de reservas creadas con tarifa especial: usuario que asignó la tarifa, monto por noche, justificación y detalles de la reserva.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha/Hora</th><th>Usuario</th><th>Monto/Noche</th><th>Justificación</th><th>Huésped</th><th>Hab.</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Total Estadía</th><th>Estado</th></tr></thead>
+          <tbody id="tbodyTarifasEspeciales"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabFadminDia" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div class="card-title" style="margin-bottom:0;">Pre-Reservas del Día</div>
+          <button class="btn btn-sm" onclick="cargarFadminDia()">Actualizar</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Huésped/Empresa</th><th>Hab.</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Pax</th><th>Total</th><th>Cargada por</th></tr></thead>
+          <tbody id="tbodyFadminPreReservas"></tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Salidas del Día</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Huésped/Empresa</th><th>Hab.</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Estado</th><th>Total</th><th>Medio Pago</th></tr></thead>
+          <tbody id="tbodyFadminSalidas"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div id="tabFadminCierres" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div class="card-title" style="margin-bottom:0;">Control de Cierres de Caja — Recepción</div>
+          <button class="btn btn-sm" onclick="cargarFadminCierres()">Actualizar</button>
+        </div>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Cierres con diferencia distinta de $0 se marcan como inconsistencia. Usá “Ver Detalle” para revisar los cobros del turno y “Conciliar” para corregir errores de medio de pago.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Turno</th><th>Usuario</th><th>Apertura</th><th>Efectivo</th><th>Débito</th><th>Crédito</th><th>Transf.</th><th>Esperado</th><th>Cierre Real</th><th>Diferencia</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tbodyFadminCierres"></tbody>
+        </table></div>
+      </div>
     </div>
   </div>
 
@@ -2150,6 +2203,18 @@ function mostrarPanel(rol) {
     cargarTarifasEspecialesLog();
   }
 }
+
+function tabFadmin(t, btn) {
+  document.querySelectorAll('#panelFadmin .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tabFadminTarifas','tabFadminDia','tabFadminCierres'].forEach(id => $(id).classList.add('hidden'));
+  var map = { tarifas:'tabFadminTarifas', dia:'tabFadminDia', cierres:'tabFadminCierres' };
+  $(map[t]).classList.remove('hidden');
+  if (t === 'tarifas') cargarTarifasEspecialesLog();
+  if (t === 'dia') cargarFadminDia();
+  if (t === 'cierres') cargarFadminCierres();
+}
+window.tabFadmin = tabFadmin;
 
 // ══════════════════════════════════════
 // TABS
@@ -5645,11 +5710,26 @@ function toggleTarifaEspecial() {
   var activo = $('resTarifaEspecial')?.checked || false;
   var grupo = $('grupoTarifaEspecialMonto');
   if (grupo) grupo.classList.toggle('hidden', !activo);
-  if (!activo && $('resTarifaEspecialMonto')) $('resTarifaEspecialMonto').value = '0';
+  var rowMotivo = $('resRowTarifaEspecialMotivo');
+  if (rowMotivo) rowMotivo.classList.toggle('hidden', !activo);
+  if (!activo) {
+    if ($('resTarifaEspecialMonto')) $('resTarifaEspecialMonto').value = '0';
+    if ($('resTarifaEspecialMotivo')) $('resTarifaEspecialMotivo').value = '';
+    if ($('resTarifaEspecialMotivoOtro')) $('resTarifaEspecialMotivoOtro').value = '';
+    if ($('grupoTarifaEspecialMotivoOtro')) $('grupoTarifaEspecialMotivoOtro').classList.add('hidden');
+  }
   if (activo && $('resPromoSelect') && $('resPromoSelect').value) { $('resPromoSelect').value = ''; aplicarPromoReserva(); return; }
   calcularTotalReserva();
 }
 window.toggleTarifaEspecial = toggleTarifaEspecial;
+
+function toggleMotivoTarifaEspecial() {
+  var esOtros = $('resTarifaEspecialMotivo')?.value === 'OTROS';
+  var grupo = $('grupoTarifaEspecialMotivoOtro');
+  if (grupo) grupo.classList.toggle('hidden', !esOtros);
+  if (!esOtros && $('resTarifaEspecialMotivoOtro')) $('resTarifaEspecialMotivoOtro').value = '';
+}
+window.toggleMotivoTarifaEspecial = toggleMotivoTarifaEspecial;
 
 // ── PROMOCIONES EN RESERVA ──
 async function cargarPromosReservaSelect() {
@@ -5759,14 +5839,18 @@ async function cargarTarifasEspecialesLog() {
     var snap = await getDocs(collection(db,'tarifasEspecialesLog'));
     var regs = snap.docs.map(d => d.data());
     regs.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
-    if (!regs.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);">Sin registros de tarifas especiales</td></tr>'; return; }
+    if (!regs.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Sin registros de tarifas especiales</td></tr>'; return; }
+    var motivoLabels = { CLIENTE_HABITUAL:'Cliente Habitual', PAQUETE_ENTERO:'Compra paquete entero', INGRESO_TARDIO:'Ingreso Tardío', ASEGURAR_VENTA:'Quedan muchas Hab. (Asegurar Venta)', AUTORIZA_ADMIN:'Autoriza Administración Gral.', OTROS:'Otros' };
     tbody.innerHTML = regs.map(r => {
       var sim = r.moneda === 'USD' ? 'U$D' : '$';
       var fh = r.fecha ? (fmtDMA(r.fecha.slice(0,10)) + ' ' + r.fecha.slice(11,16)) : '-';
+      var motivoTxt = r.motivo ? (motivoLabels[r.motivo]||r.motivo) : '-';
+      if (r.motivoDetalle) motivoTxt += ': ' + r.motivoDetalle;
       return `<tr>
         <td>${esc(fh)}</td>
         <td><strong>${esc(r.usuario||'-')}</strong>${r.nombreUsuario ? '<br><span style="color:var(--muted);font-size:0.8rem;">'+esc(r.nombreUsuario)+'</span>' : ''}</td>
         <td style="color:var(--gold);font-weight:700;">${sim} ${(r.monto||0).toLocaleString('es-AR')}</td>
+        <td style="font-size:0.82rem;">${esc(motivoTxt)}</td>
         <td>${esc(r.huesped||'-')}${r.esEmpresa ? ' <span style="font-size:0.75rem;color:var(--blue);">(EMPRESA)</span>' : ''}</td>
         <td>${esc(r.habitacionNro||'-')}</td>
         <td>${fmtDMA(r.fechaIn)}</td>
@@ -5776,15 +5860,233 @@ async function cargarTarifasEspecialesLog() {
         <td>${esc(r.estado||'-')}</td>
       </tr>`;
     }).join('');
-  } catch(e) { tbody.innerHTML = '<tr><td colspan="10" style="color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red);">Error: '+esc(e.message)+'</td></tr>'; }
 }
 window.cargarTarifasEspecialesLog = cargarTarifasEspecialesLog;
+
+async function cargarFadminDia() {
+  var tbodyPre = $('tbodyFadminPreReservas');
+  var tbodySal = $('tbodyFadminSalidas');
+  if (!tbodyPre || !tbodySal) return;
+  var hoyISO = new Date().toISOString().slice(0,10);
+  try {
+    var snap = await getDocs(collection(db,'reservas'));
+    var reservas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    var preHoy = reservas.filter(r => r.estado === 'PRE_RESERVA' && (r.fechaIn === hoyISO || (r.fechaPreReserva||'').slice(0,10) === hoyISO));
+    tbodyPre.innerHTML = preHoy.map(r => `<tr>
+      <td><strong>${esc(r.huesped||'-')}</strong>${r.esEmpresa ? ' <span style="font-size:0.72rem;color:var(--blue);">(EMPRESA)</span>' : ''}</td>
+      <td>${esc(r.habitacionNro||'-')}</td>
+      <td>${fmtDMA(r.fechaIn)}</td>
+      <td>${fmtDMA(r.fechaOut)}</td>
+      <td>${r.noches||0}</td>
+      <td>${(r.adultos||0)+(r.menores||0)}</td>
+      <td>$ ${(r.totalEstadia||0).toLocaleString('es-AR')}</td>
+      <td>${esc(r.usuario||'-')}</td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin pre-reservas del día</td></tr>';
+    var salidas = reservas.filter(r => r.fechaOut === hoyISO && (r.estado === 'CHECKIN' || r.estado === 'CHECKOUT'));
+    var mpLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'T. Débito', TARJETA_CREDITO:'T. Crédito', TRANSFERENCIA:'Transferencia', CTA_CTE:'Cta. Cte.' };
+    tbodySal.innerHTML = salidas.map(r => `<tr>
+      <td><strong>${esc(r.huesped||'-')}</strong>${r.esEmpresa ? ' <span style="font-size:0.72rem;color:var(--blue);">(EMPRESA)</span>' : ''}</td>
+      <td>${esc(r.habitacionNro||'-')}</td>
+      <td>${fmtDMA(r.fechaIn)}</td>
+      <td>${fmtDMA(r.fechaOut)}</td>
+      <td>${r.noches||0}</td>
+      <td><span style="font-weight:600;color:${r.estado==='CHECKOUT'?'var(--muted)':'var(--green)'};">${r.estado==='CHECKOUT'?'SALIÓ':'PENDIENTE SALIDA'}</span></td>
+      <td>$ ${(r.totalGeneral||r.totalPagar||0).toLocaleString('es-AR')}</td>
+      <td>${esc(mpLabels[r.medioPagoFinal]||r.medioPagoFinal||'-')}</td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin salidas hoy</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarFadminDia = cargarFadminDia;
+
+var _fadminCierresCache = [];
+async function cargarFadminCierres() {
+  var tbody = $('tbodyFadminCierres');
+  if (!tbody) return;
+  try {
+    var snap = await getDocs(collection(db,'cajaRecepcion'));
+    var cajas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    cajas.sort((a,b) => (b.fechaApertura||'').localeCompare(a.fechaApertura||''));
+    _fadminCierresCache = cajas;
+    var turnoLabels = { MANANA:'Mañana', TARDE:'Tarde', NOCHE:'Noche' };
+    tbody.innerHTML = cajas.map(c => {
+      var dif = c.diferencia||0;
+      var inconsistente = (c.estado === 'CERRADA' || c.estado === 'CONCILIADA') && dif !== 0;
+      var estadoHtml = c.estado === 'ABIERTA' ? '<span style="color:var(--green);font-weight:600;">ABIERTA</span>'
+        : c.estado === 'CONCILIADA' ? '<span style="color:var(--blue);font-weight:600;">CONCILIADA</span>'
+        : inconsistente ? '<span style="color:var(--red);font-weight:700;">⚠ INCONSISTENCIA</span>'
+        : '<span style="color:var(--muted);font-weight:600;">CERRADA</span>';
+      var acciones = c.estado === 'ABIERTA' ? '-' :
+        '<button class="btn btn-blue btn-xs" onclick="verDetalleCierreFadmin(\''+c.id+'\')">Ver Detalle</button> ' +
+        '<button class="btn btn-gold btn-xs" onclick="conciliarCierreFadmin(\''+c.id+'\')">Conciliar</button>';
+      return `<tr>
+        <td style="font-size:0.82rem;">${fmtFecha(c.fechaApertura)}</td>
+        <td>${turnoLabels[c.turno]||c.turno}</td>
+        <td>${esc(c.usuario||'-')}</td>
+        <td>$ ${(c.montoApertura||0).toLocaleString('es-AR')}</td>
+        <td>$ ${(c.detalleEfectivo||0).toLocaleString('es-AR')}</td>
+        <td>$ ${(c.detalleDebito||0).toLocaleString('es-AR')}</td>
+        <td>$ ${(c.detalleCredito||0).toLocaleString('es-AR')}</td>
+        <td>$ ${(c.detalleTransferencia||0).toLocaleString('es-AR')}</td>
+        <td>${c.efectivoEsperado!=null?'$ '+c.efectivoEsperado.toLocaleString('es-AR'):'-'}</td>
+        <td>${c.montoCierre!=null?'$ '+c.montoCierre.toLocaleString('es-AR'):'-'}</td>
+        <td style="font-weight:700;color:${dif===0?'var(--green)':'var(--red)'};">$ ${dif.toLocaleString('es-AR')}</td>
+        <td>${estadoHtml}</td>
+        <td style="white-space:nowrap;">${acciones}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="13" style="text-align:center;color:var(--muted);">Sin cierres de caja</td></tr>';
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+window.cargarFadminCierres = cargarFadminCierres;
+
+async function _recolectarOperacionesCaja(cajaData) {
+  var desde = new Date(cajaData.fechaApertura);
+  var hasta = cajaData.fechaCierre ? new Date(cajaData.fechaCierre) : null;
+  var ops = [];
+  var checkSnap = await getDocs(query(collection(db,'reservas'), where('estado','==','CHECKOUT')));
+  checkSnap.docs.map(d => d.data()).forEach(r => {
+    if (!r.fechaCheckOutReal) return;
+    var f = r.fechaCheckOutReal.toDate ? r.fechaCheckOutReal.toDate() : new Date(r.fechaCheckOutReal);
+    if (f < desde || (hasta && f > hasta)) return;
+    ops.push({ fecha:f, concepto:'Checkout Hab. '+(r.habitacionNro||''), detalle:r.huesped||'', medio:r.medioPagoFinal||'EFECTIVO', monto:r.totalGeneral||0, idTx:r.idTransaccion||'' });
+  });
+  var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desde))));
+  cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO').forEach(c => {
+    var f = c.fechaCierre?.toDate ? c.fechaCierre.toDate() : new Date(c.fechaCierre);
+    if (hasta && f > hasta) return;
+    ops.push({ fecha:f, concepto:'Restaurante Mesa '+(c.mesa||''), detalle:c.cliente||'', medio:c.medioPago||'EFECTIVO', monto:c.totalGeneral||0, idTx:c.idTransaccion||'' });
+  });
+  try {
+    var cobrosSnap = await getDocs(query(collection(db,'cobrosConsumos'), where('fecha','>=', Timestamp.fromDate(desde))));
+    cobrosSnap.docs.map(d => d.data()).forEach(c => {
+      var f = c.fecha?.toDate ? c.fecha.toDate() : new Date(c.fecha);
+      if (hasta && f > hasta) return;
+      ops.push({ fecha:f, concepto:'Cobro Consumos', detalle:c.cliente||c.habitacionNro||'', medio:c.medioPago||'EFECTIVO', monto:c.total||0, idTx:c.idTransaccion||'' });
+    });
+  } catch(e) {}
+  ops.sort((a,b) => a.fecha - b.fecha);
+  var detalleMp = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
+  var cupones = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
+  ops.forEach(o => { detalleMp[o.medio] = (detalleMp[o.medio]||0) + o.monto; cupones[o.medio] = (cupones[o.medio]||0) + 1; });
+  return { ops, detalleMp, cupones };
+}
+
+function _tablaOperacionesCajaHTML(ops) {
+  var mpLabels = { EFECTIVO:'Efectivo', TARJETA_DEBITO:'T. Débito', TARJETA_CREDITO:'T. Crédito', TRANSFERENCIA:'Transferencia' };
+  var filas = ops.map(o => {
+    var sinCupon = o.medio !== 'EFECTIVO' && !o.idTx;
+    return '<tr'+(sinCupon?' style="background:rgba(232,69,60,0.08);"':'')+'>' +
+      '<td>'+o.fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</td>' +
+      '<td>'+esc(o.concepto)+'</td><td>'+esc(o.detalle||'-')+'</td>' +
+      '<td>'+esc(mpLabels[o.medio]||o.medio)+'</td>' +
+      '<td>'+(o.idTx ? esc(o.idTx) : (sinCupon ? '<span style="color:var(--red);font-weight:700;">⚠ sin cupón</span>' : '-'))+'</td>' +
+      '<td style="font-weight:600;">$ '+o.monto.toLocaleString('es-AR')+'</td></tr>';
+  }).join('');
+  return '<div class="table-wrap"><table><thead><tr><th>Hora</th><th>Concepto</th><th>Detalle</th><th>Medio</th><th>Cupón/ID Tx</th><th>Monto</th></tr></thead><tbody>' +
+    (filas || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Sin cobros en el período</td></tr>') + '</tbody></table></div>';
+}
+
+async function verDetalleCierreFadmin(cajaId) {
+  var caja = _fadminCierresCache.find(c => c.id === cajaId);
+  if (!caja) return;
+  _mostrarModalInfoGlobal('💰 Detalle del Cierre', '<p style="color:var(--muted);">Cargando...</p>');
+  try {
+    var r = await _recolectarOperacionesCaja(caja);
+    var resumen = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:0.85rem;">' +
+      '<div><strong>'+r.cupones.EFECTIVO+'</strong> cobro(s) efectivo — $ '+r.detalleMp.EFECTIVO.toLocaleString('es-AR')+'</div>' +
+      '<div><strong>'+r.cupones.TARJETA_DEBITO+'</strong> cupón(es) débito — $ '+r.detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')+'</div>' +
+      '<div><strong>'+r.cupones.TARJETA_CREDITO+'</strong> cupón(es) crédito — $ '+r.detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')+'</div>' +
+      '<div><strong>'+r.cupones.TRANSFERENCIA+'</strong> transferencia(s) — $ '+r.detalleMp.TRANSFERENCIA.toLocaleString('es-AR')+'</div></div>';
+    var conciliacion = caja.conciliacion ? '<div style="margin-top:10px;padding:10px;background:rgba(74,144,217,0.08);border-radius:8px;font-size:0.82rem;"><strong>Conciliada por '+esc(caja.conciliacion.usuario||'')+'</strong> el '+fmtFecha(caja.conciliacion.fecha)+' — '+esc(caja.conciliacion.nota||'')+'</div>' : '';
+    _mostrarModalInfoGlobal('💰 Detalle del Cierre — '+esc(caja.usuario||'')+' ('+fmtFecha(caja.fechaApertura)+')', resumen + _tablaOperacionesCajaHTML(r.ops) + conciliacion +
+      '<p style="font-size:0.75rem;color:var(--muted);margin-top:10px;">Las filas resaltadas en rojo son cobros no efectivo sin cupón/ID de transacción (posible inconsistencia de medio de pago).</p>');
+  } catch(e) { _mostrarModalInfoGlobal('💰 Detalle del Cierre', '<p style="color:var(--red);">Error: '+esc(e.message)+'</p>'); }
+}
+window.verDetalleCierreFadmin = verDetalleCierreFadmin;
+
+function conciliarCierreFadmin(cajaId) {
+  var caja = _fadminCierresCache.find(c => c.id === cajaId);
+  if (!caja) return;
+  var cuerpo = `<div style="padding:16px;">
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px;">Corregí los montos por medio de pago si recepción registró un cobro con el medio equivocado. La diferencia se recalcula automáticamente.</p>
+    <div class="form-row">
+      <div class="form-group"><label>Efectivo $</label><input type="number" id="concEfectivo" step="0.01" value="${caja.detalleEfectivo||0}"></div>
+      <div class="form-group"><label>T. Débito $</label><input type="number" id="concDebito" step="0.01" value="${caja.detalleDebito||0}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>T. Crédito $</label><input type="number" id="concCredito" step="0.01" value="${caja.detalleCredito||0}"></div>
+      <div class="form-group"><label>Transferencia $</label><input type="number" id="concTransf" step="0.01" value="${caja.detalleTransferencia||0}"></div>
+    </div>
+    <div class="form-group"><label>Cierre Real (efectivo contado) $</label><input type="number" id="concMontoCierre" step="0.01" value="${caja.montoCierre||0}"></div>
+    <div class="form-group" style="margin-top:8px;"><label>Nota de Conciliación *</label><input type="text" id="concNota" placeholder="Ej: checkout hab 104 cobrado con débito, estaba cargado como efectivo"></div>
+  </div>`;
+  confirmarAccion('Conciliar Caja', cuerpo, 'Guardar Conciliación', async (ok) => {
+    if (!ok) return;
+    var nota = document.getElementById('concNota').value.trim();
+    if (!nota) { showToast('Completá la nota de conciliación','warning'); return; }
+    var efectivo = parseFloat(document.getElementById('concEfectivo').value)||0;
+    var debito = parseFloat(document.getElementById('concDebito').value)||0;
+    var credito = parseFloat(document.getElementById('concCredito').value)||0;
+    var transf = parseFloat(document.getElementById('concTransf').value)||0;
+    var montoCierre = parseFloat(document.getElementById('concMontoCierre').value)||0;
+    var efectivoEsperado = (caja.montoApertura||0) + efectivo + (caja.totalIngresos||0) - (caja.totalEgresos||0);
+    var diferencia = montoCierre - efectivoEsperado;
+    try {
+      await updateDoc(doc(db,'cajaRecepcion',cajaId), {
+        detalleEfectivo: efectivo, detalleDebito: debito, detalleCredito: credito, detalleTransferencia: transf,
+        montoCierre, efectivoEsperado, diferencia,
+        totalSistema: efectivo + debito + credito + transf,
+        estado: 'CONCILIADA',
+        conciliacion: {
+          usuario: currentUser.usuario, fecha: new Date().toISOString(), nota,
+          anterior: {
+            detalleEfectivo: caja.detalleEfectivo||0, detalleDebito: caja.detalleDebito||0,
+            detalleCredito: caja.detalleCredito||0, detalleTransferencia: caja.detalleTransferencia||0,
+            montoCierre: caja.montoCierre||0, diferencia: caja.diferencia||0, estado: caja.estado||''
+          }
+        }
+      });
+      showToast('Caja conciliada — diferencia: $'+diferencia.toLocaleString('es-AR'),'success');
+      cargarFadminCierres();
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  }, '520px');
+}
+window.conciliarCierreFadmin = conciliarCierreFadmin;
+
+async function verLibroCaja() {
+  var snap = await getDocs(query(collection(db,'cajaRecepcion'), where('estado','==','ABIERTA')));
+  if (snap.empty) { showToast('No hay caja abierta','warning'); return; }
+  var cajaDoc = snap.docs[0];
+  var caja = cajaDoc.data();
+  _mostrarModalInfoGlobal('📒 Libro de Caja', '<p style="color:var(--muted);">Cargando...</p>');
+  try {
+    var r = await _recolectarOperacionesCaja(caja);
+    var movSnap = await getDocs(query(collection(db,'movimientosCaja'), where('cajaId','==',cajaDoc.id)));
+    var movimientos = movSnap.docs.map(d => d.data());
+    var totalEgresos = movimientos.filter(m => m.tipo==='EGRESO').reduce((a,m) => a+m.monto, 0);
+    var totalIngresos = movimientos.filter(m => m.tipo==='INGRESO').reduce((a,m) => a+m.monto, 0);
+    var efectivoEsperado = (caja.montoApertura||0) + r.detalleMp.EFECTIVO + totalIngresos - totalEgresos;
+    var resumen = `<div style="background:var(--card);border-radius:10px;padding:12px;margin-bottom:12px;font-size:0.88rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Apertura (${esc(caja.usuario||'')} — ${esc(caja.turno||'')})</span><strong>$ ${(caja.montoApertura||0).toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${r.cupones.EFECTIVO} cobro(s) en Efectivo</span><strong>$ ${r.detalleMp.EFECTIVO.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${r.cupones.TARJETA_DEBITO} cupón(es) T. Débito</span><strong>$ ${r.detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${r.cupones.TARJETA_CREDITO} cupón(es) T. Crédito</span><strong>$ ${r.detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${r.cupones.TRANSFERENCIA} transferencia(s)</span><strong>$ ${r.detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>${movimientos.length} movimiento(s) de caja</span><strong>+$ ${totalIngresos.toLocaleString('es-AR')} / -$ ${totalEgresos.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:6px;font-weight:700;color:var(--green);"><span>Efectivo esperado en caja</span><span>$ ${efectivoEsperado.toLocaleString('es-AR')}</span></div>
+    </div>`;
+    _mostrarModalInfoGlobal('📒 Libro de Caja — antes de cerrar', resumen + _tablaOperacionesCajaHTML(r.ops) +
+      '<p style="font-size:0.75rem;color:var(--muted);margin-top:10px;">Verificá que la cantidad de cupones físicos de débito/crédito coincida con el detalle antes de cerrar la caja. Las filas en rojo son cobros no efectivo sin cupón.</p>');
+  } catch(e) { _mostrarModalInfoGlobal('📒 Libro de Caja', '<p style="color:var(--red);">Error: '+esc(e.message)+'</p>'); }
+}
+window.verLibroCaja = verLibroCaja;
 
 async function registrarTarifaEspecial(monto, r) {
   try {
     await addDoc(collection(db,'tarifasEspecialesLog'), {
       usuario: currentUser.usuario, nombreUsuario: currentUser.nombre||'',
       monto, moneda: r.moneda||'ARS',
+      motivo: r.tarifaEspecialMotivo||'', motivoDetalle: r.tarifaEspecialMotivoDetalle||'',
       huesped: r.huesped||'', habitacionNro: r.habitacionNro||'',
       fechaIn: r.fechaIn||'', fechaOut: r.fechaOut||'', noches: r.noches||0,
       estado: r.estado||'', totalEstadia: r.totalEstadia||0,
@@ -6061,6 +6363,10 @@ async function crearReserva() {
   var tarifaEspecial = $('resTarifaEspecial')?.checked || false;
   var tarifaEspecialMonto = parseFloat($('resTarifaEspecialMonto')?.value)||0;
   if (tarifaEspecial && tarifaEspecialMonto <= 0) { showToast('Indicá el monto de la tarifa especial por noche','warning'); return; }
+  var tarifaEspecialMotivo = tarifaEspecial ? ($('resTarifaEspecialMotivo')?.value||'') : '';
+  var tarifaEspecialMotivoDetalle = tarifaEspecial ? ($('resTarifaEspecialMotivoOtro')?.value?.trim()||'') : '';
+  if (tarifaEspecial && !tarifaEspecialMotivo) { showToast('Seleccioná la justificación del cambio de tarifa','warning'); return; }
+  if (tarifaEspecial && tarifaEspecialMotivo === 'OTROS' && !tarifaEspecialMotivoDetalle) { showToast('Detallá el motivo del cambio de tarifa','warning'); return; }
   var promoRes = (tarifaEspecial && tarifaEspecialMonto > 0) ? null : _getPromoReservaSeleccionada();
 
   if ((!restriccionAlim || !antecedentesSalud) && !_avisoRestriccionMostrado) {
@@ -6123,6 +6429,7 @@ async function crearReserva() {
       fechaIn, fechaOut, noches, adultos, menores,
       precioNoche, moneda, totalEstadia, descuento: desc, sena, medioPagoSena,
       tarifaEspecial, tarifaEspecialMonto: tarifaEspecial ? tarifaEspecialMonto : 0,
+      tarifaEspecialMotivo, tarifaEspecialMotivoDetalle,
       promoId: promoRes ? promoRes.id : '', promoNombre: promoRes ? promoRes.nombre : '',
       totalPagar, notas,
       configCamas, restriccionAlim, pedidosEsp, lateCheckout, earlyCheckin, festejoCumple,
@@ -6225,6 +6532,10 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
   var tarifaEspecialEmp = $('resTarifaEspecial')?.checked || false;
   var tarifaEspecialMontoEmp = parseFloat($('resTarifaEspecialMonto')?.value)||0;
   if (tarifaEspecialEmp && tarifaEspecialMontoEmp <= 0) { showToast('Indicá el monto de la tarifa especial por noche','warning'); return; }
+  var motivoEmp = tarifaEspecialEmp ? ($('resTarifaEspecialMotivo')?.value||'') : '';
+  var motivoDetalleEmp = tarifaEspecialEmp ? ($('resTarifaEspecialMotivoOtro')?.value?.trim()||'') : '';
+  if (tarifaEspecialEmp && !motivoEmp) { showToast('Seleccioná la justificación del cambio de tarifa','warning'); return; }
+  if (tarifaEspecialEmp && motivoEmp === 'OTROS' && !motivoDetalleEmp) { showToast('Detallá el motivo del cambio de tarifa','warning'); return; }
   var promoEmp = (tarifaEspecialEmp && tarifaEspecialMontoEmp > 0) ? null : _getPromoReservaSeleccionada();
   try {
     for (var i=0; i<habsSeleccionadas.length; i++) {
@@ -6245,6 +6556,7 @@ async function crearReservasEmpresa(razonSocial, cuitEmpresa, emailEmpresa, tele
         fechaIn, fechaOut, noches, adultos: 0, menores: 0,
         precioNoche, moneda, totalEstadia, descuento: desc, sena: i===0 ? sena : 0, medioPagoSena: i===0 ? medioPagoSena : '',
         tarifaEspecial: tarifaEspecialEmp, tarifaEspecialMonto: tarifaEspecialEmp ? tarifaEspecialMontoEmp : 0,
+        tarifaEspecialMotivo: motivoEmp, tarifaEspecialMotivoDetalle: motivoDetalleEmp,
         promoId: promoEmp ? promoEmp.id : '', promoNombre: promoEmp ? promoEmp.nombre : '',
         totalPagar: i===0 ? totalPagar : totalEstadia, notas,
         configCamas:'', festejo:'', restriccionAlim:'', pedidosEsp:'',
@@ -7986,15 +8298,16 @@ async function cerrarCajaRec() {
   });
   // Calcular detalle por medio de pago
   var detalleMp = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
-  checkouts.forEach(r => { detalleMp[r.medioPagoFinal||'EFECTIVO'] = (detalleMp[r.medioPagoFinal||'EFECTIVO']||0) + (r.totalGeneral||0); });
+  var cantidadMp = { EFECTIVO:0, TARJETA_DEBITO:0, TARJETA_CREDITO:0, TRANSFERENCIA:0 };
+  checkouts.forEach(r => { var mp = r.medioPagoFinal||'EFECTIVO'; detalleMp[mp] = (detalleMp[mp]||0) + (r.totalGeneral||0); cantidadMp[mp] = (cantidadMp[mp]||0) + 1; });
   // También cierres del restaurante (cobro en caja) durante este período
   var cierresSnap = await getDocs(query(collection(db,'cierres'), where('fechaCierre','>=', Timestamp.fromDate(desdeAp))));
   var cierresData = cierresSnap.docs.map(d => d.data()).filter(c => c.medioPago && c.medioPago !== 'SIN_COBRO');
-  cierresData.forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.totalGeneral||0); });
+  cierresData.forEach(c => { var mp = c.medioPago||'EFECTIVO'; detalleMp[mp] = (detalleMp[mp]||0) + (c.totalGeneral||0); cantidadMp[mp] = (cantidadMp[mp]||0) + 1; });
   // Cobros separados de consumos durante este período
   try {
     var cobrosSnap = await getDocs(query(collection(db,'cobrosConsumos'), where('fecha','>=', Timestamp.fromDate(desdeAp))));
-    cobrosSnap.docs.map(d => d.data()).forEach(c => { detalleMp[c.medioPago||'EFECTIVO'] = (detalleMp[c.medioPago||'EFECTIVO']||0) + (c.total||0); });
+    cobrosSnap.docs.map(d => d.data()).forEach(c => { var mp = c.medioPago||'EFECTIVO'; detalleMp[mp] = (detalleMp[mp]||0) + (c.total||0); cantidadMp[mp] = (cantidadMp[mp]||0) + 1; });
   } catch(ee) {}
   var totalCobros = Object.values(detalleMp).reduce((a,b)=>a+b,0);
   // Movimientos de caja (egresos e ingresos)
@@ -8011,10 +8324,10 @@ async function cerrarCajaRec() {
   }).join('') : '<div style="font-size:0.82rem;color:var(--muted);">Sin movimientos</div>';
   var detalleHTML = `<div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
     <div style="font-weight:600;margin-bottom:6px;">Cobros por Medio de Pago:</div>
-    <div style="display:flex;justify-content:space-between;"><span>Efectivo</span><span>$ ${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
-    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Débito</span><span>$ ${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
-    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Crédito</span><span>$ ${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
-    <div style="display:flex;justify-content:space-between;"><span>Transferencia</span><span>$ ${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Efectivo (${cantidadMp.EFECTIVO} cobro/s)</span><span>$ ${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Débito (${cantidadMp.TARJETA_DEBITO} cupón/es)</span><span>$ ${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Tarjeta Crédito (${cantidadMp.TARJETA_CREDITO} cupón/es)</span><span>$ ${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Transferencia (${cantidadMp.TRANSFERENCIA} transf.)</span><span>$ ${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
     <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;font-weight:700;"><span>Total Cobros</span><span>$ ${totalCobros.toLocaleString('es-AR')}</span></div>
   </div>
   <div style="background:var(--surface);border-radius:8px;padding:10px;margin:10px 0;font-size:0.85rem;">
@@ -8050,6 +8363,11 @@ async function cerrarCajaRec() {
         detalleDebito: detalleMp.TARJETA_DEBITO,
         detalleCredito: detalleMp.TARJETA_CREDITO,
         detalleTransferencia: detalleMp.TRANSFERENCIA,
+        cantidadEfectivo: cantidadMp.EFECTIVO,
+        cantidadDebito: cantidadMp.TARJETA_DEBITO,
+        cantidadCredito: cantidadMp.TARJETA_CREDITO,
+        cantidadTransferencia: cantidadMp.TRANSFERENCIA,
+        cantidadMovimientos: movimientos.length,
         fechaCierre: new Date().toISOString()
       });
       // Imprimir ticket de cierre
@@ -8065,10 +8383,10 @@ async function cerrarCajaRec() {
         <div class="row"><span>Usuario:</span><span>${esc(cajaData.usuario||'')}</span></div>
         <div class="row"><span>Apertura:</span><span>$${montoApertura.toLocaleString('es-AR')}</span></div>
         <hr><div class="bold">COBROS</div>
-        <div class="row"><span>Efectivo:</span><span>$${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
-        <div class="row"><span>Débito:</span><span>$${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
-        <div class="row"><span>Crédito:</span><span>$${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
-        <div class="row"><span>Transf.:</span><span>$${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Efectivo (${cantidadMp.EFECTIVO}):</span><span>$${detalleMp.EFECTIVO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Débito (${cantidadMp.TARJETA_DEBITO} cup.):</span><span>$${detalleMp.TARJETA_DEBITO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Crédito (${cantidadMp.TARJETA_CREDITO} cup.):</span><span>$${detalleMp.TARJETA_CREDITO.toLocaleString('es-AR')}</span></div>
+        <div class="row"><span>Transf. (${cantidadMp.TRANSFERENCIA}):</span><span>$${detalleMp.TRANSFERENCIA.toLocaleString('es-AR')}</span></div>
         <div class="row bold"><span>Total Cobros:</span><span>$${totalCobros.toLocaleString('es-AR')}</span></div>
         <hr><div class="bold">MOVIMIENTOS</div>
         <div class="row"><span>Ingresos:</span><span>+$${totalIngresos.toLocaleString('es-AR')}</span></div>
