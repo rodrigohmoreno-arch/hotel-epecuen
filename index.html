@@ -865,6 +865,7 @@
         <div class="card-title">Configuración Hotel</div>
         <div class="form-row">
           <div class="form-group"><label>Cotización Dólar (1 USD = $ ARS)</label><input type="number" id="cfgCotizacion" step="0.01" min="0"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn btn-green btn-sm" onclick="consultarDolarBlue()">💵 Dólar Blue</button></div>
           <div class="form-group"><label>Tarifa Late Checkout ($ ARS)</label><input type="number" id="cfgTarifaLate" step="0.01" min="0" placeholder="Ej: 15000"></div>
           <div class="form-group"><label>Tarifa Early Check-in ($ ARS)</label><input type="number" id="cfgTarifaEarly" step="0.01" min="0" placeholder="Ej: 15000"></div>
           <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold btn-sm" onclick="guardarConfigHotel()">Guardar</button></div>
@@ -1157,6 +1158,7 @@
       <button class="tab" onclick="tabRecepcion('cajaRec',this)">Caja</button>
       <button class="tab" onclick="tabRecepcion('promociones',this)">Promociones</button>
       <button class="tab" onclick="tabRecepcion('gobernanta',this)">Gobernanta</button>
+      <button class="btn btn-green btn-xs" style="margin-left:auto;align-self:center;" onclick="consultarDolarBlue()">💵 Dólar Blue</button>
     </div>
     <!-- Tab Habitaciones -->
     <div id="tabRecHabitaciones">
@@ -5491,6 +5493,38 @@ async function eliminarTarifa(id) {
   });
 }
 window.eliminarTarifa = eliminarTarifa;
+
+// ── COTIZACIÓN DÓLAR BLUE ──
+async function consultarDolarBlue() {
+  showToast('Consultando dólar blue...','info');
+  try {
+    var resp = await fetch('https://dolarapi.com/v1/dolares/blue');
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    var d = await resp.json();
+    var compra = parseFloat(d.compra)||0;
+    var venta = parseFloat(d.venta)||0;
+    if (compra <= 0 || venta <= 0) throw new Error('Cotización inválida');
+    var promedio = Math.round(((compra + venta) / 2) * 100) / 100;
+    var fAct = d.fechaActualizacion ? new Date(d.fechaActualizacion).toLocaleString('es-AR') : '-';
+    var cuerpo = `<div style="padding:16px;font-size:0.9rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Compra</span><strong>$ ${compra.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Venta</span><strong>$ ${venta.toLocaleString('es-AR')}</strong></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:6px;font-weight:700;color:var(--green);"><span>Promedio</span><span>$ ${promedio.toLocaleString('es-AR')}</span></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:8px;">Actualizado: ${fAct} — Fuente: dólar blue (dolarapi.com)</div>
+      <div style="font-size:0.8rem;margin-top:8px;">Cotización actual del sistema: $ ${(configHotel.cotizacionDolar||0).toLocaleString('es-AR')}</div>
+    </div>`;
+    confirmarAccion('💵 Dólar Blue Hoy', cuerpo, 'Usar $ '+promedio.toLocaleString('es-AR')+' como cotización', async (ok) => {
+      if (!ok) return;
+      try {
+        await setDoc(doc(db,'configHotel','general'), { cotizacionDolar: promedio, cotizacionActualizada: new Date().toISOString(), cotizacionFuente: 'dolar-blue-promedio' }, { merge:true });
+        configHotel = { ...configHotel, cotizacionDolar: promedio };
+        if ($('cfgCotizacion')) $('cfgCotizacion').value = promedio;
+        showToast('Cotización actualizada a $ '+promedio.toLocaleString('es-AR')+' — las tarifas en USD ya usan este valor','success');
+      } catch(e) { showToast('Error guardando cotización: '+e.message,'error'); }
+    });
+  } catch(e) { showToast('No se pudo consultar el dólar blue: '+e.message,'error'); }
+}
+window.consultarDolarBlue = consultarDolarBlue;
 
 // ── CLIENTES (HUÉSPEDES + EMPRESAS) ──
 function toggleTipoCliente() {
